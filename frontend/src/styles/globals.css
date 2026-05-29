@@ -1,0 +1,482 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ========================================================================
+ * THEME CONFIGURATION
+ * ========================================================================
+ * HOW TO SWITCH THEME:
+ * 1. Comment out the active theme in :root
+ * 2. Uncomment the desired theme
+ * 3. That's it! Dark mode uses the same colors automatically
+ * ======================================================================== */
+
+:root {
+    color-scheme: light;
+
+    /* ================== THEME 1: BLUE ================== */
+    
+    --gradient-from: rgb(147, 197, 253);
+    --gradient-via: rgb(96, 165, 250);
+    --gradient-to: rgb(59, 130, 246);
+    --gradient-from-dark: rgb(30, 58, 138);
+    --gradient-via-dark: rgb(30, 64, 175);
+    --gradient-to-dark: rgb(37, 99, 235);
+    --color-primary-50: rgb(240, 249, 255);
+    --color-primary-100: rgb(224, 242, 254);
+    --color-primary-200: rgb(186, 230, 253);
+    --color-primary-300: rgb(125, 211, 252);
+    --color-primary-400: rgb(56, 189, 248);
+    --color-primary-500: rgb(14, 165, 233);
+    --color-primary-600: rgb(2, 132, 199);
+    --color-primary-700: rgb(3, 102, 214);
+    --color-primary-800: rgb(7, 89, 133);
+    --color-secondary-50: rgb(240, 253, 250);
+    --color-secondary-100: rgb(204, 251, 241);
+    --color-secondary-200: rgb(153, 246, 228);
+    --color-secondary-300: rgb(94, 234, 212);
+    --color-secondary-400: rgb(45, 212, 191);
+    --color-secondary-500: rgb(20, 184, 166);
+    --color-secondary-600: rgb(13, 148, 136);
+    --color-secondary-700: rgb(15, 118, 110);
+    --color-secondary-800: rgb(12, 74, 69);
+    --color-accent-50: rgb(245, 243, 255);
+    --color-accent-100: rgb(237, 233, 254);
+    --color-accent-200: rgb(221, 214, 254);
+    --color-accent-300: rgb(196, 181, 253);
+    --color-accent-400: rgb(167, 139, 250);
+    --color-accent-500: rgb(139, 92, 246);
+    --color-accent-600: rgb(124, 58, 242);
+    --color-accent-700: rgb(109, 40, 217);
+    --color-accent-800: rgb(88, 28, 135);
+   
+
+    /* ================== THEME 2: PURPLE ================== */
+    /*
+    --gradient-from: rgb(221, 214, 254);
+    --gradient-via: rgb(196, 181, 253);
+    --gradient-to: rgb(168, 85, 247);
+    --gradient-from-dark: rgb(75, 0, 130);
+    --gradient-via-dark: rgb(88, 28, 135);
+    --gradient-to-dark: rgb(109, 40, 217);
+    --color-primary-50: rgb(250, 245, 255);
+    --color-primary-100: rgb(243, 232, 255);
+    --color-primary-200: rgb(230, 204, 255);
+    --color-primary-300: rgb(216, 180, 254);
+    --color-primary-400: rgb(192, 132, 252);
+    --color-primary-500: rgb(168, 85, 247);
+    --color-primary-600: rgb(147, 51, 234);
+    --color-primary-700: rgb(126, 34, 206);
+    --color-primary-800: rgb(88, 28, 135);
+    --color-secondary-50: rgb(253, 242, 248);
+    --color-secondary-100: rgb(252, 231, 243);
+    --color-secondary-200: rgb(249, 205, 228);
+    --color-secondary-300: rgb(244, 165, 207);
+    --color-secondary-400: rgb(236, 72, 153);
+    --color-secondary-500: rgb(236, 72, 153);
+    --color-secondary-600: rgb(219, 39, 119);
+    --color-secondary-700: rgb(190, 24, 93);
+    --color-secondary-800: rgb(131, 24, 67);
+    --color-accent-50: rgb(255, 251, 235);
+    --color-accent-100: rgb(254, 243, 199);
+    --color-accent-200: rgb(253, 230, 138);
+    --color-accent-300: rgb(252, 211, 77);
+    --color-accent-400: rgb(251, 146, 60);
+    --color-accent-500: rgb(217, 119, 6);
+    --color-accent-600: rgb(180, 83, 9);
+    --color-accent-700: rgb(146, 64, 14);
+    --color-accent-800: rgb(120, 53, 15);
+    */
+
+    /* ================== THEME 3: ORANGE (ACTIVE) ================== */
+    /*     
+    --gradient-from: rgb(254, 215, 170);
+    --gradient-via: rgb(253, 186, 116);
+    --gradient-to: rgb(249, 115, 22);
+    --gradient-from-dark: rgb(124, 45, 0);
+    --gradient-via-dark: rgb(146, 64, 14);
+    --gradient-to-dark: rgb(180, 83, 9);
+    --color-primary-50: rgb(255, 247, 237);
+    --color-primary-100: rgb(255, 237, 213);
+    --color-primary-200: rgb(254, 215, 170);
+    --color-primary-300: rgb(253, 186, 116);
+    --color-primary-400: rgb(251, 146, 60);
+    --color-primary-500: rgb(249, 115, 22);
+    --color-primary-600: rgb(234, 88, 12);
+    --color-primary-700: rgb(194, 65, 12);
+    --color-primary-800: rgb(154, 52, 18);
+    --color-secondary-50: rgb(255, 251, 235);
+    --color-secondary-100: rgb(254, 243, 199);
+    --color-secondary-200: rgb(253, 230, 138);
+    --color-secondary-300: rgb(252, 211, 77);
+    --color-secondary-400: rgb(251, 146, 60);
+    --color-secondary-500: rgb(217, 119, 6);
+    --color-secondary-600: rgb(180, 83, 9);
+    --color-secondary-700: rgb(146, 64, 14);
+    --color-secondary-800: rgb(120, 53, 15);
+    --color-accent-50: rgb(254, 242, 242);
+    --color-accent-100: rgb(254, 226, 226);
+    --color-accent-200: rgb(254, 205, 205);
+    --color-accent-300: rgb(253, 164, 175);
+    --color-accent-400: rgb(251, 113, 133);
+    --color-accent-500: rgb(244, 63, 94);
+    --color-accent-600: rgb(225, 29, 72);
+    --color-accent-700: rgb(190, 24, 93);
+    --color-accent-800: rgb(159, 18, 57);
+     */
+}
+
+/* Dark mode - override gradient for dark theme */
+html.dark,
+.dark {
+    color-scheme: dark;
+    --gradient-from: var(--gradient-from-dark);
+    --gradient-via: var(--gradient-via-dark);
+    --gradient-to: var(--gradient-to-dark);
+}
+
+@layer base {
+    :root {
+        --primary: var(--color-primary-600);
+        --primary-foreground: 0 0% 100%;
+        --secondary: var(--color-secondary-600);
+        --secondary-foreground: 0 0% 100%;
+        --accent: var(--color-primary-50);
+        --accent-foreground: var(--color-primary-700);
+        --destructive: rgb(220, 38, 38);
+        --destructive-foreground: 0 0% 100%;
+        --muted: var(--color-slate-100);
+        --muted-foreground: var(--color-slate-500);
+        --border: var(--color-slate-200);
+        --input: var(--color-slate-200);
+        --ring: var(--color-primary-500);
+    }
+
+    .dark {
+        --primary: var(--color-primary-500);
+        --primary-foreground: 0 0% 100%;
+        --secondary: var(--color-secondary-500);
+        --secondary-foreground: 0 0% 100%;
+        --accent: var(--color-primary-900);
+        --accent-foreground: var(--color-primary-300);
+        --destructive: rgb(153, 27, 27);
+        --destructive-foreground: 0 0% 100%;
+        --muted: var(--color-slate-800);
+        --muted-foreground: var(--color-slate-400);
+        --border: var(--color-slate-800);
+        --input: var(--color-slate-800);
+        --ring: var(--color-primary-400);
+    }
+}
+
+@layer components {
+    /* Generic Mappings */
+    .bg-primary { background-color: var(--primary); }
+    .text-primary { color: var(--primary); }
+    .border-primary { border-color: var(--primary); }
+    
+    .bg-accent { background-color: var(--accent); }
+    .text-accent { color: var(--accent-foreground); }
+    
+    .bg-muted { background-color: var(--muted); }
+    .text-muted-foreground { color: var(--muted-foreground); }
+    
+    .bg-destructive { background-color: var(--destructive); }
+    .text-destructive { color: var(--destructive); }
+    
+    .border-border { border-color: var(--border); }
+    .border-input { border-color: var(--input); }
+
+    /* PRIMARY colors */
+    .bg-primary-50 {
+        background-color: var(--color-primary-50);
+    }
+    .bg-primary-100 {
+        background-color: var(--color-primary-100);
+    }
+    .bg-primary-200 {
+        background-color: var(--color-primary-200);
+    }
+    .bg-primary-300 {
+        background-color: var(--color-primary-300);
+    }
+    .bg-primary-400 {
+        background-color: var(--color-primary-400);
+    }
+    .bg-primary-500 {
+        background-color: var(--color-primary-500);
+    }
+    .bg-primary-600 {
+        background-color: var(--color-primary-600);
+    }
+    .bg-primary-700 {
+        background-color: var(--color-primary-700);
+    }
+    .bg-primary-800 {
+        background-color: var(--color-primary-800);
+    }
+
+    .text-primary-50 {
+        color: var(--color-primary-50);
+    }
+    .text-primary-100 {
+        color: var(--color-primary-100);
+    }
+    .text-primary-200 {
+        color: var(--color-primary-200);
+    }
+    .text-primary-300 {
+        color: var(--color-primary-300);
+    }
+    .text-primary-400 {
+        color: var(--color-primary-400);
+    }
+    .text-primary-500 {
+        color: var(--color-primary-500);
+    }
+    .text-primary-600 {
+        color: var(--color-primary-600);
+    }
+    .text-primary-700 {
+        color: var(--color-primary-700);
+    }
+    .text-primary-800 {
+        color: var(--color-primary-800);
+    }
+
+    .border-primary-200 {
+        border-color: var(--color-primary-200);
+    }
+    .border-primary-300 {
+        border-color: var(--color-primary-300);
+    }
+    .border-primary-600 {
+        border-color: var(--color-primary-600);
+    }
+    .border-primary-700 {
+        border-color: var(--color-primary-700);
+    }
+
+    .accent-primary-600 {
+        accent-color: var(--color-primary-600);
+    }
+
+    /* SECONDARY colors */
+    .bg-secondary-50 {
+        background-color: var(--color-secondary-50);
+    }
+    .bg-secondary-100 {
+        background-color: var(--color-secondary-100);
+    }
+    .bg-secondary-200 {
+        background-color: var(--color-secondary-200);
+    }
+    .bg-secondary-300 {
+        background-color: var(--color-secondary-300);
+    }
+    .bg-secondary-400 {
+        background-color: var(--color-secondary-400);
+    }
+    .bg-secondary-500 {
+        background-color: var(--color-secondary-500);
+    }
+    .bg-secondary-600 {
+        background-color: var(--color-secondary-600);
+    }
+    .bg-secondary-700 {
+        background-color: var(--color-secondary-700);
+    }
+    .bg-secondary-800 {
+        background-color: var(--color-secondary-800);
+    }
+
+    .text-secondary-600 {
+        color: var(--color-secondary-600);
+    }
+    .text-secondary-700 {
+        color: var(--color-secondary-700);
+    }
+
+    .border-secondary-200 {
+        border-color: var(--color-secondary-200);
+    }
+    .border-secondary-300 {
+        border-color: var(--color-secondary-300);
+    }
+    .border-secondary-600 {
+        border-color: var(--color-secondary-600);
+    }
+    .border-secondary-700 {
+        border-color: var(--color-secondary-700);
+    }
+
+    /* ACCENT colors */
+    .bg-accent-50 {
+        background-color: var(--color-accent-50);
+    }
+    .bg-accent-100 {
+        background-color: var(--color-accent-100);
+    }
+    .bg-accent-200 {
+        background-color: var(--color-accent-200);
+    }
+    .bg-accent-300 {
+        background-color: var(--color-accent-300);
+    }
+    .bg-accent-400 {
+        background-color: var(--color-accent-400);
+    }
+    .bg-accent-500 {
+        background-color: var(--color-accent-500);
+    }
+    .bg-accent-600 {
+        background-color: var(--color-accent-600);
+    }
+    .bg-accent-700 {
+        background-color: var(--color-accent-700);
+    }
+    .bg-accent-800 {
+        background-color: var(--color-accent-800);
+    }
+
+    .text-accent-600 {
+        color: var(--color-accent-600);
+    }
+    .text-accent-700 {
+        color: var(--color-accent-700);
+    }
+
+    .fill-primary-600 {
+        fill: var(--color-primary-600);
+    }
+    .fill-accent-500 {
+        fill: var(--color-accent-500);
+    }
+    .fill-accent-600 {
+        fill: var(--color-accent-600);
+    }
+
+    /* GRADIENT classes */
+    .from-primary-600 {
+        --tw-gradient-from: var(--color-primary-600);
+    }
+    .from-primary-700 {
+        --tw-gradient-from: var(--color-primary-700);
+    }
+    .to-primary-700 {
+        --tw-gradient-to: var(--color-primary-700);
+    }
+    .to-primary-800 {
+        --tw-gradient-to: var(--color-primary-800);
+    }
+
+    .from-accent-600 {
+        --tw-gradient-from: var(--color-accent-600);
+    }
+    .from-accent-700 {
+        --tw-gradient-from: var(--color-accent-700);
+    }
+    .to-accent-700 {
+        --tw-gradient-to: var(--color-accent-700);
+    }
+    .to-accent-800 {
+        --tw-gradient-to: var(--color-accent-800);
+    }
+
+    /* FOCUS RING */
+    .focus\:ring-primary-400:focus {
+        --tw-ring-color: var(--color-primary-400);
+    }
+    .focus\:ring-primary-500:focus {
+        --tw-ring-color: var(--color-primary-500);
+    }
+    .focus\:ring-primary-600:focus {
+        --tw-ring-color: var(--color-primary-600);
+    }
+    .focus\:ring-secondary-500:focus {
+        --tw-ring-color: var(--color-secondary-500);
+    }
+
+    /* HOVER states */
+    .hover\:bg-primary-50:hover {
+        background-color: var(--color-primary-50);
+    }
+    .hover\:bg-primary-100:hover {
+        background-color: var(--color-primary-100);
+    }
+    .hover\:bg-primary-600:hover {
+        background-color: var(--color-primary-600);
+    }
+    .hover\:bg-primary-700:hover {
+        background-color: var(--color-primary-700);
+    }
+    .hover\:bg-primary-800:hover {
+        background-color: var(--color-primary-800);
+    }
+
+    .hover\:bg-accent-50:hover {
+        background-color: var(--color-accent-50);
+    }
+    .hover\:bg-accent-600:hover {
+        background-color: var(--color-accent-600);
+    }
+
+    .hover\:bg-secondary-600:hover {
+        background-color: var(--color-secondary-600);
+    }
+    .hover\:bg-secondary-700:hover {
+        background-color: var(--color-secondary-700);
+    }
+
+    .hover\:bg-accent-600:hover {
+        background-color: var(--color-accent-600);
+    }
+    .hover\:bg-accent-700:hover {
+        background-color: var(--color-accent-700);
+    }
+    .hover\:bg-accent-800:hover {
+        background-color: var(--color-accent-800);
+    }
+
+    .hover\:border-secondary-300:hover {
+        border-color: var(--color-secondary-300);
+    }
+    .hover\:border-secondary-400:hover {
+        border-color: var(--color-secondary-400);
+    }
+
+    .hover\:from-primary-600:hover {
+        --tw-gradient-from: var(--color-primary-600);
+    }
+    .hover\:from-primary-700:hover {
+        --tw-gradient-from: var(--color-primary-700);
+    }
+    .hover\:to-primary-700:hover {
+        --tw-gradient-to: var(--color-primary-700);
+    }
+    .hover\:to-primary-800:hover {
+        --tw-gradient-to: var(--color-primary-800);
+    }
+
+    .hover\:from-accent-600:hover {
+        --tw-gradient-from: var(--color-accent-600);
+    }
+    .hover\:from-accent-700:hover {
+        --tw-gradient-from: var(--color-accent-700);
+    }
+    .hover\:to-accent-700:hover {
+        --tw-gradient-to: var(--color-accent-700);
+    }
+    .hover\:to-accent-800:hover {
+        --tw-gradient-to: var(--color-accent-800);
+    }
+}
+/* Remove number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}

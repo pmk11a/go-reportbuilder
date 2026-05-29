@@ -1,0 +1,30 @@
+# Root .gitignore for golang-next project
+
+# Backend (Go)
+backend/.env
+backend/.env.local
+backend/bin/
+backend/dist/
+backend/*.exe
+backend/*.dll
+backend/*.so
+backend/.DS_Store
+
+# Frontend (NextJS)
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+frontend/package-lock.json
+frontend/.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~clea
+*.DS_Store
