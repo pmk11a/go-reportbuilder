@@ -206,7 +206,7 @@ export async function makeBackendRequest<T = any>(
     // In dev mode, if the request failed, enrich the message with full error details
     if (!response.ok && IS_DEV) {
       const details = rawText ? rawText : (backendResponse ? JSON.stringify(backendResponse) : response.statusText)
-      message = `Backend URL ${url} returned ${response.status}: ${details}`
+      bffLogger.logError(method, endpoint, `Backend URL ${url} returned ${response.status}: ${details}`)
     }
 
     return {

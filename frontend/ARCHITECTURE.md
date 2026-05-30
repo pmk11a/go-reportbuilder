@@ -26,3 +26,9 @@ frontend/src/
 
 3. **Komponen Bersih (Clean UI)**
    File `.tsx` hanya boleh berisi JSX dan *hook* yang mengatur *state* lokal (UI). Logika bisnis berat harus diekstrak ke *Store* (Zustand) atau *Hooks* terpisah.
+
+4. **Multi-Bahasa (i18n)**
+   Dilarang keras menyisipkan teks atau *string* statis secara langsung (hardcode) dalam komponen UI (seperti label form, placeholder, pesan error). Semua teks wajib diambil melalui pustaka i18n (`useTranslation`) menggunakan file JSON lokal yang terpusat di `src/locales/`.
+
+5. **Pemisahan Error Mapping**
+   Fungsi jaringan/API tidak bertugas mengubah format error menjadi kalimat ramah pengguna. Semua error dari API dilempar ke berkas sentral `src/utils/errorMapper.ts` yang mengombinasikan logika error dan i18n.

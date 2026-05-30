@@ -67,11 +67,15 @@ export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
             )}
             <FormControl>
               <Input
-                ref={ref}
                 type={type}
                 placeholder={placeholder}
                 disabled={disabled}
                 {...field}
+                ref={(e) => {
+                  field.ref(e);
+                  if (typeof ref === "function") ref(e);
+                  else if (ref) ref.current = e;
+                }}
                 className={cn(
                   variant === "rounded" && "rounded-lg",
                   className
@@ -142,11 +146,15 @@ export const FormPasswordInput = React.forwardRef<
             <FormControl>
               <div className="relative">
                 <Input
-                  ref={ref}
                   type={showPassword ? "text" : "password"}
                   placeholder={placeholder}
                   disabled={disabled}
                   {...field}
+                  ref={(e) => {
+                    field.ref(e);
+                    if (typeof ref === "function") ref(e);
+                    else if (ref) ref.current = e;
+                  }}
                   className={cn(
                     "pr-10",
                     variant === "rounded" && "rounded-lg",
@@ -356,11 +364,15 @@ export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaPr
             )}
             <FormControl>
               <Textarea
-                ref={ref}
                 placeholder={placeholder}
                 disabled={disabled}
                 rows={rows}
                 {...field}
+                ref={(e) => {
+                  field.ref(e);
+                  if (typeof ref === "function") ref(e);
+                  else if (ref) ref.current = e;
+                }}
                 className={className}
               />
             </FormControl>

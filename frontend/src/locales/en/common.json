@@ -1,0 +1,55 @@
+{
+  "api": {
+    "error": {
+      "system_error": "System Error",
+      "authentication_failed": "Authentication failed",
+      "access_denied": "Access denied",
+      "not_found": "Not found",
+      "bad_request": "Bad request",
+      "internal_server_error": "Internal server error",
+      "connection_timeout": "Connection timeout",
+      "invalid_credentials_cause": "Invalid username or password",
+      "session_expired_cause": "Your session has expired or is invalid",
+      "timeout_cause": "The server took too long to respond",
+      "default_next_steps": "Please try again later or contact the administrator.",
+      "invalid_credentials_next_steps": "Please double-check your credentials and try again.",
+      "session_expired_next_steps": "Please log in again to continue.",
+      "access_denied_next_steps": "Ensure your account has the correct permissions for this action.",
+      "not_found_next_steps": "Check if the URL or the requested data still exists.",
+      "bad_request_next_steps": "Review the submitted data for any missing or invalid fields.",
+      "internal_server_error_next_steps": "Our technical team has been notified. Please try again later.",
+      "timeout_next_steps": "Check your internet connection or try again later."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "DAPEN",
+      "username": "Username",
+      "password": "Password",
+      "username_placeholder": "yourusername",
+      "password_placeholder": "••••••••",
+      "sign_in": "Sign In",
+      "logging_in": "Logging in...",
+      "no_account": "Don't have an account?",
+      "create_one": "Create one",
+      "login_failed": "Login failed"
+    },
+    "register": {
+      "title": "DAPEN",
+      "subtitle": "Create a new account",
+      "full_name": "Full Name",
+      "email": "Email Address",
+      "password": "Password",
+      "confirm_password": "Confirm Password",
+      "name_placeholder": "Enter your name",
+      "email_placeholder": "you@example.com",
+      "password_placeholder": "••••••••",
+      "create_account": "Create Account",
+      "creating": "Creating account...",
+      "has_account": "Already have an account?",
+      "sign_in": "Sign in",
+      "not_implemented": "Registration is not yet implemented. Please use the login page.",
+      "register_failed": "Registration failed"
+    }
+  }
+}

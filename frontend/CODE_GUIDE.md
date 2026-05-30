@@ -56,7 +56,20 @@ frontend/
 - **Dilarang Duplikasi**: Jika komponen serupa sudah ada, **GUNAKAN** atau **KEMBANGKAN** komponen tersebut menggunakan props (dinamis).
 - **Atomic Design**: Pecah UI kompleks menjadi komponen kecil. Dashboard tidak boleh berisi ratusan baris JSX mentah.
 
-### 3. Professional BFF Architecture (`src/api-handlers`)
+### 3. SEO & Accessibility (A11y)
+- **Metadata**: All pages must use `<Helmet>` from `react-helmet-async` to set dynamic `<title>` and `<meta name="description">`.
+- **A11y**: Use `aria-label` for icon-only buttons or links. Ensure `alt` tags are present on all images.
+
+### 4. Loading States
+- **Layouts/Pages**: Use `<Skeleton />` to indicate initial loading states instead of blank screens.
+- **Buttons/Actions**: Use the `loading={true}` prop on the `<Button>` component to display an inline spinner (`Loader2`).
+
+### 5. Error Handling
+- **API Errors**: Services in `src/services/` SHOULD NOT use `try/catch` to suppress errors. Allow `APIError` to bubble up to the component/store level.
+- **Form Errors**: Use inline `<FormMessage />` for validation feedback beneath inputs.
+- **Toast Notifications**: Use `useToast()` to display critical API error messages in addition to inline `<Alert>` blocks.
+
+### 6. Professional BFF Architecture (`src/api-handlers`)
 - **BFF Role**: Berfungsi sebagai gateway, session manager, dan transformator data.
 - **Standard Response**: Semua handler wajib menggunakan `BffResponseBuilder` untuk format `{ success, message, data }`.
 - **Logger**: Gunakan `bffLogger` untuk memantau request dan response di sisi server development.

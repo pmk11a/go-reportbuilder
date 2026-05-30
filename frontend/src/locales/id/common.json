@@ -1,0 +1,55 @@
+{
+  "api": {
+    "error": {
+      "system_error": "Kesalahan Sistem",
+      "authentication_failed": "Gagal Autentikasi",
+      "access_denied": "Akses Ditolak",
+      "not_found": "Data Tidak Ditemukan",
+      "bad_request": "Permintaan Tidak Valid",
+      "internal_server_error": "Kesalahan Server Internal",
+      "connection_timeout": "Koneksi Terputus (Timeout)",
+      "invalid_credentials_cause": "Username atau password tidak valid",
+      "session_expired_cause": "Sesi Anda telah berakhir atau tidak valid",
+      "timeout_cause": "Server terlalu lama merespon",
+      "default_next_steps": "Silakan coba beberapa saat lagi atau hubungi administrator.",
+      "invalid_credentials_next_steps": "Periksa kembali username dan password Anda, lalu coba lagi.",
+      "session_expired_next_steps": "Silakan login kembali untuk melanjutkan.",
+      "access_denied_next_steps": "Pastikan akun Anda memiliki izin (role) yang sesuai untuk aksi ini.",
+      "not_found_next_steps": "Pastikan URL atau data yang Anda cari benar dan masih tersedia.",
+      "bad_request_next_steps": "Periksa kembali kelengkapan dan format data yang Anda kirim.",
+      "internal_server_error_next_steps": "Tim teknis kami telah diberitahu. Silakan coba beberapa saat lagi.",
+      "timeout_next_steps": "Periksa koneksi internet Anda atau coba lagi nanti."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "DAPEN",
+      "username": "Nama Pengguna",
+      "password": "Kata Sandi",
+      "username_placeholder": "namapengguna",
+      "password_placeholder": "••••••••",
+      "sign_in": "Masuk",
+      "logging_in": "Sedang masuk...",
+      "no_account": "Belum punya akun?",
+      "create_one": "Buat sekarang",
+      "login_failed": "Gagal masuk"
+    },
+    "register": {
+      "title": "DAPEN",
+      "subtitle": "Buat akun baru",
+      "full_name": "Nama Lengkap",
+      "email": "Alamat Email",
+      "password": "Kata Sandi",
+      "confirm_password": "Konfirmasi Kata Sandi",
+      "name_placeholder": "Masukkan nama Anda",
+      "email_placeholder": "anda@contoh.com",
+      "password_placeholder": "••••••••",
+      "create_account": "Buat Akun",
+      "creating": "Sedang membuat...",
+      "has_account": "Sudah punya akun?",
+      "sign_in": "Masuk",
+      "not_implemented": "Pendaftaran belum tersedia. Silakan gunakan halaman login.",
+      "register_failed": "Gagal mendaftar"
+    }
+  }
+}

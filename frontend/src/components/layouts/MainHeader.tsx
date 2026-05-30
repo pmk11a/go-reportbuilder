@@ -3,6 +3,7 @@ import { useNavigate, useMatches } from "@tanstack/react-router"
 import { useAuthStore } from "@/store/authStore"
 import { useThemeStore } from "@/store/themeStore"
 import { useMenuStore } from "@/store/menuStore"
+import { LanguageToggle } from "@/components/LanguageToggle"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { authService } from "@/services/authService"
 import { Settings, KeyRound, LogOut, CheckCircle2, AlertCircle, X, Lock, EyeOff, Eye } from "lucide-react"
@@ -139,6 +140,7 @@ export function MainHeader() {
           <p className={`${isDark ? "text-slate-500" : "text-[#475569]"} text-lg font-medium mt-1`}>{subtitle}</p>
         </div>
         <div className="flex items-center gap-3 pt-2">
+          <LanguageToggle />
           <ThemeToggle />
           <div className="relative">
             <button

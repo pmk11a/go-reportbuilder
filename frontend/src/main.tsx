@@ -1,9 +1,12 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './lib/i18n'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { HelmetProvider } from 'react-helmet-async'
 import { queryClient } from './lib/query-client'
 import { routeTree } from './routeTree.gen'
+import 'nprogress/nprogress.css'
 
 // Create router instance
 const router = createRouter({ 
@@ -26,9 +29,11 @@ if (!rootElement?.innerHTML) {
   const root = ReactDOM.createRoot(rootElement!)
   root.render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </HelmetProvider>
     </React.StrictMode>
   )
 }

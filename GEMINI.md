@@ -14,6 +14,17 @@ This document serves as the foundational mandate for all AI interactions within 
 
 ---
 
+## 📚 Required Reading (EVERY COMMAND)
+
+Before executing ANY command from the user, you MUST:
+
+1. **Read the relevant guides for the current scope:**
+   - If working on frontend: Read `/frontend/CODE_GUIDE.md` and `/frontend/ARCHITECTURE.md`
+   - If working on backend: Read `/backend/CODE_GUIDE.md` and `/backend/ARCHITECTURE.md`
+   - If unsure: Read them all
+
+---
+
 ## 🎨 Theme & Design Mandates (CRITICAL)
 
 All new components and pages **MUST** adhere to these visual standards.
@@ -68,6 +79,8 @@ Do not use hardcoded hex/rgb values. Use the semantic mapping defined in `fronte
 - **Theme Access**: Use `useTheme()` hook from `@/store/themeStore` for JS-side theme checks.
 - **API Calls**: Use the `apiClient` pattern defined in `frontend/src/lib/api.ts`.
 - **Validation**: Use `zod` for schemas and `react-hook-form` for form state.
+- **Localization (i18n)**: All user-facing strings MUST use `react-i18next` (`useTranslation`). Do not use hardcoded Indonesian or English text in `.tsx` files. Use `en/common.json` and `id/common.json` dictionaries.
+- **Error Handling**: API Errors MUST be processed via `src/utils/errorMapper.ts` which integrates with i18n to provide standard 3-part messages (What failed, Why it failed, Next steps). Do not format errors directly in components or `api.ts`.
 
 ---
 

@@ -1,5 +1,21 @@
 import { useAuthStore } from '@/store/authStore'
+import { formatAPIError } from '@/utils/errorMapper'
 import { apiLogger } from '@/lib/apiLogger'
+import NProgress from 'nprogress'
+
+NProgress.configure({ showSpinner: false, minimum: 0.2 });
+
+let activeRequests = 0;
+
+function startProgress() {
+  activeRequests++;
+  if (activeRequests === 1) NProgress.start();
+}
+
+function stopProgress() {
+  activeRequests = Math.max(0, activeRequests - 1);
+  if (activeRequests === 0) NProgress.done();
+}
 
 /**
  * Safe helper to get environment variables
@@ -43,15 +59,27 @@ const API_BASE = getEnv('VITE_API_URL', '/api')
 const CLIENT_TIMEOUT = parseEnvTime('VITE_CLIENT_TIMEOUT', 15000)
 
 export class APIError extends Error {
+  public rawMsg: string;
+
   constructor(
     public status: number,
     public data: any,
     public code?: string
   ) {
-    const msg = data?.message || data?.data?.error || data?.error || `API Error: ${status}`
-    super(msg)
-    this.name = 'APIError'
-    this.code = data?.error || data?.data?.error || `HTTP_${status}`
+    super(); // Call super first
+    Object.setPrototypeOf(this, APIError.prototype); // Fix instanceof
+
+    const rawMsg = data?.message || data?.data?.error || data?.error || '';
+    this.name = 'APIError';
+    this.rawMsg = rawMsg;
+    this.code = data?.error || data?.data?.error || `HTTP_${status}`;
+
+    // Define message as a dynamic getter on the instance to avoid shadowing issues
+    Object.defineProperty(this, 'message', {
+      get: () => formatAPIError(this.status, this.rawMsg),
+      enumerable: true,
+      configurable: true
+    });
   }
 
   isUnauthorized(): boolean { return this.status === 401 }
@@ -195,6 +223,7 @@ export async function fetchHelper<T = any>(endpoint: string, options: FetchOptio
   const method = (options.method || 'GET').toUpperCase()
   apiLogger.logRequest(method, endpoint, options.body)
   const startTime = performance.now()
+  startProgress()
 
   let response: Response
   let data: any = null
@@ -207,6 +236,7 @@ export async function fetchHelper<T = any>(endpoint: string, options: FetchOptio
     clearTimeout(timeoutId)
     const isTimeout = error.name === 'AbortError'
     apiLogger.logResponse(method, endpoint, isTimeout ? 504 : 500, null, Math.round(performance.now() - startTime))
+    stopProgress()
     throw new APIError(isTimeout ? 504 : 500, {
       message: isTimeout 
         ? 'Request timed out. Please check if the server is running.' 
@@ -232,6 +262,7 @@ export async function fetchHelper<T = any>(endpoint: string, options: FetchOptio
       } catch (retryError: any) {
         clearTimeout(retryTimeoutId)
         const isTimeout = retryError.name === 'AbortError'
+        stopProgress()
         throw new APIError(isTimeout ? 504 : 500, {
           message: isTimeout ? 'Request timed out during retry.' : retryError.message || 'Network Error'
         })
@@ -250,10 +281,12 @@ export async function fetchHelper<T = any>(endpoint: string, options: FetchOptio
 
   if (!response.ok) {
     apiLogger.logResponse(method, endpoint, response.status, data, duration)
+    stopProgress()
     throw new APIError(response.status, data)
   }
 
   apiLogger.logResponse(method, endpoint, response.status, data, duration)
+  stopProgress()
   return data
 }
 
