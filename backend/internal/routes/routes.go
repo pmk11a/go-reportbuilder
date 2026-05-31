@@ -19,6 +19,7 @@ type SRouterConfig struct {
 	SMenuHandler         *handlers.SMenuHandler
 	SActivityLogHandler  *handlers.SActivityLogHandler
 	SPeriodeHandler      *handlers.SPeriodeHandler
+	SSettingHandler      *handlers.SSettingHandler
 	SConfig              *config.SConfig
 	DB                  *gorm.DB
 }
@@ -83,6 +84,12 @@ func setupProtectedRoutes(rg *gin.RouterGroup, rc SRouterConfig) {
 		admin.POST("/activity-logs/configs", rc.SActivityLogHandler.SaveConfig)
 		admin.GET("/database/tables", rc.SActivityLogHandler.GetTables)
 		admin.GET("/database/tables/:table_name/columns", rc.SActivityLogHandler.GetTableColumns)
+
+		// Settings
+		admin.GET("/settings/company", rc.SSettingHandler.GetCompany)
+		admin.PUT("/settings/company", rc.SSettingHandler.UpdateCompany)
+		admin.GET("/settings/numbers", rc.SSettingHandler.GetNumbers)
+		admin.PUT("/settings/numbers", rc.SSettingHandler.UpdateNumbers)
 	}
 
 	// Filter / Shared API routes

@@ -29,6 +29,7 @@ import { Route as AdminLayoutDocumentsIndexRouteImport } from './routes/admin/_l
 import { Route as AdminLayoutDashboardIndexRouteImport } from './routes/admin/_layout/dashboard/index'
 import { Route as publicauthRegisterIndexRouteImport } from './routes/(public)/(auth)/register/index'
 import { Route as publicauthLoginIndexRouteImport } from './routes/(public)/(auth)/login/index'
+import { Route as AdminLayoutBerkasPerusahaanRouteImport } from './routes/admin/_layout/berkas/perusahaan'
 import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layout/berkas/menu'
 import { Route as AdminLayoutMasterDataConfigLogsIndexRouteImport } from './routes/admin/_layout/master-data/config-logs/index'
 import { Route as AdminLayoutMasterDataActivityLogsIndexRouteImport } from './routes/admin/_layout/master-data/activity-logs/index'
@@ -136,6 +137,12 @@ const publicauthLoginIndexRoute = publicauthLoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLayoutBerkasPerusahaanRoute =
+  AdminLayoutBerkasPerusahaanRouteImport.update({
+    id: '/berkas/perusahaan',
+    path: '/berkas/perusahaan',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
 const AdminLayoutBerkasMenuRoute = AdminLayoutBerkasMenuRouteImport.update({
   id: '/berkas/menu',
   path: '/berkas/menu',
@@ -169,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/docs/theme': typeof publicDocsThemeRoute
   '/docs/': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
+  '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
   '/login/': typeof publicauthLoginIndexRoute
   '/register/': typeof publicauthRegisterIndexRoute
   '/admin/dashboard/': typeof AdminLayoutDashboardIndexRoute
@@ -193,6 +201,7 @@ export interface FileRoutesByTo {
   '/docs/theme': typeof publicDocsThemeRoute
   '/docs': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
+  '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
   '/login': typeof publicauthLoginIndexRoute
   '/register': typeof publicauthRegisterIndexRoute
   '/admin/dashboard': typeof AdminLayoutDashboardIndexRoute
@@ -219,6 +228,7 @@ export interface FileRoutesById {
   '/(public)/docs/theme': typeof publicDocsThemeRoute
   '/(public)/docs/': typeof publicDocsIndexRoute
   '/admin/_layout/berkas/menu': typeof AdminLayoutBerkasMenuRoute
+  '/admin/_layout/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
   '/(public)/(auth)/login/': typeof publicauthLoginIndexRoute
   '/(public)/(auth)/register/': typeof publicauthRegisterIndexRoute
   '/admin/_layout/dashboard/': typeof AdminLayoutDashboardIndexRoute
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/docs/theme'
     | '/docs/'
     | '/admin/berkas/menu'
+    | '/admin/berkas/perusahaan'
     | '/login/'
     | '/register/'
     | '/admin/dashboard/'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/docs/theme'
     | '/docs'
     | '/admin/berkas/menu'
+    | '/admin/berkas/perusahaan'
     | '/login'
     | '/register'
     | '/admin/dashboard'
@@ -295,6 +307,7 @@ export interface FileRouteTypes {
     | '/(public)/docs/theme'
     | '/(public)/docs/'
     | '/admin/_layout/berkas/menu'
+    | '/admin/_layout/berkas/perusahaan'
     | '/(public)/(auth)/login/'
     | '/(public)/(auth)/register/'
     | '/admin/_layout/dashboard/'
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicauthLoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/_layout/berkas/perusahaan': {
+      id: '/admin/_layout/berkas/perusahaan'
+      path: '/berkas/perusahaan'
+      fullPath: '/admin/berkas/perusahaan'
+      preLoaderRoute: typeof AdminLayoutBerkasPerusahaanRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/admin/_layout/berkas/menu': {
       id: '/admin/_layout/berkas/menu'
       path: '/berkas/menu'
@@ -510,6 +530,7 @@ const publicDocsRouteWithChildren = publicDocsRoute._addFileChildren(
 
 interface AdminLayoutRouteChildren {
   AdminLayoutBerkasMenuRoute: typeof AdminLayoutBerkasMenuRoute
+  AdminLayoutBerkasPerusahaanRoute: typeof AdminLayoutBerkasPerusahaanRoute
   AdminLayoutDashboardIndexRoute: typeof AdminLayoutDashboardIndexRoute
   AdminLayoutDocumentsIndexRoute: typeof AdminLayoutDocumentsIndexRoute
   AdminLayoutReportsIndexRoute: typeof AdminLayoutReportsIndexRoute
@@ -520,6 +541,7 @@ interface AdminLayoutRouteChildren {
 
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutBerkasMenuRoute: AdminLayoutBerkasMenuRoute,
+  AdminLayoutBerkasPerusahaanRoute: AdminLayoutBerkasPerusahaanRoute,
   AdminLayoutDashboardIndexRoute: AdminLayoutDashboardIndexRoute,
   AdminLayoutDocumentsIndexRoute: AdminLayoutDocumentsIndexRoute,
   AdminLayoutReportsIndexRoute: AdminLayoutReportsIndexRoute,

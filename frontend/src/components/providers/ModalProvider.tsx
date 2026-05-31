@@ -7,8 +7,9 @@ const MODAL_COMPONENTS: Record<string, React.LazyExoticComponent<React.Component
     setupPeriode: React.lazy(() => 
         import('@/components/modals/SetupPeriodeModal').then(module => ({ default: module.SetupPeriodeModal }))
     ),
-    // Example for future modals:
-    // gantiPassword: React.lazy(() => import('@/components/modals/GantiPasswordModal').then(m => ({ default: m.GantiPasswordModal }))),
+    changePassword: React.lazy(() => 
+        import('@/components/modals/ChangePasswordModal').then(module => ({ default: module.ChangePasswordModal }))
+    ),
 };
 
 export function ModalProvider() {

@@ -79,3 +79,80 @@ func TestAuthService_Login(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 }
+
+func TestAuthService_GetMe(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	cfg := &config.SConfig{}
+	authService := NewAuthService(mockRepo, cfg)
+
+	user := &models.SUser{
+		ID:       1,
+		Username: "testuser",
+		Role:     models.RoleEmployee,
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		mockRepo.On("GetByID", uint(1)).Return(user, nil).Once()
+
+		res, err := authService.GetMe(1)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "testuser", res.Username)
+		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestAuthService_ChangePassword(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	cfg := &config.SConfig{}
+	authService := NewAuthService(mockRepo, cfg)
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("oldpassword"), bcrypt.DefaultCost)
+	user := &models.SUser{
+		ID:       1,
+		Password: string(hashedPassword),
+		SDBFLPASS: &models.SDBFLPASS{},
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		mockRepo.On("GetByID", uint(1)).Return(user, nil).Once()
+		mockRepo.On("Update", mock.AnythingOfType("*models.SUser")).Return(nil).Once()
+
+		err := authService.ChangePassword(1, "oldpassword", "newpassword")
+
+		assert.NoError(t, err)
+		mockRepo.AssertExpectations(t)
+	})
+}
+
+func TestAuthService_RefreshToken(t *testing.T) {
+	mockRepo := new(MockUserRepository)
+	cfg := &config.SConfig{
+		JWTSecret:          "test-secret",
+		RefreshTokenSecret: "test-refresh-secret",
+		JWTExpiration:      "15m",
+		RefreshTokenExpiry: "168h",
+	}
+	svc := NewAuthService(mockRepo, cfg)
+
+	user := &models.SUser{
+		ID:       1,
+		Username: "testuser",
+		Role:     models.RoleEmployee,
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		// generate valid refresh token first
+		_, refreshToken, _, _ := svc.(*authService).generateTokenPair(user)
+
+		mockRepo.On("GetByID", uint(1)).Return(user, nil).Once()
+
+		res, err := svc.RefreshToken(refreshToken)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.NotEmpty(t, res.AccessToken)
+		assert.NotEmpty(t, res.RefreshToken)
+		mockRepo.AssertExpectations(t)
+	})
+}

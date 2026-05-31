@@ -505,3 +505,12 @@ Update feature AI.md whenever task work involves:
 ---
 
 **Last Updated**: [CURRENT DATE]
+
+## Testing Requirements
+1. **User Scenarios MUST be documented**: Every new feature or change must include explicit and comprehensive 'User Scenarios' in the TASK file. Scenarios must cover positive cases, negative cases, and edge cases.
+2. **Test File Naming & Location Rules**:
+   - **Frontend Unit/Component Tests**: Must be placed adjacent to the file being tested. Naming convention: `[filename].test.ts` or `[filename].test.tsx` (e.g., `CompanyForm.test.tsx`).
+   - **Frontend E2E Tests**: Must be placed in `frontend/tests/e2e/`. Naming convention: `[feature].e2e.spec.ts`.
+   - **Backend Unit Tests**: Must be placed adjacent to the file being tested. Naming convention: `[filename]_test.go` (e.g., `user_handler_test.go`).
+   - **Backend E2E Tests**: Must be placed in `backend/tests/e2e/`. Naming convention: `[feature]_e2e_test.go` (e.g., `auth_e2e_test.go`).
+3. **Acceptance Criteria per Scenario**: Every documented scenario MUST include an acceptance checklist item to verify whether the test for that scenario passed or failed using emoji icons (e.g., `- [x] ✅ PASS: <scenario>`, `- [x] ❌ FAIL: <scenario>`, or `- [ ] ⬜ PENDING: <scenario>`).

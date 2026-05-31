@@ -29,12 +29,9 @@ describe('dashboardService', () => {
     expect(fetchHelper).toHaveBeenCalledWith('/dashboard/stats')
   })
 
-  it('handles errors when fetching stats', async () => {
+  it('throws errors when fetching stats fails', async () => {
     vi.mocked(fetchHelper).mockRejectedValue(new Error('Fetch failed'))
 
-    const result = await dashboardService.getStats()
-
-    expect(result.success).toBe(false)
-    expect(result.message).toBe('Fetch failed')
+    await expect(dashboardService.getStats()).rejects.toThrow('Fetch failed')
   })
 })

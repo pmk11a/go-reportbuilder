@@ -35,6 +35,7 @@ func NewServer(database *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	menuHandler := handlers.NewMenuHandler(menuService)
 	activityLogHandler := handlers.NewActivityLogHandler(activityLogService)
 	periodeHandler := handlers.NewPeriodeHandler(periodeService)
+	settingHandler := handlers.NewSettingHandler(database)
 
 	// 2. Initialize Gin router
 	engine := gin.Default()
@@ -64,6 +65,7 @@ func NewServer(database *gorm.DB, cfg *config.SConfig) *gin.Engine {
 		SMenuHandler:        menuHandler,
 		SActivityLogHandler: activityLogHandler,
 		SPeriodeHandler:     periodeHandler,
+		SSettingHandler:     settingHandler,
 		SConfig:             cfg,
 		DB:                  database,
 	})

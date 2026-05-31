@@ -7,8 +7,9 @@ import React from 'react'
 // Mock custom hooks
 vi.mock('@/hooks/useMenu', () => ({
   useMenus: vi.fn(() => ({
-    data: { data: [{ KODEMENU: 'M01', Keterangan: 'Test Menu', L0: 0, ACCESS: 0, OL: 0, Icon: 'home' }] },
-    isLoading: false
+    data: { data: { data: [{ KODEMENU: 'M01', Keterangan: 'Test Menu', L0: 0, ACCESS: 0, OL: 0, Icon: 'home' }] } },
+    isLoading: false,
+    isFetching: false
   })),
   useDeleteMenu: vi.fn(() => ({
     mutate: vi.fn(),

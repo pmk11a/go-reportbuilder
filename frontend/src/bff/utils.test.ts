@@ -63,8 +63,9 @@ describe('BFF Utils', () => {
       vi.mocked(fetch).mockResolvedValue({
         ok: true,
         status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () => mockBackendResponse
-      } as Response)
+      } as unknown as Response)
 
       const result = await makeBackendRequest('/test-endpoint')
 
@@ -83,7 +84,7 @@ describe('BFF Utils', () => {
 
       expect(result.success).toBe(false)
       expect(result.status).toBe(500)
-      expect(result.message).toBe('Network Failure')
+      expect(result.message).toBe('Network Error: Network Failure')
     })
   })
 })

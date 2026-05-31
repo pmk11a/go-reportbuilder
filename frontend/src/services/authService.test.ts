@@ -36,13 +36,10 @@ describe('authService', () => {
     }))
   })
 
-  it('handles login failure', async () => {
+  it('throws on login failure', async () => {
     vi.mocked(fetchHelper).mockRejectedValue(new Error('Invalid credentials'))
 
-    const result = await authService.login('wrong', 'wrong')
-
-    expect(result.success).toBe(false)
-    expect(result.message).toBe('Invalid credentials')
+    await expect(authService.login('wrong', 'wrong')).rejects.toThrow('Invalid credentials')
   })
 
   it('performs logout successfully', async () => {
@@ -51,6 +48,6 @@ describe('authService', () => {
     const result = await authService.logout()
 
     expect(result.success).toBe(true)
-    expect(fetchHelper).toHaveBeenCalledWith('/auth/logout', { method: 'POST' })
+    expect(fetchHelper).toHaveBeenCalledWith('/auth/logout', expect.objectContaining({ method: 'POST' }))
   })
 })

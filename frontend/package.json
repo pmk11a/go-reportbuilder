@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "lint": "eslint src",
     "type-check": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "coverage": "vitest run --coverage",
+    "check": "../scripts/check-all.sh --frontend-only",
+    "check:errors": "cat ../tmp/*frontend*_errors.log 2>/dev/null || echo 'no error logs'",
+    "check:warnings": "cat ../tmp/*frontend*_warnings.log 2>/dev/null || echo 'no warning logs'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -90,6 +94,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^8.57.1",
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",

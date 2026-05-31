@@ -34,13 +34,10 @@ describe('sharedFilterService', () => {
     })
   })
 
-  it('handles getCustomers error gracefully', async () => {
+  it('throws on getCustomers error', async () => {
     vi.mocked(fetchHelper).mockRejectedValue(new Error('Network Error'))
 
-    const result = await sharedFilterService.getCustomers(0)
-
-    expect(result.data).toEqual([])
-    expect(result.total).toBe(0)
+    await expect(sharedFilterService.getCustomers(0)).rejects.toThrow('Network Error')
   })
 
   it('fetches perkiraan successfully', async () => {
@@ -58,12 +55,10 @@ describe('sharedFilterService', () => {
     })
   })
 
-  it('handles getPerkiraan error gracefully', async () => {
+  it('throws on getPerkiraan error', async () => {
     vi.mocked(fetchHelper).mockRejectedValue(new Error('Network Error'))
 
-    const result = await sharedFilterService.getPerkiraan('P0')
-
-    expect(result).toEqual([])
+    await expect(sharedFilterService.getPerkiraan('P0')).rejects.toThrow('Network Error')
   })
 
   it('fetches kelompok kas successfully', async () => {
@@ -81,11 +76,9 @@ describe('sharedFilterService', () => {
     })
   })
 
-  it('handles getKelompokKas error gracefully', async () => {
+  it('throws on getKelompokKas error', async () => {
     vi.mocked(fetchHelper).mockRejectedValue(new Error('Network Error'))
 
-    const result = await sharedFilterService.getKelompokKas('KAS')
-
-    expect(result).toEqual([])
+    await expect(sharedFilterService.getKelompokKas('KAS')).rejects.toThrow('Network Error')
   })
 })

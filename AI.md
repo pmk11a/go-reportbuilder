@@ -44,19 +44,22 @@ User: "Fix the login page error"
 
 ### 📋 Core Development Rules
 
-1. **TDD is HIGHLY ENCOURAGED** - Write tests BEFORE implementation where applicable.
-2. **Do exactly what was asked** - Nothing more, nothing less.
-3. **Read before write** - Always read files before editing.
-4. **Prefer editing to creating** - Modify existing files when possible.
-5. **No unsolicited documentation** - Only create docs when explicitly asked.
-6. **Never commit secrets** - No API keys, passwords, or sensitive data.
-7. **Use existing patterns** - Follow the Clean Architecture and frontend BFF conventions.
-8. **VERIFY COMPILATION** - Golang code MUST compile with zero errors before handoff.
-9. **MANDATORY RUNTIME VERIFICATION** - React app MUST run without errors on ALL pages with ALL data scenarios (`npm run type-check` must pass).
-10. **DESIGN SYSTEM ENFORCEMENT** - Use ONLY local design system components from `frontend/src/components/ui`. NO Glassmorphism.
-11. **Complete resolution only** - Never stop at "good enough".
-12. **Progressive quality gates** - Verify quality continuously, not just at completion.
-13. **UPDATE FEATURE AI.MD** - When changing ANY feature code, update its contextual `AI.md` file in the SAME commit.
+1. **ENGLISH LANGUAGE MANDATORY** - All files, including project code (variable names, comments, UI text if applicable) and documentation files (.md), MUST be written in English.
+2. **MANDATORY TESTING** - You MUST create E2E tests (Playwright) and Unit Tests when adding new features or changing code (TDD is HIGHLY ENCOURAGED).
+3. **Never duplicate code** - Abstract shared logic into `utils` or `hooks`.
+4. **Read before write** - Always read files before editing.
+5. **Prefer editing to creating** - Modify existing files when possible.
+6. **No unsolicited documentation** - Only create docs when explicitly asked.
+7. **Never commit secrets** - No API keys, passwords, or sensitive data.
+8. **Use existing patterns** - Follow the Clean Architecture and frontend BFF conventions.
+9. **CREATE TASK FILES PER FEATURE** - If a request is a new feature or has a large scope, you MUST create separate task files for each distinct feature in the `tasks/` directory (e.g., `tasks/TASK-XXX-feature-name.md`) to track progress before starting. Do not combine multiple unrelated features into a single task file.
+10. **VERIFY COMPILATION** - Golang code MUST compile with zero errors before handoff.
+11. **MANDATORY RUNTIME VERIFICATION** - React app MUST run without errors on ALL pages with ALL data scenarios (`npm run type-check` must pass).
+12. **DESIGN SYSTEM ENFORCEMENT** - Use ONLY local design system components from `frontend/src/components/ui`. NO Glassmorphism.
+13. **Complete resolution only** - Never stop at "good enough".
+14. **Progressive quality gates** - Verify quality continuously, not just at completion.
+15. **UPDATE FEATURE AI.MD** - When changing ANY feature code, update its contextual `AI.md` file in the SAME commit.
+16. **BATCH ERROR COLLECTION (MANDATORY)** - NEVER run individual checks one-by-one and fix in a loop. ALWAYS run `./scripts/check-all.sh` first to collect ALL errors and warnings into `tmp/` in one pass, then fix everything in batch. This prevents token waste from repeated run→fix→run cycles.
 
 ## 📂 Project Structure
 
@@ -130,6 +133,26 @@ cd backend && go run cmd/main.go --seed
 
 ### Quality Verification
 ```bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MANDATORY: Run this FIRST before any individual check or fix
+# Collects ALL errors & warnings into tmp/ in a single pass
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+./scripts/check-all.sh               # Run ALL checks (backend + frontend)
+./scripts/check-all.sh --backend-only  # Backend only
+./scripts/check-all.sh --frontend-only # Frontend only
+
+# After the script runs, read ALL errors at once:
+cat tmp/*_errors.log                 # All errors
+cat tmp/*_warnings.log               # All warnings
+cat tmp/check_report_*.md | tail -1  # Latest report path
+
+# Shortcut targets:
+# Backend:  make -C backend check-backend   then   make -C backend check-errors
+# Frontend: npm --prefix frontend run check then   npm --prefix frontend run check:errors
+```
+
+### Individual checks (only AFTER check-all.sh)
+```bash
 # Type Checking (Frontend)
 cd frontend && npm run type-check
 
@@ -139,15 +162,25 @@ cd backend && go vet ./...
 
 ### Testing
 
-**Backend:**
+**RULE: Always use `check-all.sh` instead of running tests directly to batch-collect errors.**
+
+**Batch check (preferred):**
+```bash
+./scripts/check-all.sh               # Runs all tests + build + type-check at once
+cat tmp/*_errors.log                 # See all test errors at once
+```
+
+**Backend (individual):**
 ```bash
 cd backend
 go test ./... -v             # Run all tests
+go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
 ```
 
-**Frontend:**
+**Frontend (individual):**
 ```bash
 cd frontend
+npm test -- --run            # Run unit tests once (no watch)
 npx playwright test          # Run End-to-End Tests
 ```
 
@@ -183,6 +216,9 @@ When closing with SUCCEEDED_BY:
 **See `tasks/AI.md` for complete task lifecycle documentation.**
 
 ## ⚡ Quality Gates (MANDATORY)
+
+> **🚨 RULE #16**: Always run `./scripts/check-all.sh` to batch-collect ALL errors before
+> attempting any fixes. Reading `tmp/*_errors.log` gives the full picture at once.
 
 **Development Phase:**
 - ✅ Code compiles without errors (Golang)

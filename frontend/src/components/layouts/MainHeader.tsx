@@ -6,7 +6,8 @@ import { useMenuStore } from "@/store/menuStore"
 import { LanguageToggle } from "@/components/LanguageToggle"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { authService } from "@/services/authService"
-import { Settings, KeyRound, LogOut, CheckCircle2, AlertCircle, X, Lock, EyeOff, Eye } from "lucide-react"
+import { Settings, KeyRound, LogOut, CheckCircle2 } from "lucide-react"
+import { useModalStore } from "@/store/modalStore"
 
 export function MainHeader() {
   const isDark = useThemeStore((state) => state.isDark)
@@ -55,17 +56,8 @@ export function MainHeader() {
   }, [pathname, user, menus])
 
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
-
-  const [oldPassword, setOldPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showOldPassword, setShowOldPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [modalError, setModalError] = useState("")
+  const { openModal } = useModalStore()
 
   useEffect(() => {
     if (toastMessage) {
@@ -84,42 +76,6 @@ export function MainHeader() {
       console.error("Logout failed:", err)
     }
   }, [logout, navigate])
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setModalError("")
-
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      setModalError("Semua kolom password wajib diisi.")
-      return
-    }
-    if (newPassword.length < 6) {
-      setModalError("Password baru minimal 6 karakter.")
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setModalError("Konfirmasi password baru tidak cocok.")
-      return
-    }
-
-    setIsSubmitting(true)
-    try {
-      const res = await authService.changePassword(oldPassword, newPassword)
-      if (res.success) {
-        setToastMessage({ type: "success", text: "Password berhasil diperbarui." })
-        setIsResetPasswordOpen(false)
-        setOldPassword("")
-        setNewPassword("")
-        setConfirmPassword("")
-      } else {
-        setModalError(res.message || "Gagal memperbarui password.")
-      }
-    } catch (err: any) {
-      setModalError(err.message || "Terjadi kesalahan sistem.")
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   return (
     <>
@@ -178,7 +134,7 @@ export function MainHeader() {
                   <button 
                     onClick={() => {
                       setIsProfileOpen(false);
-                      setIsResetPasswordOpen(true);
+                      openModal("changePassword");
                     }}
                     className={`w-full flex items-center space-x-3 px-5 py-3 text-left transition-colors ${
                       isDark ? "hover:bg-white/5 text-slate-300 hover:text-white" : "hover:bg-slate-50 text-slate-600 hover:text-sky-600"
@@ -201,116 +157,6 @@ export function MainHeader() {
           </div>
         </div>
       </div>
-
-      {/* Reset Password Modal */}
-      {isResetPasswordOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 animate-in fade-in duration-300">
-          <div className={`relative w-full max-w-md p-8 rounded-[32px] border shadow-2xl animate-in zoom-in-95 duration-300 ${
-            isDark ? "bg-[#0f172a] border-white/5 text-white" : "bg-white border-slate-100 text-[#1e293b]"
-          }`}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-black tracking-tight">Ganti Password</h3>
-              <button
-                onClick={() => setIsResetPasswordOpen(false)}
-                className={`p-2 rounded-full transition-colors ${isDark ? "hover:bg-white/10 text-slate-400" : "hover:bg-slate-100 text-slate-500"}`}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {modalError && (
-              <div className="flex items-center gap-3 p-4 mb-6 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/10 text-sm font-bold">
-                <AlertCircle size={18} className="flex-shrink-0" />
-                <span>{modalError}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleResetPassword} className="space-y-5">
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                  Password Lama
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type={showOldPassword ? "text" : "password"}
-                    placeholder="Masukkan password lama"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    className={`w-full pl-12 pr-12 py-3.5 rounded-2xl border font-bold text-sm bg-transparent outline-none focus:ring-2 focus:ring-sky-500 ${
-                      isDark ? "border-white/10 text-white placeholder:text-slate-600" : "border-slate-200 text-slate-800 placeholder:text-slate-400"
-                    }`}
-                  />
-                  <button type="button" onClick={() => setShowOldPassword(!showOldPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors">
-                    {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                  Password Baru
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder="Masukkan password baru"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className={`w-full pl-12 pr-12 py-3.5 rounded-2xl border font-bold text-sm bg-transparent outline-none focus:ring-2 focus:ring-sky-500 ${
-                      isDark ? "border-white/10 text-white placeholder:text-slate-600" : "border-slate-200 text-slate-800 placeholder:text-slate-400"
-                    }`}
-                  />
-                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors">
-                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
-                  Konfirmasi Password Baru
-                </label>
-                <div className="relative">
-                  <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Konfirmasi password baru"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full pl-12 pr-12 py-3.5 rounded-2xl border font-bold text-sm bg-transparent outline-none focus:ring-2 focus:ring-sky-500 ${
-                      isDark ? "border-white/10 text-white placeholder:text-slate-600" : "border-slate-200 text-slate-800 placeholder:text-slate-400"
-                    }`}
-                  />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 transition-colors">
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsResetPasswordOpen(false)}
-                  className={`flex-1 py-3.5 rounded-2xl font-black text-sm transition-all duration-300 active:scale-95 ${
-                    isDark ? "bg-white/5 hover:bg-white/10 text-slate-300" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 py-3.5 rounded-2xl font-black text-sm bg-sky-600 hover:bg-sky-500 text-white shadow-lg shadow-sky-600/20 transition-all duration-300 active:scale-95 disabled:opacity-50"
-                >
-                  {isSubmitting ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   )
 }

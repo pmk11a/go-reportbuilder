@@ -1,4 +1,4 @@
-.PHONY: dev build run migrate seed db-init
+.PHONY: dev build run migrate seed db-init check check-backend check-errors check-warnings
 
 dev:
 	@echo "Starting backend with Air (Hot Reload)..."
@@ -24,4 +24,19 @@ db-init:
 	@echo "Running database migration and seeder sequentially..."
 	@go run ./cmd/main.go --migrate --seed
 
+## ── Quality Gates ────────────────────────────────────────────────────────────
+## Run ALL checks: build + vet + tests + coverage (backend only)
+check-backend:
+	@echo "Running backend quality checks → logs written to ../tmp/"
+	@../scripts/check-all.sh --backend-only
+
+## Quick read: show all errors collected in tmp/ at once
+check-errors:
+	@echo "═══ ERRORS ═══"
+	@cat ../tmp/*_errors.log 2>/dev/null | grep -v '^$$' || echo "(no error logs found)"
+
+## Quick read: show all warnings collected in tmp/ at once
+check-warnings:
+	@echo "═══ WARNINGS ═══"
+	@cat ../tmp/*_warnings.log 2>/dev/null | grep -v '^$$' || echo "(no warning logs found)"
 
