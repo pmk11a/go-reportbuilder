@@ -9,7 +9,8 @@ The primary work in this area is always assigned to: **`@dapen-frontend`**
 
 ### 📋 Mandatory Frontend Checklist
 - [ ] Components use libraries from `src/components/ui` if they already exist.
-- [ ] Use designs with translucent effects (Glassmorphism): `bg-white/80 backdrop-blur-xl`.
+- [ ] NO Glassmorphism. Use standard Shadcn UI styling conventions.
+- [ ] ALL forms MUST use a form controller (`react-hook-form` + `zod` via `<Form>`).
 - [ ] No static data types inside components. Use types from `src/types/`.
 - [ ] No network calls (`axios`/`fetch`) in components. Use `src/services/`.
 - [ ] Errors are not formatted in components; they must pass through `src/utils/errorMapper.ts`.

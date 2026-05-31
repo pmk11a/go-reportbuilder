@@ -1,0 +1,808 @@
+basePath: /api
+definitions:
+  berkas.SetPeriodeRequest:
+    properties:
+      BULAN:
+        type: string
+      TAHUN:
+        type: string
+    required:
+    - BULAN
+    - TAHUN
+    type: object
+  dto.SActivityLogConfigReq:
+    properties:
+      display_name:
+        type: string
+      fields:
+        items:
+          $ref: '#/definitions/dto.SActivityLogFieldReq'
+        type: array
+      is_enabled:
+        type: boolean
+      log_create:
+        type: boolean
+      log_delete:
+        type: boolean
+      log_update:
+        type: boolean
+      primary_key_field:
+        type: string
+      source_name:
+        type: string
+      table_name:
+        type: string
+    required:
+    - table_name
+    type: object
+  dto.SActivityLogFieldReq:
+    properties:
+      display_name:
+        type: string
+      field_name:
+        type: string
+      field_type:
+        type: string
+      is_sensitive:
+        type: boolean
+      is_tracked:
+        type: boolean
+      sort_order:
+        type: integer
+    required:
+    - field_name
+    type: object
+  models.SDbMenu:
+    properties:
+      access:
+        type: integer
+      icon:
+        type: string
+      keterangan:
+        type: string
+      kodemenu:
+        type: string
+      l0:
+        type: integer
+      ol:
+        type: integer
+      platformMask:
+        type: integer
+      routename:
+        type: string
+      tipeTrans:
+        type: string
+    type: object
+  models.SLoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Backend API for DAPEN management of employee retirement funds
+  title: DAPEN System API
+  version: "1.0"
+paths:
+  /admin/activity-logs:
+    get:
+      description: Fetch a paginated list of activity logs
+      parameters:
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Activity Logs
+      tags:
+      - Activity Log
+  /admin/activity-logs/configs:
+    get:
+      description: Fetch all activity log configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Activity Log Configs
+      tags:
+      - Activity Log
+    post:
+      consumes:
+      - application/json
+      description: Create or update an activity log configuration
+      parameters:
+      - description: Configuration Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SActivityLogConfigReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Save Activity Log Config
+      tags:
+      - Activity Log
+  /admin/activity-logs/configs/{table_name}:
+    get:
+      description: Fetch activity log configuration for a specific table
+      parameters:
+      - description: Table Name
+        in: path
+        name: table_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Log Config by Table Name
+      tags:
+      - Activity Log
+  /admin/database/tables:
+    get:
+      description: Fetch a list of all tables in the database for configuration
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Database Tables
+      tags:
+      - Database
+  /admin/database/tables/{table_name}/columns:
+    get:
+      description: Fetch a list of columns for a specific database table
+      parameters:
+      - description: Table Name
+        in: path
+        name: table_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Columns for Table
+      tags:
+      - Database
+  /admin/menu:
+    get:
+      description: Fetch a paginated list of all menus
+      parameters:
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Menus
+      tags:
+      - Menu
+    post:
+      consumes:
+      - application/json
+      description: Add a new menu item to the system
+      parameters:
+      - description: Menu Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SDbMenu'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create New Menu
+      tags:
+      - Menu
+  /admin/menu/{kode}:
+    delete:
+      description: Remove a menu item from the system
+      parameters:
+      - description: Menu Code
+        in: path
+        name: kode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete Menu
+      tags:
+      - Menu
+    get:
+      description: Fetch a single menu by its code
+      parameters:
+      - description: Menu Code
+        in: path
+        name: kode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Menu By ID
+      tags:
+      - Menu
+    put:
+      consumes:
+      - application/json
+      description: Modify an existing menu item
+      parameters:
+      - description: Menu Code
+        in: path
+        name: kode
+        required: true
+        type: string
+      - description: Updated Menu Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SDbMenu'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update Menu
+      tags:
+      - Menu
+  /admin/menu/parents:
+    get:
+      description: Fetch parent menus based on specific hierarchy level
+      parameters:
+      - description: Menu Level
+        in: query
+        name: level
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Parent Menus
+      tags:
+      - Menu
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Change the password of the currently authenticated user
+      parameters:
+      - description: Old and New Password
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Change User Password
+      tags:
+      - Authentication
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT tokens
+      parameters:
+      - description: Login Credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: User Login
+      tags:
+      - Authentication
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Rotate JWT tokens using a valid refresh token
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh JWT Token
+      tags:
+      - Authentication
+  /berkas/get-periode:
+    get:
+      description: Fetch the active periode for the user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Current Periode
+      tags:
+      - Berkas
+  /berkas/set-periode:
+    put:
+      consumes:
+      - application/json
+      description: Update the active periode for the user
+      parameters:
+      - description: Periode Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/berkas.SetPeriodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set Current Periode
+      tags:
+      - Berkas
+  /customers:
+    get:
+      description: Fetch customer data with pagination and search
+      parameters:
+      - default: 0
+        description: Jenis
+        in: query
+        name: jenis
+        type: integer
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Customers
+      tags:
+      - Filter
+  /dashboard/pensiunan-without-files:
+    get:
+      description: Fetch list of retired customers without uploaded files
+      parameters:
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Pensiunan Without Files
+      tags:
+      - Dashboard
+  /dashboard/stats:
+    get:
+      description: Fetch various statistics for the dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Dashboard Statistics
+      tags:
+      - Dashboard
+  /me:
+    get:
+      description: Retrieves the currently authenticated user profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Current User
+      tags:
+      - User
+  /menus/sidebar:
+    get:
+      description: Fetch dynamic sidebar menu based on user permissions
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Sidebar Menu
+      tags:
+      - Dashboard
+  /perkiraan:
+    get:
+      description: Fetch perkiraan data with pagination and search
+      parameters:
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Perkiraan
+      tags:
+      - Filter
+  /perkiraan/kelompok-kas:
+    get:
+      description: Fetch kelompok kas data with pagination and search
+      parameters:
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Kelompok Kas
+      tags:
+      - Filter
+swagger: "2.0"

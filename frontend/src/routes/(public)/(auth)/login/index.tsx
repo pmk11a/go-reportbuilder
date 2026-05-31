@@ -13,16 +13,25 @@ import { Input } from "@/components/ui/form/input";
 import { Button } from "@/components/ui/overlay/button";
 import { Alert, AlertDescription } from "@/components/ui";
 import "./login.css";
-import { getHomePath } from "@/utils/auth";
+import { getHomePath, getRedirectPath } from "@/utils/auth";
 import { useTranslation } from "react-i18next";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+type LoginSearch = {
+    redirect?: string;
+};
+
 export const Route = createFileRoute("/(public)/(auth)/login/")({
-    beforeLoad: async () => {
+    validateSearch: (search: Record<string, unknown>): LoginSearch => {
+        return {
+            redirect: search.redirect as string | undefined,
+        };
+    },
+    beforeLoad: async ({ search }) => {
         const auth = useAuthStore.getState();
         if (auth.user) {
-            throw redirect({ to: getHomePath(auth.user) });
+            throw redirect({ to: getRedirectPath(auth.user, search.redirect) });
         }
     },
     component: LoginPage,
@@ -33,6 +42,7 @@ export function LoginPage() {
     const navigate = useNavigate();
     const { login } = useAuth();
     const { toast } = useToast();
+    const search = Route.useSearch();
     const isInitialized = useAuthStore((state) => state.isInitialized);
     const [globalError, setGlobalError] = useState<Error | null>(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -51,7 +61,7 @@ export function LoginPage() {
         try {
             await login(data.username, data.password);
             const user = useAuthStore.getState().user;
-            navigate({ to: getHomePath(user) });
+            navigate({ to: getRedirectPath(user, search.redirect) });
         } catch (error) {
             const err = error instanceof Error ? error : new Error(t('auth.login.login_failed'));
             setGlobalError(err);

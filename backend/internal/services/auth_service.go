@@ -50,14 +50,14 @@ func (s *authService) generateTokenPair(user *models.SUser) (accessToken string,
 	accessExpiresAt := now.Add(accessExpiry)
 	refreshExpiresAt := now.Add(refreshExpiry)
 
-	// Generate Access Token (short-lived, contains full user claims)
 	accessClaims := jwt.MapClaims{
-		"user_id":  user.ID,
-		"username": user.Username,
-		"role":     user.GetDynamicRole(),
-		"type":     "access",
-		"iat":      now.Unix(),
-		"exp":      accessExpiresAt.Unix(),
+		"user_id":        user.ID,
+		"legacy_user_id": user.UserID,
+		"username":       user.Username,
+		"role":           user.GetDynamicRole(),
+		"type":           "access",
+		"iat":            now.Unix(),
+		"exp":            accessExpiresAt.Unix(),
 	}
 	accessTokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessToken, err = accessTokenObj.SignedString([]byte(s.config.JWTSecret))

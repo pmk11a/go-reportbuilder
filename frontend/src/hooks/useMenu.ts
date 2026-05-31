@@ -19,7 +19,7 @@ export function useMenus(page: number = 1, limit: number = 10, search: string = 
 export function useParentMenus(level: number) {
   return useQuery({
     queryKey: menuKeys.parents(level),
-    queryFn: () => menuService.getParentMenus(level - 1),
+    queryFn: () => menuService.getParentMenus(level),
     enabled: level > 0
   })
 }
@@ -31,7 +31,7 @@ export function useCreateMenu(onSuccessCallback?: () => void) {
   return useMutation({
     mutationFn: (data: IDbMenu) => menuService.createMenu(data),
     onSuccess: () => {
-      toast({ title: 'Berhasil', description: 'Menu berhasil ditambahkan' })
+      toast({ title: 'Berhasil', description: 'Menu berhasil ditambahkan', variant: 'success' })
       queryClient.invalidateQueries({ queryKey: menuKeys.all })
       if (onSuccessCallback) onSuccessCallback()
     },
@@ -48,7 +48,7 @@ export function useUpdateMenu(kodeLama: string, onSuccessCallback?: () => void) 
   return useMutation({
     mutationFn: (data: IDbMenu) => menuService.updateMenu(kodeLama, data),
     onSuccess: () => {
-      toast({ title: 'Berhasil', description: 'Menu berhasil diperbarui' })
+      toast({ title: 'Berhasil', description: 'Menu berhasil diperbarui', variant: 'success' })
       queryClient.invalidateQueries({ queryKey: menuKeys.all })
       if (onSuccessCallback) onSuccessCallback()
     },
@@ -65,7 +65,7 @@ export function useDeleteMenu() {
   return useMutation({
     mutationFn: (kode: string) => menuService.deleteMenu(kode),
     onSuccess: () => {
-      toast({ title: 'Berhasil', description: 'Menu berhasil dihapus' })
+      toast({ title: 'Berhasil', description: 'Menu berhasil dihapus', variant: 'success' })
       queryClient.invalidateQueries({ queryKey: menuKeys.all })
     },
     onError: (error: any) => {

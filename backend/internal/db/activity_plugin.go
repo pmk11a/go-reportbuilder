@@ -110,8 +110,8 @@ func trackActivity(action string) func(db *gorm.DB) {
 		}
 
 		logEntry := models.SDBLogFile{
-			Tahun:      time.Now().Year(),
-			Bulan:      int(time.Now().Month()),
+			Tahun:      int32(time.Now().Year()),
+			Bulan:      int32(time.Now().Month()),
 			Tanggal:    time.Now(),
 			Pemakai:    pemakai,
 			Aktivitas:  fmt.Sprintf("%s_%s", action, strings.ToUpper(tableName)),

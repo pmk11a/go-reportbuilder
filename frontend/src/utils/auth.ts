@@ -32,3 +32,30 @@ export function getHomePath(user: IUser | null): string {
   
   return '/karyawan/dashboard';
 }
+
+/**
+ * Returns a valid redirect path ensuring the user has the correct role
+ * for the requested path, otherwise falls back to their home path.
+ */
+export function getRedirectPath(user: IUser | null, redirectPath?: string): string {
+  const homePath = getHomePath(user);
+  if (!redirectPath) return homePath;
+
+  // Prevent open redirects
+  if (redirectPath.startsWith('http') || redirectPath.startsWith('//')) {
+    return homePath;
+  }
+
+  // Check admin routes
+  if (redirectPath.startsWith('/admin')) {
+    return isAdmin(user) ? redirectPath : homePath;
+  }
+
+  // Check karyawan routes
+  if (redirectPath.startsWith('/karyawan')) {
+    return isKaryawan(user) || isAdmin(user) ? redirectPath : homePath;
+  }
+
+  return redirectPath;
+}
+

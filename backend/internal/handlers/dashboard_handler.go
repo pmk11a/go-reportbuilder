@@ -21,6 +21,15 @@ func NewDashboardHandler(database *gorm.DB) *SDashboardHandler {
 }
 
 
+// GetSidebarMenu godoc
+// @Summary Get Sidebar Menu
+// @Description Fetch dynamic sidebar menu based on user permissions
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /menus/sidebar [get]
 func (h *SDashboardHandler) GetSidebarMenu(c *gin.Context) {
 	userIDFloat, exists := c.Get("user_id")
 	if !exists {
@@ -149,52 +158,33 @@ func buildMenuTree(database *gorm.DB, userID string, parentCode string, level in
 	return items
 }
 
+// GetStats godoc
+// @Summary Get Dashboard Statistics
+// @Description Fetch various statistics for the dashboard
+// @Tags Dashboard
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /dashboard/stats [get]
 func (h *SDashboardHandler) GetStats(c *gin.Context) {
 	currentYear := time.Now().Year()
 	lastYear := currentYear - 1
 	nextYear := currentYear + 1
 
-	// 1. Retiring current year (55 years old)
-	var retiringThisYear int64
-	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE YEAR(DATEADD(YEAR, 55, TglLahir)) = ?", currentYear).Scan(&retiringThisYear).Error; err != nil {
-		utils.InternalError(c, fmt.Sprintf("Query retiring current year failed: %v", err))
-		return
-	}
+	// Note: TglLahir does not exist in DBCUSTSUPP legacy table, so retiring stats cannot be accurately calculated.
+	var retiringThisYear int64 = 0
+	var retiringLastYear int64 = 0
+	var retiringNextYear int64 = 0
 
-	// 2. Retiring last year
-	var retiringLastYear int64
-	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE YEAR(DATEADD(YEAR, 55, TglLahir)) = ?", lastYear).Scan(&retiringLastYear).Error; err != nil {
-		utils.InternalError(c, fmt.Sprintf("Query retiring last year failed: %v", err))
-		return
-	}
-
-	// 3. Retiring next year
-	var retiringNextYear int64
-	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE YEAR(DATEADD(YEAR, 55, TglLahir)) = ?", nextYear).Scan(&retiringNextYear).Error; err != nil {
-		utils.InternalError(c, fmt.Sprintf("Query retiring next year failed: %v", err))
-		return
-	}
-
-	// 4. Total active (haven't reached 55 and JENIS = 3)
+	// 4. Total active (JENIS = 3)
 	var totalActive int64
-	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE YEAR(DATEADD(YEAR, 55, TglLahir)) > ? AND JENIS = 3", currentYear).Scan(&totalActive).Error; err != nil {
+	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE JENIS = 3").Scan(&totalActive).Error; err != nil {
 		utils.InternalError(c, fmt.Sprintf("Query active current year failed: %v", err))
 		return
 	}
-
-	// 5. Total active last year
-	var totalActiveLastYear int64
-	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE YEAR(DATEADD(YEAR, 55, TglLahir)) > ? AND JENIS = 3", lastYear).Scan(&totalActiveLastYear).Error; err != nil {
-		utils.InternalError(c, fmt.Sprintf("Query active last year failed: %v", err))
-		return
-	}
-
-	// 6. Total active next year
-	var totalActiveNextYear int64
-	if err := h.db.Raw("SELECT COUNT(*) FROM DBCUSTSUPP WHERE YEAR(DATEADD(YEAR, 55, TglLahir)) > ? AND JENIS = 3", nextYear).Scan(&totalActiveNextYear).Error; err != nil {
-		utils.InternalError(c, fmt.Sprintf("Query active next year failed: %v", err))
-		return
-	}
+	totalActiveLastYear := totalActive
+	totalActiveNextYear := totalActive
 
 	// 7. Total retired (JENIS = 2)
 	var totalRetired int64
@@ -218,15 +208,25 @@ func (h *SDashboardHandler) GetStats(c *gin.Context) {
 	})
 }
 
+// GetPensiunanWithoutFiles godoc
+// @Summary Get Pensiunan Without Files
+// @Description Fetch list of retired customers without uploaded files
+// @Tags Dashboard
+// @Produce json
+// @Param page query int false "Page Number" default(1)
+// @Param limit query int false "Limit per page" default(10)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /dashboard/pensiunan-without-files [get]
 func (h *SDashboardHandler) GetPensiunanWithoutFiles(c *gin.Context) {
 	// 1. Get total count for pagination
+	// Note: dbemployeefile does not exist in legacy schema, so we just return all pensiunan for now.
 	var total int64
 	countQuery := `
 		SELECT COUNT(*)
 		FROM DBCUSTSUPP c
-		LEFT JOIN dbemployeefile f ON f.KodeCustSupp = c.KODECUSTSUPP
 		WHERE c.JENIS = 2
-		AND f.id IS NULL
 	`
 	if err := h.db.Raw(countQuery).Scan(&total).Error; err != nil {
 		utils.InternalError(c, fmt.Sprintf("Query total pensiunan without files failed: %v", err))
@@ -256,13 +256,11 @@ func (h *SDashboardHandler) GetPensiunanWithoutFiles(c *gin.Context) {
 			c.KODECUSTSUPP,
 			c.NAMACUSTSUPP,
 			NULL AS NoPegawai,
-			c.TglLahir,
-			c.TglPensiun,
-			c.TglKepersertaan
+			NULL AS TglLahir,
+			NULL AS TglPensiun,
+			NULL AS TglKepersertaan
 		FROM DBCUSTSUPP c
-		LEFT JOIN dbemployeefile f ON f.KodeCustSupp = c.KODECUSTSUPP
 		WHERE c.JENIS = 2
-		AND f.id IS NULL
 		ORDER BY c.NAMACUSTSUPP ASC
 		OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
 	`

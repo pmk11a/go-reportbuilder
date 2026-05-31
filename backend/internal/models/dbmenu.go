@@ -9,7 +9,7 @@ type SDbMenu struct {
 	TipeTrans    *string `gorm:"column:TipeTrans;size:8"`
 	Routename    *string `gorm:"column:routename;size:255"`
 	Icon         string  `gorm:"column:icon;size:50"`
-	PlatformMask *int    `gorm:"column:PlatformMask"`
+	PlatformMask *int    `gorm:"-"` // Ignored in DB since it doesn't exist in legacy table
 }
 
 func (SDbMenu) TableName() string {

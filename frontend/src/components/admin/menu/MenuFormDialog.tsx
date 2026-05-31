@@ -5,11 +5,12 @@ import * as z from 'zod'
 import { IDbMenu } from '@/types/menu';
 import { PMenuFormDialogProps } from '@/types/components'
 import { useParentMenus, useCreateMenu, useUpdateMenu } from '@/hooks/useMenu'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/overlay/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/overlay/dialog'
 import { Button } from '@/components/ui/overlay/button'
 import { Input } from '@/components/ui/form/input'
 import { Label } from '@/components/ui/form/label'
 import { SearchableSelect } from '@/components/ui/form/searchable-select'
+import { Alert, AlertDescription } from '@/components/ui/feedback/alert'
 import { icons } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import DynamicLucideIcon from '@/components/ui/LucideIcon'
@@ -70,6 +71,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
   const watchL0 = form.watch('L0')
   const watchParentCode = form.watch('_parentCode')
   const watchIcon = form.watch('Icon')
+  const watchKodeMenu = form.watch('KODEMENU')
 
   // Fetch Parent Menus when Level (L0) > 0
   const { data: parentResponse, isLoading: isLoadingParents } = useParentMenus(watchL0)
@@ -120,14 +122,14 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
   // Handle auto-prefixing KODEMENU when a parent is selected (Only on Create)
   useEffect(() => {
     if (!isEditing && watchL0 > 0 && watchParentCode) {
-      const currentCode = form.getValues('KODEMENU')
-      if (!currentCode.startsWith(watchParentCode)) {
+      if (!watchKodeMenu.startsWith(watchParentCode)) {
         form.setValue('KODEMENU', watchParentCode)
       }
     }
-  }, [watchParentCode, watchL0, isEditing, form])
+  }, [watchParentCode, watchL0, isEditing, form, watchKodeMenu])
 
   const isLoading = createMutation.isPending || updateMutation.isPending
+  const mutationError = (createMutation.error || updateMutation.error) as any
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -136,7 +138,18 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
           <DialogTitle className="text-xl font-bold">
             {isEditing ? 'Edit Menu' : 'Tambah Menu Baru'}
           </DialogTitle>
+          <DialogDescription className="hidden">
+            Isi form berikut untuk {isEditing ? 'mengedit' : 'menambahkan'} menu.
+          </DialogDescription>
         </DialogHeader>
+
+        {mutationError && (
+          <Alert className="mt-4 border-red-200 bg-red-50/80 dark:bg-red-900/20">
+            <AlertDescription className="text-red-800 dark:text-red-200 text-sm font-medium">
+              {mutationError.message || mutationError.rawMsg || 'Gagal menyimpan menu'}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

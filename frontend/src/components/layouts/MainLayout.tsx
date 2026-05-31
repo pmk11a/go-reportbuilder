@@ -3,6 +3,7 @@ import { Outlet } from "@tanstack/react-router";
 import { AppBackground } from "@/components/layouts/AppBackground";
 import { MainHeader } from "./MainHeader";
 import MenuListCard from "@/components/dashboard/MenuListCard";
+import { ModalProvider } from "@/components/providers/ModalProvider";
 import { useMenuStore } from "@/store/menuStore";
 
 export function MainLayout() {
@@ -28,6 +29,8 @@ export function MainLayout() {
                     <Outlet />
                 </main>
             </div>
+            
+            <ModalProvider />
         </AppBackground>
     );
 }

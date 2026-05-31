@@ -19,6 +19,19 @@ func NewFilterHandler(service services.IFilterService) *SFilterHandler {
 }
 
 
+// GetCustomers godoc
+// @Summary Get Customers
+// @Description Fetch customer data with pagination and search
+// @Tags Filter
+// @Produce json
+// @Param jenis query int false "Jenis" default(0)
+// @Param page query int false "Page Number" default(1)
+// @Param limit query int false "Limit per page" default(10)
+// @Param search query string false "Search query"
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /customers [get]
 func (h *SFilterHandler) GetCustomers(c *gin.Context) {
 	jenis, _ := strconv.Atoi(c.DefaultQuery("jenis", "0"))
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -43,6 +56,18 @@ func (h *SFilterHandler) GetCustomers(c *gin.Context) {
 	utils.Success(c, "Customers retrieved successfully", response)
 }
 
+// GetPerkiraan godoc
+// @Summary Get Perkiraan
+// @Description Fetch perkiraan data with pagination and search
+// @Tags Filter
+// @Produce json
+// @Param search query string false "Search query"
+// @Param page query int false "Page Number" default(1)
+// @Param limit query int false "Limit per page" default(10)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /perkiraan [get]
 func (h *SFilterHandler) GetPerkiraan(c *gin.Context) {
 	search := c.Query("q")
 	without := c.Query("without")
@@ -71,6 +96,18 @@ func (h *SFilterHandler) GetPerkiraan(c *gin.Context) {
 	utils.Success(c, "Perkiraan retrieved successfully", formatted)
 }
 
+// GetKelompokKas godoc
+// @Summary Get Kelompok Kas
+// @Description Fetch kelompok kas data with pagination and search
+// @Tags Filter
+// @Produce json
+// @Param search query string false "Search query"
+// @Param page query int false "Page Number" default(1)
+// @Param limit query int false "Limit per page" default(10)
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /perkiraan/kelompok-kas [get]
 func (h *SFilterHandler) GetKelompokKas(c *gin.Context) {
 	tipe := c.DefaultQuery("type", "KAS")
 	search := c.Query("query")

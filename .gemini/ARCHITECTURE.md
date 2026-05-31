@@ -71,8 +71,13 @@ TanStack Router uses the `beforeLoad` route to enforce access rights (Guards).
 ## 3. Automation & Quality Gates
 
 **Mandatory Tests**:
-- **Backend**: *Services* (logic), *Handlers* (request parsing), *Middlewares*.
-- **Frontend**: *Hook* & *Services* logic, Complex interactive forms, and business flows.
+- **Backend Unit Tests**: *Services* (logic), *Handlers* (request parsing), *Middlewares*. Must use `testify` and `mockery`.
+- **Backend E2E Tests**: Found in `backend/tests/e2e/`, these tests use `httptest` to test the full router configuration without mocking the database.
+- **Frontend Unit Tests**: *Hook* & *Services* logic, Complex interactive forms, and business flows.
 - **End-to-End**: E2E testing for *Core Workflows* (like Login) using **Playwright**.
+
+**API Documentation**:
+- All Backend API routes (both existing and future) MUST be documented using Swaggo/Swagger annotations above their handler functions.
+- Generating Swagger docs (`swag init`) is mandatory after updating routes.
 
 Every agent must run *Testing* or *Build Checks* after modifications. At the end of a refactor, the application **MUST run without compilation errors**, and pass typing checks (TypeScript) as well as Formatting (Go).

@@ -15,6 +15,17 @@ func NewAuthHandler(as services.IAuthService) *SAuthHandler {
 	return &SAuthHandler{authService: as}
 }
 
+// Login godoc
+// @Summary User Login
+// @Description Authenticate user and return JWT tokens
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body models.SLoginRequest true "Login Credentials"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /auth/login [post]
 func (h *SAuthHandler) Login(c *gin.Context) {
 	var req models.SLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -33,6 +44,16 @@ func (h *SAuthHandler) Login(c *gin.Context) {
 
 // RefreshToken handles token rotation (RTR).
 // The BFF layer sends the current refresh_token to get a new token pair.
+// @Summary Refresh JWT Token
+// @Description Rotate JWT tokens using a valid refresh token
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Refresh Token"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /auth/refresh [post]
 func (h *SAuthHandler) RefreshToken(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
@@ -52,6 +73,18 @@ func (h *SAuthHandler) RefreshToken(c *gin.Context) {
 	utils.Success(c, "Token refreshed successfully", res)
 }
 
+// ChangePassword godoc
+// @Summary Change User Password
+// @Description Change the password of the currently authenticated user
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Old and New Password"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /auth/change-password [post]
 func (h *SAuthHandler) ChangePassword(c *gin.Context) {
 	var req struct {
 		OldPassword string `json:"old_password" binding:"required"`
@@ -86,6 +119,15 @@ func (h *SAuthHandler) ChangePassword(c *gin.Context) {
 	utils.Success(c, "Password changed successfully", nil)
 }
 
+// GetMe godoc
+// @Summary Get Current User
+// @Description Retrieves the currently authenticated user profile
+// @Tags User
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /me [get]
 func (h *SAuthHandler) GetMe(c *gin.Context) {
 	userIDFloat, exists := c.Get("user_id")
 	if !exists {

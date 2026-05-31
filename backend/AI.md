@@ -14,7 +14,9 @@ The primary work in this area is always assigned to: **`@dapen-backend`**
 - [ ] Struct and Handler naming starts with `S` (e.g., `SUser`).
 - [ ] All protected routes are secured using `middleware.AuthMiddleware()`.
 - [ ] Responses are always standardized via utility functions, e.g., `utils.Success(...)`.
+- [ ] **API Documentation**: EVERY endpoint (existing or new) MUST have Swagger annotations (Swaggo) above its handler function, and `swag init` must be run.
 - [ ] `Unit Tests` are written for `services/` using Mocking methods (using *mockery/testify*).
+- [ ] `E2E Tests` are written in `tests/e2e/` using `httptest` to test the full router layer without mocking.
 
 ## 📂 Main Backend Structure
 

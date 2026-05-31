@@ -4,6 +4,7 @@ import DynamicLucideIcon from "@/components/ui/LucideIcon";
 import { useMenuStore, MenuItemType } from "@/store/menuStore";
 import { Search, Grid, X, ArrowLeft, Loader2 } from "lucide-react";
 import { useThemeStore } from "@/store/themeStore";
+import { useModalStore } from "@/store/modalStore";
 
 // Memoized MenuItem component matching both light and dark mode styles
 interface MenuItemProps {
@@ -21,7 +22,7 @@ const MenuItem = memo(({ item, onClick, isChild = false, isActive = false, isDar
     const [isHovered, setIsHovered] = useState(false);
 
     const widthClass = isHovered ? "w-auto min-w-[90px] md:min-w-[100px]" : isMenuExpanded ? "w-24 md:w-28" : "w-20 md:w-24 shrink-0";
-    const cursorClass = hasRoute || hasChildren ? "cursor-pointer" : isChild ? "cursor-not-allowed" : "cursor-default";
+    const cursorClass = hasRoute || hasChildren ? "cursor-pointer hover:scale-105" : "cursor-default opacity-70";
 
     const iconBgClass = isActive
         ? isDark
@@ -79,13 +80,11 @@ const MenuItem = memo(({ item, onClick, isChild = false, isActive = false, isDar
             )}
 
             <div className={`p-2.5 md:p-3 rounded-full transition-all duration-300 ${iconBgClass}`}>
-                {item.icon && (
-                    <DynamicLucideIcon
-                        name={item.icon}
-                        size={18}
-                        className="md:w-5 md:h-5"
-                    />
-                )}
+                <DynamicLucideIcon
+                    name={item.icon || "Box"}
+                    size={18}
+                    className="md:w-5 md:h-5"
+                />
             </div>
             <span className={`text-[10px] md:text-xs mt-1 md:mt-2 w-full px-0.5 transition-all duration-200 ${textOverflowClass} ${textClass}`}>
                 {item.title}
@@ -102,6 +101,7 @@ const MenuListCard = () => {
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
     const [isMenuExpanded, setIsMenuExpanded] = useState<boolean>(false);
     const [searchFilter, setSearchFilter] = useState<string>("");
+    const { openModal } = useModalStore();
 
     const { menus: menuItems, isLoading, error, fetchMenus } = useMenuStore();
 
@@ -153,8 +153,13 @@ const MenuListCard = () => {
     const searchResults = useMemo(getFilteredItems, [searchFilter, menuItems]);
 
     const handleItemClick = (item: MenuItemType) => {
-        const hasRoute = Boolean(item.route && item.route.trim() !== "#" && item.route.trim() !== "");
-        if (hasRoute) {
+        const route = item.route?.trim();
+        const hasRoute = Boolean(route && route !== "#" && route !== "");
+        
+        if (route && route.startsWith("#") && route.length > 1) {
+            const modalName = route.substring(1);
+            openModal(modalName);
+        } else if (hasRoute) {
             navigate({ to: item.route as any });
         } else if (item.items && item.items.length > 0) {
             setActiveSubmenu(item.code || item.title || null);

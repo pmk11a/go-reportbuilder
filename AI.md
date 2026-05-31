@@ -53,7 +53,7 @@ User: "Fix the login page error"
 7. **Use existing patterns** - Follow the Clean Architecture and frontend BFF conventions.
 8. **VERIFY COMPILATION** - Golang code MUST compile with zero errors before handoff.
 9. **MANDATORY RUNTIME VERIFICATION** - React app MUST run without errors on ALL pages with ALL data scenarios (`npm run type-check` must pass).
-10. **DESIGN SYSTEM ENFORCEMENT** - Use ONLY local design system components from `frontend/src/components/ui`, enforce Glassmorphism constraints.
+10. **DESIGN SYSTEM ENFORCEMENT** - Use ONLY local design system components from `frontend/src/components/ui`. NO Glassmorphism.
 11. **Complete resolution only** - Never stop at "good enough".
 12. **Progressive quality gates** - Verify quality continuously, not just at completion.
 13. **UPDATE FEATURE AI.MD** - When changing ANY feature code, update its contextual `AI.md` file in the SAME commit.
@@ -190,7 +190,7 @@ When closing with SUCCEEDED_BY:
 - ✅ Unit tests pass
 - ✅ No hardcoded secrets
 - ✅ **RUNTIME VERIFICATION** - Verify UI components in the browser
-- ✅ **Design system compliance** - Only Glassmorphism UI components used
+- ✅ **Design system compliance** - NO Glassmorphism. Follow standard Shadcn UI styling.
 - ✅ **API endpoint verification** - Call backend endpoints successfully
 
 **Integration Phase:**

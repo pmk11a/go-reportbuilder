@@ -90,8 +90,8 @@ func (s *activityLogService) GetLogs(limit int, offset int) ([]dto.SActivityLogR
 	for _, l := range logs {
 		res = append(res, dto.SActivityLogRes{
 			ID:         l.ID,
-			Tahun:      l.Tahun,
-			Bulan:      l.Bulan,
+			Tahun:      int(l.Tahun),
+			Bulan:      int(l.Bulan),
 			Tanggal:    l.Tanggal,
 			Pemakai:    l.Pemakai,
 			Aktivitas:  l.Aktivitas,

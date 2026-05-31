@@ -7,16 +7,16 @@ import (
 // SActivityLogConfig represents the configuration for which tables to track.
 type SActivityLogConfig struct {
 	ID              uint               `gorm:"primaryKey;autoIncrement" json:"id"`
-	TargetTable     string             `gorm:"column:table_name;type:varchar(100);uniqueIndex;not null" json:"table_name"`
-	DisplayName     string             `gorm:"type:varchar(100)" json:"display_name"`
-	SourceName      string             `gorm:"type:varchar(100)" json:"source_name"`
-	PrimaryKeyField string             `gorm:"type:varchar(50)" json:"primary_key_field"`
+	TargetTable     string             `gorm:"column:table_name;size:100;uniqueIndex;not null" json:"table_name"`
+	DisplayName     string             `gorm:"size:100" json:"display_name"`
+	SourceName      string             `gorm:"size:100" json:"source_name"`
+	PrimaryKeyField string             `gorm:"size:50" json:"primary_key_field"`
 	IsEnabled       bool               `gorm:"default:true" json:"is_enabled"`
 	LogCreate       bool               `gorm:"default:true" json:"log_create"`
 	LogUpdate       bool               `gorm:"default:true" json:"log_update"`
 	LogDelete       bool               `gorm:"default:true" json:"log_delete"`
-	CreatedAt       time.Time          `json:"created_at"`
-	UpdatedAt       time.Time          `json:"updated_at"`
+	CreatedAt       time.Time          `gorm:"type:datetime" json:"created_at"`
+	UpdatedAt       time.Time          `gorm:"type:datetime" json:"updated_at"`
 	Fields          []SActivityLogField `gorm:"foreignKey:ConfigID;constraint:OnDelete:CASCADE;" json:"fields"`
 }
 
@@ -28,13 +28,13 @@ func (SActivityLogConfig) TableName() string {
 type SActivityLogField struct {
 	ID          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	ConfigID    uint      `gorm:"not null;uniqueIndex:idx_config_field" json:"config_id"`
-	FieldName   string    `gorm:"type:varchar(100);not null;uniqueIndex:idx_config_field" json:"field_name"`
-	DisplayName string    `gorm:"type:varchar(100)" json:"display_name"`
+	FieldName   string    `gorm:"size:100;not null;uniqueIndex:idx_config_field" json:"field_name"`
+	DisplayName string    `gorm:"size:100" json:"display_name"`
 	IsTracked   bool      `gorm:"default:false" json:"is_tracked"`
 	IsSensitive bool      `gorm:"default:false" json:"is_sensitive"`
-	FieldType   string    `gorm:"type:varchar(20)" json:"field_type"` // string, numeric, boolean, date
+	FieldType   string    `gorm:"size:20" json:"field_type"` // string, numeric, boolean, date
 	SortOrder   int       `gorm:"default:0" json:"sort_order"`
-	CreatedAt   time.Time `json:"created_at"`
+	CreatedAt   time.Time `gorm:"type:datetime" json:"created_at"`
 }
 
 func (SActivityLogField) TableName() string {
@@ -44,14 +44,14 @@ func (SActivityLogField) TableName() string {
 // SDBLogFile represents the actual activity log record.
 type SDBLogFile struct {
 	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Tahun      int       `gorm:"column:Tahun" json:"tahun"`
-	Bulan      int       `gorm:"column:Bulan" json:"bulan"`
-	Tanggal    time.Time `gorm:"column:Tanggal" json:"tanggal"`
-	Pemakai    string    `gorm:"column:Pemakai;type:varchar(50)" json:"pemakai"`
-	Aktivitas  string    `gorm:"column:Aktivitas;type:varchar(255)" json:"aktivitas"`
-	Sumber     string    `gorm:"column:Sumber;type:varchar(100)" json:"sumber"`
-	NoBukti    string    `gorm:"column:NoBukti;type:varchar(100)" json:"no_bukti"`
-	Keterangan string    `gorm:"column:Keterangan;type:text" json:"keterangan"` // In SQL Server, use text or varchar(max)
+	Tahun      int32     `gorm:"column:Tahun;type:int;not null" json:"tahun"`
+	Bulan      int32     `gorm:"column:Bulan;type:int;not null" json:"bulan"`
+	Tanggal    time.Time `gorm:"column:Tanggal;type:datetime" json:"tanggal"`
+	Pemakai    string    `gorm:"column:Pemakai;type:varchar(20);not null" json:"pemakai"`
+	Aktivitas  string    `gorm:"column:Aktivitas;type:varchar(200);not null" json:"aktivitas"`
+	Sumber     string    `gorm:"column:Sumber;type:varchar(200);not null" json:"sumber"`
+	NoBukti    string    `gorm:"column:NoBukti;type:varchar(30);not null" json:"no_bukti"`
+	Keterangan string    `gorm:"column:Keterangan;type:varchar(4000);not null" json:"keterangan"`
 }
 
 func (SDBLogFile) TableName() string {

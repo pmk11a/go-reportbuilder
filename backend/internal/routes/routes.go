@@ -4,9 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/masza1/dapen-backend/internal/config"
 	"github.com/masza1/dapen-backend/internal/handlers"
-	"github.com/masza1/dapen-backend/internal/handlers/berkas"
 	"github.com/masza1/dapen-backend/internal/middleware"
 	"github.com/masza1/dapen-backend/internal/utils"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 )
 
@@ -17,7 +18,7 @@ type SRouterConfig struct {
 	SFilterHandler       *handlers.SFilterHandler
 	SMenuHandler         *handlers.SMenuHandler
 	SActivityLogHandler  *handlers.SActivityLogHandler
-	SPeriodeHandler      *berkas.SPeriodeHandler
+	SPeriodeHandler      *handlers.SPeriodeHandler
 	SConfig              *config.SConfig
 	DB                  *gorm.DB
 }
@@ -27,6 +28,9 @@ func SetupRoutes(rc SRouterConfig) {
 	rc.Engine.GET("/health", func(c *gin.Context) {
 		utils.Success(c, "DAPEN Backend is running", gin.H{"status": "ok"})
 	})
+
+	// Swagger route
+	rc.Engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := rc.Engine.Group("/api")
 	{
