@@ -7,7 +7,7 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 
-	"github.com/masza1/dapen-backend/internal/db"
+	"github.com/masza1/dapen-backend/internal/shared/database"
 	"github.com/masza1/dapen-backend/internal/dto"
 	"github.com/masza1/dapen-backend/internal/models"
 	"github.com/stretchr/testify/assert"
@@ -119,10 +119,10 @@ func TestActivityLogService_SaveConfig(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		mockDB, sqlMock, _ := sqlmock.New()
-		db.DB, _ = gorm.Open(sqlserver.New(sqlserver.Config{
+		database.DB, _ = gorm.Open(sqlserver.New(sqlserver.Config{
 			Conn: mockDB,
 		}), &gorm.Config{})
-		defer func() { db.DB = nil }()
+		defer func() { database.DB = nil }()
 
 		sqlMock.ExpectQuery(`(?i)SELECT.*activity_log_config`).WillReturnRows(sqlmock.NewRows([]string{"id"}))
 

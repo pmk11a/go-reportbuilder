@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	"net/http"
-
 	"github.com/masza1/dapen-backend/internal/models"
+	"github.com/masza1/dapen-backend/internal/shared/response"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -27,15 +26,14 @@ func (h *SSettingHandler) GetCompany(c *gin.Context) {
 	var company models.SDBPERUSAHAAN
 	if err := h.db.First(&company).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			// Return empty object if not found
-			c.JSON(http.StatusOK, gin.H{"data": models.SDBPERUSAHAAN{}})
+			response.Success(c, "Success", models.SDBPERUSAHAAN{})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch company data"})
+		response.InternalError(c, "Failed to fetch company data")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": company})
+	response.Success(c, "Success", company)
 }
 
 // UpdateCompany godoc
@@ -49,7 +47,7 @@ func (h *SSettingHandler) GetCompany(c *gin.Context) {
 func (h *SSettingHandler) UpdateCompany(c *gin.Context) {
 	var payload models.SDBPERUSAHAAN
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.BadRequest(c, err.Error())
 		return
 	}
 
@@ -63,24 +61,23 @@ func (h *SSettingHandler) UpdateCompany(c *gin.Context) {
 		if err == gorm.ErrRecordNotFound {
 			// Insert new
 			if err := h.db.Create(&payload).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create company data"})
+				response.InternalError(c, "Failed to create company data")
 				return
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			response.InternalError(c, "Database error")
 			return
 		}
 	} else {
 		// Update existing
-		// Since KODEUSAHA is the primary key, we must retain it or explicitly update it
 		payload.KODEUSAHA = existing.KODEUSAHA
 		if err := h.db.Save(&payload).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update company data"})
+			response.InternalError(c, "Failed to update company data")
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Company data updated successfully", "data": payload})
+	response.Success(c, "Company data updated successfully", payload)
 }
 
 // GetNumbers godoc
@@ -94,14 +91,14 @@ func (h *SSettingHandler) GetNumbers(c *gin.Context) {
 	var numbers models.SDBNOMOR
 	if err := h.db.First(&numbers).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusOK, gin.H{"data": models.SDBNOMOR{}})
+			response.Success(c, "Success", models.SDBNOMOR{})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch numbering data"})
+		response.InternalError(c, "Failed to fetch numbering data")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": numbers})
+	response.Success(c, "Success", numbers)
 }
 
 // UpdateNumbers godoc
@@ -115,7 +112,7 @@ func (h *SSettingHandler) GetNumbers(c *gin.Context) {
 func (h *SSettingHandler) UpdateNumbers(c *gin.Context) {
 	var payload models.SDBNOMOR
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.BadRequest(c, err.Error())
 		return
 	}
 
@@ -124,26 +121,24 @@ func (h *SSettingHandler) UpdateNumbers(c *gin.Context) {
 		if err == gorm.ErrRecordNotFound {
 			// Insert new
 			if err := h.db.Create(&payload).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create numbering data"})
+				response.InternalError(c, "Failed to create numbering data")
 				return
 			}
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+			response.InternalError(c, "Database error")
 			return
 		}
 	} else {
-		// Update existing. DBNOMOR doesn't have a primary key, which makes GORM Save() difficult.
-		// Usually we just delete and re-insert, or update without condition if there's only one row.
-		// Here we'll just clear the table and insert the new one to be safe, since it's a single config row.
+		// Update existing. DBNOMOR doesn't have a primary key, clear table and insert.
 		if err := h.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&models.SDBNOMOR{}).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to clear old numbering data"})
+			response.InternalError(c, "Failed to clear old numbering data")
 			return
 		}
 		if err := h.db.Create(&payload).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create new numbering data"})
+			response.InternalError(c, "Failed to create new numbering data")
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Numbering data updated successfully", "data": payload})
+	response.Success(c, "Numbering data updated successfully", payload)
 }

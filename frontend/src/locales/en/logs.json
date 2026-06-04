@@ -1,0 +1,40 @@
+{
+  "config": {
+    "choose_db_table": "Select Database Table",
+    "search_table_placeholder": "Search table...",
+    "select_table_left": "Please select a table from the left pane",
+    "enable_logging": "Enable Logging",
+    "save_config": "Save Configuration",
+    "saving": "Saving...",
+    "primary_key": "Primary Key Field",
+    "tracked_operations": "Tracked Operations",
+    "column_config": "Column Configuration",
+    "column_name": "Column Name (Database)",
+    "track_changes": "Track Changes?",
+    "sensitive_data": "Sensitive Data?",
+    "success_save": "Configuration saved successfully!",
+    "fail_save": "Failed to save configuration"
+  },
+  "activity": {
+    "search_placeholder": "Search activity...",
+    "search_button": "Search",
+    "refresh": "Refresh",
+    "no_data": "No activity log data found.",
+    "detail_title": "Change Details",
+    "detail_activity": "Activity",
+    "detail_time": "Time",
+    "detail_user": "Actor (User ID)",
+    "detail_ref": "Reference",
+    "detail_raw": "Raw Data (Description)",
+    "detail_no_payload": "No payload details.",
+    "detail_close": "Close",
+    "headers": {
+      "datetime": "Date & Time",
+      "activity": "Activity",
+      "by": "By",
+      "ref": "Ref (DocNo)",
+      "module": "Module",
+      "actions": "Actions"
+    }
+  }
+}

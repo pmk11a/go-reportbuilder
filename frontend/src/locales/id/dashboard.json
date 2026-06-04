@@ -1,0 +1,41 @@
+{
+  "total_active_employees": "TOTAL KARYAWAN AKTIF",
+  "total_retired_employees": "TOTAL KARYAWAN PENSIUN",
+  "active_employees_stats": "Statistik Karyawan Aktif",
+  "retired_employees_stats": "Statistik Karyawan Pensiun",
+  "this_year": "TAHUN INI",
+  "last_year": "TAHUN LALU",
+  "next_year": "TAHUN DEPAN",
+  "retired_no_docs": "Pensiunan Tanpa Berkas",
+  "pensiunan_count": "{{count}} Pensiunan",
+  "all_docs_completed": "Semua pensiunan telah melengkapi berkas dokumen.",
+  "pensiunan_no_docs_footer": "Pensiunan yang belum melengkapi berkas dokumen",
+  "karyawan_dashboard": {
+    "greeting": "Halo, {{name}}! 👋",
+    "fallback_name": "Rekan",
+    "welcome_text": "Selamat datang di portal karyawan DAPEN. Pantau presensi, ajukan cuti, dan kelola dokumen kepesertaan Anda dengan mudah.",
+    "btn_attendance": "Presensi Sekarang",
+    "btn_leave": "Ajukan Cuti",
+    "stat_annual_leave": "Sisa Cuti Tahunan",
+    "stat_annual_leave_value": "{{days}} Hari",
+    "stat_work_hours": "Total Jam Kerja",
+    "stat_work_hours_value": "{{hours}} Jam",
+    "stat_membership_status": "Status Kepesertaan",
+    "stat_membership_status_active": "Aktif",
+    "stat_announcements": "Pesan Pengumuman",
+    "stat_announcements_new": "{{count}} Baru",
+    "quick_links": "Tautan Cepat",
+    "link_download_payslip": "Unduh Slip Gaji Terbaru",
+    "link_update_profile": "Update Profil & Alamat",
+    "link_report_issue": "Lapor Keluhan / Support",
+    "tips_today": "Tips Hari Ini",
+    "tips_today_text": "Jangan lupa untuk memverifikasi data kepesertaan Anda sebelum akhir kuartal ini untuk memastikan kelancaran administrasi."
+  },
+  "headers": {
+    "no": "No",
+    "name": "Nama",
+    "employee_no": "No. Pegawai",
+    "birth_date": "Tgl Lahir",
+    "retirement_date": "Tgl Pensiun"
+  }
+}

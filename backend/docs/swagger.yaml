@@ -1,22 +1,12 @@
 basePath: /api
 definitions:
-  berkas.SetPeriodeRequest:
-    properties:
-      BULAN:
-        type: string
-      TAHUN:
-        type: string
-    required:
-    - BULAN
-    - TAHUN
-    type: object
-  dto.SActivityLogConfigReq:
+  github_com_masza1_dapen-backend_internal_dto.SActivityLogConfigReq:
     properties:
       display_name:
         type: string
       fields:
         items:
-          $ref: '#/definitions/dto.SActivityLogFieldReq'
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SActivityLogFieldReq'
         type: array
       is_enabled:
         type: boolean
@@ -35,7 +25,7 @@ definitions:
     required:
     - table_name
     type: object
-  dto.SActivityLogFieldReq:
+  github_com_masza1_dapen-backend_internal_dto.SActivityLogFieldReq:
     properties:
       display_name:
         type: string
@@ -52,7 +42,474 @@ definitions:
     required:
     - field_name
     type: object
-  models.SDbMenu:
+  github_com_masza1_dapen-backend_internal_dto.SCreateUserPayload:
+    properties:
+      full_name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        enum:
+        - admin
+        - employee
+        - karyawan
+        type: string
+      username:
+        minLength: 3
+        type: string
+    required:
+    - full_name
+    - password
+    - role
+    - username
+    type: object
+  github_com_masza1_dapen-backend_internal_dto.SPermissionReportResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SPermissionReportRowDTO'
+        type: array
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_masza1_dapen-backend_internal_dto.SPermissionReportRowDTO:
+    properties:
+      full_name:
+        type: string
+      has_access:
+        type: integer
+      is_approve_1:
+        type: integer
+      is_approve_2:
+        type: integer
+      is_approve_3:
+        type: integer
+      is_approve_4:
+        type: integer
+      is_approve_5:
+        type: integer
+      is_canceled:
+        type: integer
+      is_create:
+        type: integer
+      is_delete:
+        type: integer
+      is_export:
+        type: integer
+      is_print:
+        type: integer
+      is_update:
+        type: integer
+      menu_code:
+        type: string
+      menu_name:
+        type: string
+      menu_type:
+        type: string
+      role:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  github_com_masza1_dapen-backend_internal_dto.SUpdateUserPayload:
+    properties:
+      full_name:
+        type: string
+      password:
+        description: 'optional: leave blank to keep unchanged'
+        type: string
+      role:
+        enum:
+        - admin
+        - employee
+        - karyawan
+        type: string
+      status:
+        description: 'optional: "0" = inactive, "1" = active'
+        type: string
+    required:
+    - full_name
+    - role
+    type: object
+  github_com_masza1_dapen-backend_internal_dto.SUpdateUserPermissionsPayload:
+    properties:
+      coa:
+        items:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SUserCoaPayload'
+        type: array
+      menu:
+        items:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SUserPermissionPayload'
+        type: array
+      report:
+        items:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SUserPermissionPayload'
+        type: array
+    type: object
+  github_com_masza1_dapen-backend_internal_dto.SUserCoaPayload:
+    properties:
+      checked:
+        description: 0 = no access, 1 = has access
+        type: integer
+      keterangan:
+        type: string
+      perkiraan:
+        type: string
+    type: object
+  github_com_masza1_dapen-backend_internal_dto.SUserPermissionPayload:
+    properties:
+      access:
+        type: integer
+      aktif:
+        type: integer
+      checked:
+        description: Legacy simple model (for backward compatibility)
+        type: integer
+      has_access:
+        description: Granular permissions from Laravel DbFlmenu
+        type: integer
+      icon:
+        type: string
+      is_approve_1:
+        type: integer
+      is_approve_2:
+        type: integer
+      is_approve_3:
+        type: integer
+      is_approve_4:
+        type: integer
+      is_approve_5:
+        type: integer
+      is_canceled:
+        type: integer
+      is_create:
+        type: integer
+      is_delete:
+        type: integer
+      is_export:
+        type: integer
+      is_print:
+        type: integer
+      is_update:
+        type: integer
+      keterangan:
+        type: string
+      kodemenu:
+        description: Menu hierarchy & metadata
+        type: string
+      l0:
+        type: integer
+      l1:
+        type: integer
+      l2:
+        type: integer
+      l3:
+        type: integer
+      routename:
+        type: string
+    type: object
+  github_com_masza1_dapen-backend_internal_models.SDBNOMOR:
+    properties:
+      akm:
+        type: string
+      alias:
+        type: string
+      avt:
+        type: string
+      bbk:
+        type: string
+      bbm:
+        type: string
+      bbp:
+        type: string
+      bhn:
+        type: string
+      bjk:
+        type: string
+      bkk:
+        description: Dynamic Numbering Fields
+        type: string
+      bkm:
+        type: string
+      bmm:
+        type: string
+      bp:
+        type: string
+      bpb:
+        type: string
+      bpl:
+        type: string
+      bpo:
+        type: string
+      bppb:
+        type: string
+      bpsb:
+        type: string
+      bpsprk:
+        type: string
+      bsprk:
+        type: string
+      contoh:
+        type: string
+      cr:
+        type: string
+      digitNomor:
+        type: string
+      dn:
+        type: string
+      enq:
+        type: string
+      format1:
+        type: integer
+      format2:
+        type: integer
+      format3:
+        type: integer
+      format4:
+        type: integer
+      hpd:
+        type: string
+      ht:
+        type: string
+      inicab:
+        type: string
+      ins:
+        type: string
+      inv:
+        type: string
+      invc:
+        type: string
+      kmbj:
+        type: string
+      kms:
+        type: string
+      kn:
+        type: string
+      kns:
+        type: string
+      krs:
+        type: string
+      noInvc:
+        type: string
+      noKn:
+        type: string
+      noSpr:
+        type: string
+      nobbk:
+        type: string
+      nobbm:
+        type: string
+      nobbp:
+        type: string
+      nobhn:
+        type: string
+      nobjk:
+        type: string
+      nobkk:
+        type: string
+      nobkm:
+        type: string
+      nobmm:
+        type: string
+      nobp:
+        type: string
+      nobpb:
+        type: string
+      nobpl:
+        type: string
+      nobpo:
+        type: string
+      nobppb:
+        type: string
+      nobpsb:
+        type: string
+      nobpsprk:
+        type: string
+      nobsprk:
+        type: string
+      nocr:
+        type: string
+      noenq:
+        type: string
+      noins:
+        type: string
+      noinv:
+        type: string
+      nokms:
+        type: string
+      nokns:
+        type: string
+      noopn:
+        type: string
+      nopbl:
+        type: string
+      nopjl:
+        type: string
+      nopnj:
+        type: string
+      nopo:
+        type: string
+      noppl:
+        type: string
+      norbj:
+        type: string
+      norbpb:
+        type: string
+      norkl:
+        type: string
+      norpb:
+        type: string
+      norpj:
+        type: string
+      norspb:
+        type: string
+      nosc:
+        type: string
+      noseri:
+        type: string
+      noship:
+        type: string
+      noso:
+        type: string
+      nospb:
+        type: string
+      nospg:
+        type: string
+      nospp:
+        type: string
+      nosprk:
+        type: string
+      notbj:
+        type: string
+      notrc:
+        type: string
+      notrs:
+        type: string
+      opbj:
+        type: string
+      opn:
+        type: string
+      pbl:
+        type: string
+      pbs:
+        type: string
+      pemisah:
+        type: string
+      pjl:
+        type: string
+      pnj:
+        type: string
+      po:
+        type: string
+      pos:
+        type: string
+      ppl:
+        type: string
+      pr:
+        type: string
+      pt:
+        type: string
+      rbj:
+        type: string
+      rbp:
+        type: string
+      rbpb:
+        type: string
+      reset:
+        type: integer
+      rkl:
+        type: string
+      rpb:
+        type: string
+      rpbs:
+        type: string
+      rpj:
+        type: string
+      rspb:
+        type: string
+      sc:
+        type: string
+      ship:
+        type: string
+      so:
+        type: string
+      spb:
+        type: string
+      spg:
+        type: string
+      spk:
+        description: Other string codes
+        type: string
+      spp:
+        type: string
+      spr:
+        type: string
+      sprk:
+        type: string
+      tbj:
+        type: string
+      trc:
+        type: string
+      trs:
+        type: string
+      tt:
+        type: string
+    type: object
+  github_com_masza1_dapen-backend_internal_models.SDBPERUSAHAAN:
+    properties:
+      alamat1:
+        type: string
+      alamat2:
+        type: string
+      alamatpkp1:
+        type: string
+      alamatpkp2:
+        type: string
+      alamatpkp21:
+        type: string
+      alamatpkp22:
+        type: string
+      direksi:
+        type: string
+      email:
+        type: string
+      fax:
+        type: string
+      jabatan:
+        type: string
+      kodeusaha:
+        type: string
+      kota:
+        type: string
+      kotapkp:
+        type: string
+      kotapkp1:
+        type: string
+      nama:
+        type: string
+      namapkp:
+        type: string
+      namapkp1:
+        type: string
+      npwp:
+        type: string
+      npwp1:
+        type: string
+      telpon:
+        type: string
+      tglpengukuhan:
+        type: string
+      tglpengukuhan1:
+        type: string
+    type: object
+  github_com_masza1_dapen-backend_internal_models.SDbMenu:
     properties:
       access:
         type: integer
@@ -67,13 +524,14 @@ definitions:
       ol:
         type: integer
       platformMask:
+        description: Ignored in DB since it doesn't exist in legacy table
         type: integer
       routename:
         type: string
       tipeTrans:
         type: string
     type: object
-  models.SLoginRequest:
+  github_com_masza1_dapen-backend_internal_models.SLoginRequest:
     properties:
       password:
         type: string
@@ -82,6 +540,16 @@ definitions:
     required:
     - password
     - username
+    type: object
+  internal_handlers.SetPeriodeRequest:
+    properties:
+      BULAN:
+        type: string
+      TAHUN:
+        type: string
+    required:
+    - BULAN
+    - TAHUN
     type: object
 host: localhost:8080
 info:
@@ -153,7 +621,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.SActivityLogConfigReq'
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SActivityLogConfigReq'
       produces:
       - application/json
       responses:
@@ -293,7 +761,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.SDbMenu'
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SDbMenu'
       produces:
       - application/json
       responses:
@@ -380,7 +848,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.SDbMenu'
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SDbMenu'
       produces:
       - application/json
       responses:
@@ -426,6 +894,448 @@ paths:
       summary: Get Parent Menus
       tags:
       - Menu
+  /api/admin/reports/permissions:
+    get:
+      description: |-
+        Returns a matrix of users × menus × permissions. Supports JSON,
+        Excel (.xlsx) and PDF output via the `format` query param.
+        `userId` and `menuId` are optional filters; `menuType` selects
+        between `menu` (dbmenu, default) and `report` (dbmenureport).
+        The Excel and PDF responses are streamed and require at least
+        one filter (userId or menuId) to avoid an OOM on the full matrix.
+      parameters:
+      - default: json
+        description: Output format
+        enum:
+        - json
+        - xlsx
+        - pdf
+        in: query
+        name: format
+        type: string
+      - description: Filter by user ID
+        in: query
+        name: userId
+        type: string
+      - description: Filter by menu code
+        in: query
+        name: menuId
+        type: string
+      - default: menu
+        description: menu or report
+        enum:
+        - menu
+        - report
+        in: query
+        name: menuType
+        type: string
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Per page
+        in: query
+        name: perPage
+        type: integer
+      produces:
+      - application/json
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SPermissionReportResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Permission Report
+      tags:
+      - User
+  /api/admin/settings/company:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SDBPERUSAHAAN'
+      summary: Get Company Settings
+      tags:
+      - Admin Settings
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Company Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SDBPERUSAHAAN'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update Company Settings
+      tags:
+      - Admin Settings
+  /api/admin/settings/numbers:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SDBNOMOR'
+      summary: Get Numbering Settings
+      tags:
+      - Admin Settings
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Numbering Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SDBNOMOR'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update Numbering Settings
+      tags:
+      - Admin Settings
+  /api/admin/users:
+    get:
+      description: Fetch a paginated list of legacy users from the DBFLPASS table
+      parameters:
+      - default: 1
+        description: Page Number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Users
+      tags:
+      - User
+    post:
+      consumes:
+      - application/json
+      description: Hashing password and storing a new user record inside the DBFLPASS
+        table
+      parameters:
+      - description: Create User Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SCreateUserPayload'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create User
+      tags:
+      - User
+  /api/admin/users/{id}:
+    delete:
+      description: Delete a user from the DBFLPASS table and prevent self-deletion
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete User
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: Update legacy fields for a user inside the DBFLPASS table
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update User Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SUpdateUserPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update User
+      tags:
+      - User
+  /api/admin/users/{id}/permissions:
+    get:
+      description: Fetch legacy menu, report, and COA access permissions for a given
+        user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get User Permissions
+      tags:
+      - User
+    put:
+      consumes:
+      - application/json
+      description: Update checked, aktif, and ACCESS values for dbmenu, dbmenureport,
+        and DBAKSESPERKIRAAN for a given user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update User Permissions Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_dto.SUpdateUserPermissionsPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update User Permissions
+      tags:
+      - User
+  /api/admin/users/{id}/permissions/coa:
+    get:
+      description: Fetch only the COA (DBAKSESPERKIRAAN) access entries for a given
+        user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get User COA Access
+      tags:
+      - User
+  /api/admin/users/{id}/permissions/menu:
+    get:
+      description: |-
+        Fetch only the menu (dbmenu) permissions for a given user. This is
+        one of three split endpoints introduced by TASK-009 to enable
+        per-tab caching on the frontend.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get User Menu Permissions
+      tags:
+      - User
+  /api/admin/users/{id}/permissions/report:
+    get:
+      description: Fetch only the report (dbmenureport) permissions for a given user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get User Report Permissions
+      tags:
+      - User
   /auth/change-password:
     post:
       consumes:
@@ -474,7 +1384,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.SLoginRequest'
+          $ref: '#/definitions/github_com_masza1_dapen-backend_internal_models.SLoginRequest'
       produces:
       - application/json
       responses:
@@ -568,7 +1478,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/berkas.SetPeriodeRequest'
+          $ref: '#/definitions/internal_handlers.SetPeriodeRequest'
       produces:
       - application/json
       responses:

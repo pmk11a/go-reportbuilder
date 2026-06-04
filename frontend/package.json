@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src",
+    "lint": "eslint src --no-error-on-unmatched-pattern",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "coverage": "vitest run --coverage",

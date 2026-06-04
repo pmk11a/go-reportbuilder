@@ -4,9 +4,9 @@ import (
 	"flag"
 	"log"
 
-	"github.com/masza1/dapen-backend/internal/config"
-	"github.com/masza1/dapen-backend/internal/db"
-	"github.com/masza1/dapen-backend/internal/db/seeders"
+	"github.com/masza1/dapen-backend/internal/shared/config"
+	"github.com/masza1/dapen-backend/internal/shared/database"
+	"github.com/masza1/dapen-backend/internal/shared/database/seeders"
 	"github.com/masza1/dapen-backend/internal/server"
 
 	_ "github.com/masza1/dapen-backend/docs"
@@ -28,22 +28,22 @@ func main() {
 	cfg := config.LoadConfig()
 
 	// 2. Initialize Database Connection
-	database := db.InitDB(cfg)
+	dbConn := database.InitDB(cfg)
 
 	// 3. Initialize Redis Connection (for BFF session storage)
-	db.InitRedis(cfg)
+	database.InitRedis(cfg)
 
 	// 4. Conditional DB Operations
 	if *runMigrate {
-		db.RunMigrations(database)
+		database.RunMigrations(dbConn)
 	}
 
 	if *runSeed {
-		seeders.SeedDatabase(database)
+		seeders.SeedDatabase(dbConn)
 	}
 
 	// 5. Initialize Server (DI & Routing)
-	engine := server.NewServer(database, cfg)
+	engine := server.NewServer(dbConn, cfg)
 
 	// 10. Start server
 	log.Printf("Starting server on port 8080...")

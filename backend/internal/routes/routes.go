@@ -2,10 +2,12 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/masza1/dapen-backend/internal/config"
+	"github.com/masza1/dapen-backend/internal/shared/config"
 	"github.com/masza1/dapen-backend/internal/handlers"
-	"github.com/masza1/dapen-backend/internal/middleware"
-	"github.com/masza1/dapen-backend/internal/utils"
+	"github.com/masza1/dapen-backend/internal/identity/permission"
+	"github.com/masza1/dapen-backend/internal/identity/user"
+	authpkg "github.com/masza1/dapen-backend/internal/shared/auth"
+	"github.com/masza1/dapen-backend/internal/shared/response"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -20,6 +22,8 @@ type SRouterConfig struct {
 	SActivityLogHandler  *handlers.SActivityLogHandler
 	SPeriodeHandler      *handlers.SPeriodeHandler
 	SSettingHandler      *handlers.SSettingHandler
+	SPermissionHandler  *permission.SPermissionHandler
+	SUserHandler         *user.SUserHandler
 	SConfig              *config.SConfig
 	DB                  *gorm.DB
 }
@@ -27,7 +31,7 @@ type SRouterConfig struct {
 func SetupRoutes(rc SRouterConfig) {
 	// Root routes
 	rc.Engine.GET("/health", func(c *gin.Context) {
-		utils.Success(c, "DAPEN Backend is running", gin.H{"status": "ok"})
+		response.Success(c, "DAPEN Backend is running", gin.H{"status": "ok"})
 	})
 
 	// Swagger route
@@ -36,15 +40,15 @@ func SetupRoutes(rc SRouterConfig) {
 	api := rc.Engine.Group("/api")
 	{
 		// Public routes
-		auth := api.Group("/auth")
+		authGroup := api.Group("/auth")
 		{
-			auth.POST("/login", rc.SAuthHandler.Login)
-			auth.POST("/refresh", rc.SAuthHandler.RefreshToken)
+			authGroup.POST("/login", rc.SAuthHandler.Login)
+			authGroup.POST("/refresh", rc.SAuthHandler.RefreshToken)
 		}
 
 		// Protected routes
 		protected := api.Group("/")
-		protected.Use(middleware.AuthMiddleware(rc.SConfig))
+		protected.Use(authpkg.AuthMiddleware(rc.SConfig))
 		{
 			protected.POST("/auth/change-password", rc.SAuthHandler.ChangePassword)
 			protected.GET("/menus/sidebar", rc.SDashboardHandler.GetSidebarMenu)
@@ -63,10 +67,10 @@ func SetupRoutes(rc SRouterConfig) {
 func setupProtectedRoutes(rg *gin.RouterGroup, rc SRouterConfig) {
 	// Admin only routes
 	admin := rg.Group("/admin")
-	admin.Use(middleware.RoleMiddleware("admin"))
+	admin.Use(authpkg.RoleMiddleware("admin"))
 	{
 		admin.GET("/stats", func(c *gin.Context) {
-			utils.Success(c, "Admin stats - Authorized", nil)
+			response.Success(c, "Admin stats - Authorized", nil)
 		})
 		
 		// Menu CRUD
@@ -90,6 +94,24 @@ func setupProtectedRoutes(rg *gin.RouterGroup, rc SRouterConfig) {
 		admin.PUT("/settings/company", rc.SSettingHandler.UpdateCompany)
 		admin.GET("/settings/numbers", rc.SSettingHandler.GetNumbers)
 		admin.PUT("/settings/numbers", rc.SSettingHandler.UpdateNumbers)
+
+		// User Management CRUD (TASK-004)
+		admin.GET("/users", rc.SUserHandler.GetUsers)
+		admin.POST("/users", rc.SUserHandler.CreateUser)
+		admin.PUT("/users/:id", rc.SUserHandler.UpdateUser)
+		admin.DELETE("/users/:id", rc.SUserHandler.DeleteUser)
+		admin.GET("/users/:id/permissions", rc.SPermissionHandler.GetUserPermissions)
+		admin.PUT("/users/:id/permissions", rc.SPermissionHandler.UpdateUserPermissions)
+
+		// Per-tab permission endpoints (TASK-009) — enable per-tab caching
+		// on the frontend dialog by exposing the three permission tables
+		// as independent GET endpoints.
+		admin.GET("/users/:id/permissions/menu", rc.SPermissionHandler.GetUserMenuPermissions)
+		admin.GET("/users/:id/permissions/report", rc.SPermissionHandler.GetUserReportPermissions)
+		admin.GET("/users/:id/permissions/coa", rc.SPermissionHandler.GetUserCoaAccess)
+
+		// Permission Report (TASK-009) — supports JSON, xlsx, and pdf outputs
+		admin.GET("/reports/permissions", rc.SPermissionHandler.GetPermissionReport)
 	}
 
 	// Filter / Shared API routes

@@ -14,26 +14,27 @@ import { Alert, AlertDescription } from '@/components/ui/feedback/alert'
 import { icons } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import DynamicLucideIcon from '@/components/ui/LucideIcon'
-
-const menuSchema = z.object({
-  KODEMENU: z.string().min(1, 'Kode menu wajib diisi').max(25),
-  Keterangan: z.string().min(1, 'Keterangan wajib diisi').max(500),
-  L0: z.coerce.number().min(0, 'Level minimal 0'),
-  ACCESS: z.coerce.number().default(0),
-  OL: z.coerce.number().default(0),
-  TipeTrans: z.string().optional().default(''),
-  Routename: z.string().nullable().optional(),
-  Icon: z.string().max(50).default(''),
-  PlatformMask: z.coerce.number().nullable().optional(),
-  _parentCode: z.string().optional() // Virtual field untuk UI form
-})
-
-type MenuFormValues = z.infer<typeof menuSchema>
-
+import { useTranslation } from 'react-i18next'
 
 export function MenuFormDialog(props: PMenuFormDialogProps) {
   const { isOpen, onClose, initialData } = props;
   const isEditing = !!initialData
+  const { t } = useTranslation(['menu', 'common']);
+
+  const menuSchema = useMemo(() => z.object({
+    KODEMENU: z.string().min(1, t('validation.code_required')).max(25),
+    Keterangan: z.string().min(1, t('validation.description_required')).max(500),
+    L0: z.coerce.number().min(0, t('validation.level_min')),
+    ACCESS: z.coerce.number().default(0),
+    OL: z.coerce.number().default(0),
+    TipeTrans: z.string().optional().default(''),
+    Routename: z.string().nullable().optional(),
+    Icon: z.string().max(50).default(''),
+    PlatformMask: z.coerce.number().nullable().optional(),
+    _parentCode: z.string().optional() // Virtual field for UI form
+  }), [t]);
+
+  type MenuFormValues = z.infer<typeof menuSchema>
 
   const form = useForm<MenuFormValues>({
     resolver: zodResolver(menuSchema) as any,
@@ -97,9 +98,6 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
   const updateMutation = useUpdateMenu(initialData?.KODEMENU || '', onClose)
 
   const onSubmit = (values: MenuFormValues) => {
-    // If it's a child menu (L0 > 0) and creating new, we might enforce the KODEMENU starts with ParentCode
-    // But since users can edit KODEMENU manually, we just pass what they wrote.
-    
     const payload: IDbMenu = {
       KODEMENU: values.KODEMENU,
       Keterangan: values.Keterangan,
@@ -136,17 +134,17 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
       <DialogContent className="max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            {isEditing ? 'Edit Menu' : 'Tambah Menu Baru'}
+            {isEditing ? t('edit_menu') : t('add_new_menu')}
           </DialogTitle>
           <DialogDescription className="hidden">
-            Isi form berikut untuk {isEditing ? 'mengedit' : 'menambahkan'} menu.
+            {t('form_desc', { action: isEditing ? t('form_desc_edit') : t('form_desc_add') })}
           </DialogDescription>
         </DialogHeader>
 
         {mutationError && (
           <Alert className="mt-4 border-red-200 bg-red-50/80 dark:bg-red-900/20">
             <AlertDescription className="text-red-800 dark:text-red-200 text-sm font-medium">
-              {mutationError.message || mutationError.rawMsg || 'Gagal menyimpan menu'}
+              {mutationError.message || mutationError.rawMsg || t('save_failed')}
             </AlertDescription>
           </Alert>
         )}
@@ -155,12 +153,12 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Level Menu */}
             <div className="space-y-2">
-              <Label htmlFor="L0">Level Menu (L0)</Label>
+              <Label htmlFor="L0">{t('level')}</Label>
               <Input
                 id="L0"
                 type="number"
                 min="0"
-                disabled={isEditing} // Biasanya level tidak boleh diubah saat edit
+                disabled={isEditing}
                 {...form.register('L0')}
               />
               {form.formState.errors.L0 && (
@@ -171,7 +169,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
             {/* Parent Menu (Muncul jika L0 > 0) */}
             {watchL0 > 0 && (
               <div className="space-y-2">
-                <Label>Parent Menu</Label>
+                <Label>{t('parent')}</Label>
                 <Controller
                   name="_parentCode"
                   control={form.control}
@@ -180,7 +178,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
                       options={parentOptions}
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder={isLoadingParents ? 'Memuat parent...' : 'Pilih parent menu'}
+                      placeholder={isLoadingParents ? t('parent_loading') : t('parent_placeholder')}
                       disabled={isEditing || isLoadingParents}
                     />
                   )}
@@ -190,7 +188,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
 
             {/* Kode Menu */}
             <div className="space-y-2">
-              <Label htmlFor="KODEMENU">Kode Menu</Label>
+              <Label htmlFor="KODEMENU">{t('code')}</Label>
               <Input
                 id="KODEMENU"
                 placeholder={watchParentCode ? `${watchParentCode}01` : 'M01'}
@@ -204,7 +202,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
 
             {/* Keterangan */}
             <div className="space-y-2">
-              <Label htmlFor="Keterangan">Keterangan / Nama Menu</Label>
+              <Label htmlFor="Keterangan">{t('description')}</Label>
               <Input
                 id="Keterangan"
                 placeholder="Dashboard"
@@ -217,7 +215,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
 
             {/* Icon */}
             <div className="space-y-2">
-              <Label>Ikon (Lucide React)</Label>
+              <Label>{t('icon')}</Label>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <Controller
@@ -228,7 +226,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
                         options={iconOptions}
                         value={field.value}
                         onValueChange={field.onChange}
-                        placeholder="Cari ikon..."
+                        placeholder={t('icon_search')}
                       />
                     )}
                   />
@@ -243,7 +241,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
 
             {/* Routename */}
             <div className="space-y-2">
-              <Label htmlFor="Routename">Routename (Opsional)</Label>
+              <Label htmlFor="Routename">{t('routename')}</Label>
               <Input
                 id="Routename"
                 placeholder="/admin/dashboard"
@@ -253,7 +251,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
 
             {/* Tipe Transaksi */}
             <div className="space-y-2">
-              <Label htmlFor="TipeTrans">Tipe Transaksi (Opsional)</Label>
+              <Label htmlFor="TipeTrans">{t('tipe_trans')}</Label>
               <Input
                 id="TipeTrans"
                 placeholder="TRX01"
@@ -264,7 +262,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
             {/* Legacy & Auth Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="ACCESS">ACCESS (Legacy)</Label>
+                <Label htmlFor="ACCESS">{t('access')}</Label>
                 <Input
                   id="ACCESS"
                   type="number"
@@ -272,7 +270,7 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="OL">Otorisasi Level (OL)</Label>
+                <Label htmlFor="OL">{t('ol')}</Label>
                 <Input
                   id="OL"
                   type="number"
@@ -284,10 +282,10 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
 
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-800">
             <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
-              Batal
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={isLoading} className="min-w-[120px]">
-              {isLoading ? 'Menyimpan...' : 'Simpan Menu'}
+              {isLoading ? t('saving') : t('save')}
             </Button>
           </div>
         </form>

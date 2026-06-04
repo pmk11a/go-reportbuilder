@@ -8,8 +8,10 @@ import { ThemeToggle } from "@/components/ThemeToggle"
 import { authService } from "@/services/authService"
 import { Settings, KeyRound, LogOut, CheckCircle2 } from "lucide-react"
 import { useModalStore } from "@/store/modalStore"
+import { useTranslation } from "react-i18next"
 
 export function MainHeader() {
+  const { t } = useTranslation()
   const isDark = useThemeStore((state) => state.isDark)
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
@@ -21,8 +23,8 @@ export function MainHeader() {
   const { title, subtitle } = useMemo(() => {
     if (pathname === '/admin' || pathname === '/admin/dashboard' || pathname === '/') {
       return {
-        title: `Selamat Datang, ${user?.full_name || "Guest IUser"}`,
-        subtitle: 'Ringkasan dashboard Anda.'
+        title: t('header.welcome_user', 'Welcome, {{name}}', { name: user?.full_name || "Guest" }),
+        subtitle: t('header.dashboard_subtitle', 'Your dashboard summary.')
       }
     }
 
@@ -40,8 +42,8 @@ export function MainHeader() {
     const menuTitle = findMenuTitle(menus || [])
     if (menuTitle) {
       return {
-        title: `Manajemen ${menuTitle}`,
-        subtitle: `Kelola pengaturan dan data untuk modul ${menuTitle}.`
+        title: t('header.management_module', 'Management {{module}}', { module: menuTitle }),
+        subtitle: t('header.management_subtitle', 'Manage settings and data for {{module}} module.', { module: menuTitle })
       }
     }
 
@@ -50,10 +52,10 @@ export function MainHeader() {
     const fallbackTitle = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1)
 
     return {
-      title: fallbackTitle ? `Halaman ${fallbackTitle}` : 'DAPEN Dashboard',
-      subtitle: 'Detail halaman sistem.'
+      title: fallbackTitle ? t('header.page_title', 'Page {{name}}', { name: fallbackTitle }) : t('header.default_title', 'DAPEN Dashboard'),
+      subtitle: t('header.default_subtitle', 'Detail page of the system.')
     }
-  }, [pathname, user, menus])
+  }, [pathname, user, menus, t])
 
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -101,7 +103,7 @@ export function MainHeader() {
           <div className="relative">
             <button
               onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="w-11 h-11 rounded-full bg-sky-600 border-[3px] border-white dark:border-slate-800 flex items-center justify-center text-white text-lg font-black shadow-lg transition-transform hover:scale-105 active:scale-95"
+              className="w-11 h-11 rounded-full bg-sky-600 border-[3px] border-white dark:border-slate-800 flex items-center justify-center text-white text-lg font-black shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
             >
               {user?.full_name?.charAt(0) || "G"}
             </button>
@@ -110,46 +112,43 @@ export function MainHeader() {
             {isProfileOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                <div className={`absolute right-0 mt-3 w-64 rounded-3xl border shadow-2xl z-50 py-3 animate-in fade-in zoom-in-95 duration-200 ${
-                  isDark ? "bg-[#0f172a] border-white/5 text-white" : "bg-white border-slate-100 text-[#1e293b]"
-                }`}>
+                <div className={`absolute right-0 mt-3 w-64 rounded-3xl border shadow-2xl z-50 py-3 animate-in fade-in zoom-in-95 duration-200 ${isDark ? "bg-[#0f172a] border-white/5 text-white" : "bg-white border-slate-100 text-[#1e293b]"
+                  }`}>
                   <div className="px-5 py-3 border-b border-slate-100 dark:border-white/5 mb-2">
                     <p className="text-sm font-bold truncate">{user?.email || "admin@dapen.id"}</p>
                     <p className="text-xs text-sky-500 uppercase tracking-widest font-black mt-1">
-                      {user?.role === "admin" ? "Super Admin" : "Pengurus"}
+                      {user?.role === "admin" ? t('header.super_admin', 'Super Admin') : t('header.operator', 'Operator')}
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       setIsProfileOpen(false);
-                      setToastMessage({ type: "success", text: "Fitur Pengaturan Akun segera hadir!" });
+                      setToastMessage({ type: "success", text: t('header.feature_coming_soon', 'Account settings feature is coming soon!') });
                     }}
-                    className={`w-full flex items-center space-x-3 px-5 py-3 text-left transition-colors ${
-                      isDark ? "hover:bg-white/5 text-slate-300 hover:text-white" : "hover:bg-slate-50 text-slate-600 hover:text-sky-600"
-                    }`}
+                    className={`w-full flex items-center space-x-3 px-5 py-3 text-left transition-colors cursor-pointer ${isDark ? "hover:bg-white/5 text-slate-300 hover:text-white" : "hover:bg-slate-50 text-slate-600 hover:text-sky-600"
+                      }`}
                   >
                     <Settings size={18} />
-                    <span className="text-sm font-bold">Pengaturan Akun</span>
+                    <span className="text-sm font-bold">{t('header.account_settings', 'Account Settings')}</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setIsProfileOpen(false);
                       openModal("changePassword");
                     }}
-                    className={`w-full flex items-center space-x-3 px-5 py-3 text-left transition-colors ${
-                      isDark ? "hover:bg-white/5 text-slate-300 hover:text-white" : "hover:bg-slate-50 text-slate-600 hover:text-sky-600"
-                    }`}
+                    className={`w-full flex items-center space-x-3 px-5 py-3 text-left transition-colors cursor-pointer ${isDark ? "hover:bg-white/5 text-slate-300 hover:text-white" : "hover:bg-slate-50 text-slate-600 hover:text-sky-600"
+                      }`}
                   >
                     <KeyRound size={18} />
-                    <span className="text-sm font-bold">Ganti Password</span>
+                    <span className="text-sm font-bold">{t('header.change_password', 'Change Password')}</span>
                   </button>
                   <div className={`h-px my-2 mx-4 ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
-                  <button 
+                  <button
                     onClick={handleLogout}
-                    className="w-full flex items-center space-x-3 px-5 py-3 text-left text-red-500 hover:bg-red-500/10 transition-colors"
+                    className="w-full flex items-center space-x-3 px-5 py-3 text-left text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                   >
                     <LogOut size={18} />
-                    <span className="text-sm font-black">Keluar</span>
+                    <span className="text-sm font-black">{t('header.logout', 'Logout')}</span>
                   </button>
                 </div>
               </>

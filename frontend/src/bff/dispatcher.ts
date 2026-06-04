@@ -103,8 +103,24 @@ export async function dispatchBffRequest( req: any, res: any, ssrLoadModule: any
             res.setHeader( key, value )
           } )
 
-          const body = await response.text()
-          res.end( body )
+          // Stream binary payloads (xlsx, pdf, octet-stream, images, etc.)
+          // unchanged — only text/json responses go through .text() so that
+          // string-based responses keep working without buffering issues.
+          const contentType = ( response.headers.get( 'content-type' ) || '' ).toLowerCase()
+          const isBinary =
+            !contentType.startsWith( 'text/' ) &&
+            !contentType.includes( 'json' ) &&
+            !contentType.includes( 'xml' ) &&
+            !contentType.includes( 'html' ) &&
+            contentType !== ''
+
+          if ( isBinary ) {
+            const buf = Buffer.from( await response.arrayBuffer() )
+            res.end( buf )
+          } else {
+            const body = await response.text()
+            res.end( body )
+          }
           return true
         } catch ( handlerError: any ) {
           console.error( `[BFF] Handler Error for ${ pathname }:`, handlerError )

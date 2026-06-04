@@ -28,8 +28,8 @@ type SDBPERUSAHAAN struct {
 	KOTAPKP1       *string    `gorm:"column:KOTAPKP1;size:50" json:"kotapkp1"`
 	NPWP1          *string    `gorm:"column:NPWP1;size:50" json:"npwp1"`
 	TGLPENGUKUHAN1 *time.Time `gorm:"column:TGLPENGUKUHAN1;type:datetime" json:"tglpengukuhan1"`
-	LOGO           []byte     `gorm:"column:LOGO" json:"logo,omitempty"`
-	TTD            []byte     `gorm:"column:TTD" json:"ttd,omitempty"`
+	LOGO           []byte     `gorm:"column:LOGO" json:"-"`
+	TTD            []byte     `gorm:"column:TTD" json:"-"`
 }
 
 // TableName overrides the table name

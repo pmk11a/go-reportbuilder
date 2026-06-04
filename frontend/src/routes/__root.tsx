@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { useAuthStore } from "@/store/authStore";
@@ -34,6 +35,30 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
+    useEffect(() => {
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === 'auth-storage') {
+                try {
+                    const newValue = event.newValue;
+                    if (newValue) {
+                        const parsed = JSON.parse(newValue);
+                        if (parsed && parsed.state) {
+                            const user = parsed.state.user;
+                            useAuthStore.getState().setUser(user);
+                        }
+                    } else {
+                        useAuthStore.getState().setUser(null);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse auth-storage change:", e);
+                }
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
     return (
         <ThemeProvider>
             <div className="min-h-screen bg-background text-foreground">

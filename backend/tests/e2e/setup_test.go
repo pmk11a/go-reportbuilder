@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/masza1/dapen-backend/internal/config"
-	"github.com/masza1/dapen-backend/internal/db"
+	"github.com/masza1/dapen-backend/internal/shared/config"
+	"github.com/masza1/dapen-backend/internal/shared/database"
 	"github.com/masza1/dapen-backend/internal/handlers"
-	"github.com/masza1/dapen-backend/internal/middleware"
+	"github.com/masza1/dapen-backend/internal/shared/middleware"
 	"github.com/masza1/dapen-backend/internal/repositories"
 	"github.com/masza1/dapen-backend/internal/routes"
 	"github.com/masza1/dapen-backend/internal/services"
@@ -28,19 +28,19 @@ func SetupTestServer() (*gin.Engine, *gorm.DB, *config.SConfig) {
 	// 1. Load Config
 	cfg := config.LoadConfig()
 	
-	// We use the real DB (development database) since this is an E2E test.
+	// We use the real DB (development dbConn) since this is an E2E test.
 	// In the future, this can be switched to a SQLite in-memory instance for isolation.
-	database := db.InitDB(cfg)
+	dbConn := database.InitDB(cfg)
 
 	// 2. Init Redis
-	db.InitRedis(cfg)
+	database.InitRedis(cfg)
 
 	// 3. Initialize Repositories
-	userRepo := repositories.NewUserRepository(database)
-	filterRepo := repositories.NewFilterRepository(database)
-	menuRepo := repositories.NewMenuRepository(database)
-	activityLogRepo := repositories.NewActivityLogRepository(database)
-	periodeRepo := repositories.NewPeriodeRepository(database)
+	userRepo := repositories.NewUserRepository(dbConn)
+	filterRepo := repositories.NewFilterRepository(dbConn)
+	menuRepo := repositories.NewMenuRepository(dbConn)
+	activityLogRepo := repositories.NewActivityLogRepository(dbConn)
+	periodeRepo := repositories.NewPeriodeRepository(dbConn)
 
 	// 4. Initialize Services
 	authService := services.NewAuthService(userRepo, cfg)
@@ -51,7 +51,7 @@ func SetupTestServer() (*gin.Engine, *gorm.DB, *config.SConfig) {
 
 	// 5. Initialize Handlers
 	authHandler := handlers.NewAuthHandler(authService)
-	dashboardHandler := handlers.NewDashboardHandler(database)
+	dashboardHandler := handlers.NewDashboardHandler(dbConn)
 	filterHandler := handlers.NewFilterHandler(filterService)
 	menuHandler := handlers.NewMenuHandler(menuService)
 	activityLogHandler := handlers.NewActivityLogHandler(activityLogService)
@@ -77,10 +77,10 @@ func SetupTestServer() (*gin.Engine, *gorm.DB, *config.SConfig) {
 		SActivityLogHandler: activityLogHandler,
 		SPeriodeHandler:     periodeHandler,
 		SConfig:             cfg,
-		DB:                  database,
+		DB:                  dbConn,
 	})
 
-	return engine, database, cfg
+	return engine, dbConn, cfg
 }
 
 func ExecuteRequest(req *http.Request, engine *gin.Engine) *httptest.ResponseRecorder {

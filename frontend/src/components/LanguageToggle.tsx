@@ -26,7 +26,7 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
     return (
         <button
             onClick={toggleLanguage}
-            className={`rounded-full transition-all duration-300 hover:bg-white/20 active:scale-95 group overflow-hidden ${className || ""}`}
+            className={`rounded-full transition-all duration-300 hover:bg-white/20 active:scale-95 group overflow-hidden cursor-pointer ${className || ""}`}
             aria-label="Toggle language"
             title={isEn ? "Switch to Indonesian" : "Switch to English"}>
             <div className="relative w-10 h-10 flex items-center justify-center font-bold text-sm">

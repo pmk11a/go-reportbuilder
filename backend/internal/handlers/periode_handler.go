@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
+	cachepkg "github.com/masza1/dapen-backend/internal/shared/cache"
+	"github.com/masza1/dapen-backend/internal/shared/database"
+	"github.com/masza1/dapen-backend/internal/models"
 	"github.com/masza1/dapen-backend/internal/services"
-	"github.com/masza1/dapen-backend/internal/utils"
+	"github.com/masza1/dapen-backend/internal/shared/response"
 )
 
 type SPeriodeHandler struct {
@@ -28,17 +33,33 @@ func (h *SPeriodeHandler) GetPeriode(c *gin.Context) {
 	// Assuming userID is set in context by auth middleware
 	legacyUserID, exists := c.Get("legacy_user_id")
 	if !exists {
-		utils.Unauthorized(c, "Unauthorized")
+		response.Unauthorized(c, "Unauthorized")
+		return
+	}
+
+	// 1. Check if cache exists (Fail-Open cache check)
+	cacheKey := "cache:user:" + legacyUserID.(string) + ":periode"
+	cacheManager := cachepkg.NewCacheManager(database.RedisClient)
+	bypassCache := c.GetHeader("X-Cache-Bypass") == "true"
+
+	var cachedPeriode models.DBPeriode
+	if !bypassCache && cacheManager.Get(c.Request.Context(), cacheKey, &cachedPeriode) {
+		response.Success(c, "Success", &cachedPeriode)
 		return
 	}
 
 	periode, err := h.periodeService.GetPeriode(legacyUserID.(string))
 	if err != nil {
-		utils.InternalError(c, err.Error())
+		response.InternalError(c, err.Error())
 		return
 	}
 
-	utils.Success(c, "Success", periode)
+	// Cache in Redis for 1 Hour (Enterprise Rule #1)
+	if periode != nil {
+		cacheManager.Set(c.Request.Context(), cacheKey, periode, 1*time.Hour)
+	}
+
+	response.Success(c, "Success", periode)
 }
 
 type SetPeriodeRequest struct {
@@ -62,21 +83,26 @@ type SetPeriodeRequest struct {
 func (h *SPeriodeHandler) SetPeriode(c *gin.Context) {
 	legacyUserID, exists := c.Get("legacy_user_id")
 	if !exists {
-		utils.Unauthorized(c, "Unauthorized")
+		response.Unauthorized(c, "Unauthorized")
 		return
 	}
 
 	var req SetPeriodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.BadRequest(c, err.Error())
+		response.BadRequest(c, err.Error())
 		return
 	}
 
 	err := h.periodeService.SetPeriode(legacyUserID.(string), req.BULAN, req.TAHUN)
 	if err != nil {
-		utils.InternalError(c, "Failed to set periode")
+		response.InternalError(c, "Failed to set periode")
 		return
 	}
 
-	utils.Success(c, "Periode berhasil diupdate", nil)
+	// Invalidate Cache immediately on mutation (Enterprise Rule #3)
+	cacheKey := "cache:user:" + legacyUserID.(string) + ":periode"
+	cacheManager := cachepkg.NewCacheManager(database.RedisClient)
+	cacheManager.Delete(c.Request.Context(), cacheKey)
+
+	response.Success(c, "Periode berhasil diupdate", nil)
 }

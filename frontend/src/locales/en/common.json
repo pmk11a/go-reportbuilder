@@ -50,6 +50,60 @@
       "sign_in": "Sign in",
       "not_implemented": "Registration is not yet implemented. Please use the login page.",
       "register_failed": "Registration failed"
+    },
+    "change_password": {
+      "title": "Change Password",
+      "description": "Your account change password form.",
+      "old_password": "Old Password",
+      "old_password_placeholder": "Enter old password",
+      "new_password": "New Password",
+      "new_password_placeholder": "Enter new password",
+      "confirm_password": "Confirm New Password",
+      "confirm_password_placeholder": "Confirm new password",
+      "success_desc": "Password successfully updated.",
+      "errors": {
+        "all_required": "All password fields are required.",
+        "min_length": "New password must be at least 6 characters.",
+        "mismatch": "Confirm new password does not match.",
+        "fail_update": "Failed to update password."
+      }
     }
+  },
+  "file_upload": {
+    "drag_drop": "Drag or drop file here",
+    "click_browse": "Or click to browse from device",
+    "choose_file": "Choose File",
+    "no_file": "No file selected",
+    "file_selected": "File selected"
+  },
+  "header": {
+    "welcome_user": "Welcome, {{name}}",
+    "dashboard_subtitle": "Your dashboard summary.",
+    "management_module": "Management {{module}}",
+    "management_subtitle": "Manage settings and data for {{module}} module.",
+    "page_title": "Page {{name}}",
+    "default_title": "DAPEN Dashboard",
+    "default_subtitle": "Detail page of the system.",
+    "super_admin": "Super Admin",
+    "operator": "Operator",
+    "feature_coming_soon": "Account settings feature is coming soon!",
+    "account_settings": "Account Settings",
+    "change_password": "Change Password",
+    "logout": "Logout"
+  },
+  "menu_list": {
+    "menu": "Menu",
+    "search_menu": "Search menu...",
+    "no_menu": "No menu available",
+    "expand_menu": "Expand Menu"
+  },
+  "common": {
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "admin": {
+    "role_admin": "Admin",
+    "role_karyawan": "Employee"
   }
 }

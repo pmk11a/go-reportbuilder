@@ -114,7 +114,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.SActivityLogConfigReq"
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SActivityLogConfigReq"
                         }
                     }
                 ],
@@ -331,7 +331,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.SDbMenu"
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SDbMenu"
                         }
                     }
                 ],
@@ -467,7 +467,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.SDbMenu"
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SDbMenu"
                         }
                     }
                 ],
@@ -521,6 +521,638 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/reports/permissions": {
+            "get": {
+                "description": "Returns a matrix of users × menus × permissions. Supports JSON,\nExcel (.xlsx) and PDF output via the `format` query param.\n`userId` and `menuId` are optional filters; `menuType` selects\nbetween `menu` (dbmenu, default) and `report` (dbmenureport).\nThe Excel and PDF responses are streamed and require at least\none filter (userId or menuId) to avoid an OOM on the full matrix.",
+                "produces": [
+                    "application/json",
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Permission Report",
+                "parameters": [
+                    {
+                        "enum": [
+                            "json",
+                            "xlsx",
+                            "pdf"
+                        ],
+                        "type": "string",
+                        "default": "json",
+                        "description": "Output format",
+                        "name": "format",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by user ID",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by menu code",
+                        "name": "menuId",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "menu",
+                            "report"
+                        ],
+                        "type": "string",
+                        "default": "menu",
+                        "description": "menu or report",
+                        "name": "menuType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page Number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Per page",
+                        "name": "perPage",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SPermissionReportResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/settings/company": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Settings"
+                ],
+                "summary": "Get Company Settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SDBPERUSAHAAN"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Settings"
+                ],
+                "summary": "Update Company Settings",
+                "parameters": [
+                    {
+                        "description": "Company Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SDBPERUSAHAAN"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/settings/numbers": {
+            "get": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Settings"
+                ],
+                "summary": "Get Numbering Settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SDBNOMOR"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Settings"
+                ],
+                "summary": "Update Numbering Settings",
+                "parameters": [
+                    {
+                        "description": "Numbering Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SDBNOMOR"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/users": {
+            "get": {
+                "description": "Fetch a paginated list of legacy users from the DBFLPASS table",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get Users",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page Number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status filter",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Hashing password and storing a new user record inside the DBFLPASS table",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Create User",
+                "parameters": [
+                    {
+                        "description": "Create User Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SCreateUserPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/users/{id}": {
+            "put": {
+                "description": "Update legacy fields for a user inside the DBFLPASS table",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update User",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update User Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SUpdateUserPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a user from the DBFLPASS table and prevent self-deletion",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Delete User",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/users/{id}/permissions": {
+            "get": {
+                "description": "Fetch legacy menu, report, and COA access permissions for a given user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get User Permissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update checked, aktif, and ACCESS values for dbmenu, dbmenureport, and DBAKSESPERKIRAAN for a given user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update User Permissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update User Permissions Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SUpdateUserPermissionsPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/users/{id}/permissions/coa": {
+            "get": {
+                "description": "Fetch only the COA (DBAKSESPERKIRAAN) access entries for a given user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get User COA Access",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/users/{id}/permissions/menu": {
+            "get": {
+                "description": "Fetch only the menu (dbmenu) permissions for a given user. This is\none of three split endpoints introduced by TASK-009 to enable\nper-tab caching on the frontend.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get User Menu Permissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/users/{id}/permissions/report": {
+            "get": {
+                "description": "Fetch only the report (dbmenureport) permissions for a given user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get User Report Permissions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -606,7 +1238,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.SLoginRequest"
+                            "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_models.SLoginRequest"
                         }
                     }
                 ],
@@ -752,7 +1384,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/berkas.SetPeriodeRequest"
+                            "$ref": "#/definitions/internal_handlers.SetPeriodeRequest"
                         }
                     }
                 ],
@@ -1110,22 +1742,7 @@
         }
     },
     "definitions": {
-        "berkas.SetPeriodeRequest": {
-            "type": "object",
-            "required": [
-                "BULAN",
-                "TAHUN"
-            ],
-            "properties": {
-                "BULAN": {
-                    "type": "string"
-                },
-                "TAHUN": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.SActivityLogConfigReq": {
+        "github_com_masza1_dapen-backend_internal_dto.SActivityLogConfigReq": {
             "type": "object",
             "required": [
                 "table_name"
@@ -1137,7 +1754,7 @@
                 "fields": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.SActivityLogFieldReq"
+                        "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SActivityLogFieldReq"
                     }
                 },
                 "is_enabled": {
@@ -1163,7 +1780,7 @@
                 }
             }
         },
-        "dto.SActivityLogFieldReq": {
+        "github_com_masza1_dapen-backend_internal_dto.SActivityLogFieldReq": {
             "type": "object",
             "required": [
                 "field_name"
@@ -1189,7 +1806,703 @@
                 }
             }
         },
-        "models.SDbMenu": {
+        "github_com_masza1_dapen-backend_internal_dto.SCreateUserPayload": {
+            "type": "object",
+            "required": [
+                "full_name",
+                "password",
+                "role",
+                "username"
+            ],
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "employee",
+                        "karyawan"
+                    ]
+                },
+                "username": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_dto.SPermissionReportResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SPermissionReportRowDTO"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_dto.SPermissionReportRowDTO": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "has_access": {
+                    "type": "integer"
+                },
+                "is_approve_1": {
+                    "type": "integer"
+                },
+                "is_approve_2": {
+                    "type": "integer"
+                },
+                "is_approve_3": {
+                    "type": "integer"
+                },
+                "is_approve_4": {
+                    "type": "integer"
+                },
+                "is_approve_5": {
+                    "type": "integer"
+                },
+                "is_canceled": {
+                    "type": "integer"
+                },
+                "is_create": {
+                    "type": "integer"
+                },
+                "is_delete": {
+                    "type": "integer"
+                },
+                "is_export": {
+                    "type": "integer"
+                },
+                "is_print": {
+                    "type": "integer"
+                },
+                "is_update": {
+                    "type": "integer"
+                },
+                "menu_code": {
+                    "type": "string"
+                },
+                "menu_name": {
+                    "type": "string"
+                },
+                "menu_type": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_dto.SUpdateUserPayload": {
+            "type": "object",
+            "required": [
+                "full_name",
+                "role"
+            ],
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "description": "optional: leave blank to keep unchanged",
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "admin",
+                        "employee",
+                        "karyawan"
+                    ]
+                },
+                "status": {
+                    "description": "optional: \"0\" = inactive, \"1\" = active",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_dto.SUpdateUserPermissionsPayload": {
+            "type": "object",
+            "properties": {
+                "coa": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SUserCoaPayload"
+                    }
+                },
+                "menu": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SUserPermissionPayload"
+                    }
+                },
+                "report": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_masza1_dapen-backend_internal_dto.SUserPermissionPayload"
+                    }
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_dto.SUserCoaPayload": {
+            "type": "object",
+            "properties": {
+                "checked": {
+                    "description": "0 = no access, 1 = has access",
+                    "type": "integer"
+                },
+                "keterangan": {
+                    "type": "string"
+                },
+                "perkiraan": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_dto.SUserPermissionPayload": {
+            "type": "object",
+            "properties": {
+                "access": {
+                    "type": "integer"
+                },
+                "aktif": {
+                    "type": "integer"
+                },
+                "checked": {
+                    "description": "Legacy simple model (for backward compatibility)",
+                    "type": "integer"
+                },
+                "has_access": {
+                    "description": "Granular permissions from Laravel DbFlmenu",
+                    "type": "integer"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "is_approve_1": {
+                    "type": "integer"
+                },
+                "is_approve_2": {
+                    "type": "integer"
+                },
+                "is_approve_3": {
+                    "type": "integer"
+                },
+                "is_approve_4": {
+                    "type": "integer"
+                },
+                "is_approve_5": {
+                    "type": "integer"
+                },
+                "is_canceled": {
+                    "type": "integer"
+                },
+                "is_create": {
+                    "type": "integer"
+                },
+                "is_delete": {
+                    "type": "integer"
+                },
+                "is_export": {
+                    "type": "integer"
+                },
+                "is_print": {
+                    "type": "integer"
+                },
+                "is_update": {
+                    "type": "integer"
+                },
+                "keterangan": {
+                    "type": "string"
+                },
+                "kodemenu": {
+                    "description": "Menu hierarchy \u0026 metadata",
+                    "type": "string"
+                },
+                "l0": {
+                    "type": "integer"
+                },
+                "l1": {
+                    "type": "integer"
+                },
+                "l2": {
+                    "type": "integer"
+                },
+                "l3": {
+                    "type": "integer"
+                },
+                "routename": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_models.SDBNOMOR": {
+            "type": "object",
+            "properties": {
+                "akm": {
+                    "type": "string"
+                },
+                "alias": {
+                    "type": "string"
+                },
+                "avt": {
+                    "type": "string"
+                },
+                "bbk": {
+                    "type": "string"
+                },
+                "bbm": {
+                    "type": "string"
+                },
+                "bbp": {
+                    "type": "string"
+                },
+                "bhn": {
+                    "type": "string"
+                },
+                "bjk": {
+                    "type": "string"
+                },
+                "bkk": {
+                    "description": "Dynamic Numbering Fields",
+                    "type": "string"
+                },
+                "bkm": {
+                    "type": "string"
+                },
+                "bmm": {
+                    "type": "string"
+                },
+                "bp": {
+                    "type": "string"
+                },
+                "bpb": {
+                    "type": "string"
+                },
+                "bpl": {
+                    "type": "string"
+                },
+                "bpo": {
+                    "type": "string"
+                },
+                "bppb": {
+                    "type": "string"
+                },
+                "bpsb": {
+                    "type": "string"
+                },
+                "bpsprk": {
+                    "type": "string"
+                },
+                "bsprk": {
+                    "type": "string"
+                },
+                "contoh": {
+                    "type": "string"
+                },
+                "cr": {
+                    "type": "string"
+                },
+                "digitNomor": {
+                    "type": "string"
+                },
+                "dn": {
+                    "type": "string"
+                },
+                "enq": {
+                    "type": "string"
+                },
+                "format1": {
+                    "type": "integer"
+                },
+                "format2": {
+                    "type": "integer"
+                },
+                "format3": {
+                    "type": "integer"
+                },
+                "format4": {
+                    "type": "integer"
+                },
+                "hpd": {
+                    "type": "string"
+                },
+                "ht": {
+                    "type": "string"
+                },
+                "inicab": {
+                    "type": "string"
+                },
+                "ins": {
+                    "type": "string"
+                },
+                "inv": {
+                    "type": "string"
+                },
+                "invc": {
+                    "type": "string"
+                },
+                "kmbj": {
+                    "type": "string"
+                },
+                "kms": {
+                    "type": "string"
+                },
+                "kn": {
+                    "type": "string"
+                },
+                "kns": {
+                    "type": "string"
+                },
+                "krs": {
+                    "type": "string"
+                },
+                "noInvc": {
+                    "type": "string"
+                },
+                "noKn": {
+                    "type": "string"
+                },
+                "noSpr": {
+                    "type": "string"
+                },
+                "nobbk": {
+                    "type": "string"
+                },
+                "nobbm": {
+                    "type": "string"
+                },
+                "nobbp": {
+                    "type": "string"
+                },
+                "nobhn": {
+                    "type": "string"
+                },
+                "nobjk": {
+                    "type": "string"
+                },
+                "nobkk": {
+                    "type": "string"
+                },
+                "nobkm": {
+                    "type": "string"
+                },
+                "nobmm": {
+                    "type": "string"
+                },
+                "nobp": {
+                    "type": "string"
+                },
+                "nobpb": {
+                    "type": "string"
+                },
+                "nobpl": {
+                    "type": "string"
+                },
+                "nobpo": {
+                    "type": "string"
+                },
+                "nobppb": {
+                    "type": "string"
+                },
+                "nobpsb": {
+                    "type": "string"
+                },
+                "nobpsprk": {
+                    "type": "string"
+                },
+                "nobsprk": {
+                    "type": "string"
+                },
+                "nocr": {
+                    "type": "string"
+                },
+                "noenq": {
+                    "type": "string"
+                },
+                "noins": {
+                    "type": "string"
+                },
+                "noinv": {
+                    "type": "string"
+                },
+                "nokms": {
+                    "type": "string"
+                },
+                "nokns": {
+                    "type": "string"
+                },
+                "noopn": {
+                    "type": "string"
+                },
+                "nopbl": {
+                    "type": "string"
+                },
+                "nopjl": {
+                    "type": "string"
+                },
+                "nopnj": {
+                    "type": "string"
+                },
+                "nopo": {
+                    "type": "string"
+                },
+                "noppl": {
+                    "type": "string"
+                },
+                "norbj": {
+                    "type": "string"
+                },
+                "norbpb": {
+                    "type": "string"
+                },
+                "norkl": {
+                    "type": "string"
+                },
+                "norpb": {
+                    "type": "string"
+                },
+                "norpj": {
+                    "type": "string"
+                },
+                "norspb": {
+                    "type": "string"
+                },
+                "nosc": {
+                    "type": "string"
+                },
+                "noseri": {
+                    "type": "string"
+                },
+                "noship": {
+                    "type": "string"
+                },
+                "noso": {
+                    "type": "string"
+                },
+                "nospb": {
+                    "type": "string"
+                },
+                "nospg": {
+                    "type": "string"
+                },
+                "nospp": {
+                    "type": "string"
+                },
+                "nosprk": {
+                    "type": "string"
+                },
+                "notbj": {
+                    "type": "string"
+                },
+                "notrc": {
+                    "type": "string"
+                },
+                "notrs": {
+                    "type": "string"
+                },
+                "opbj": {
+                    "type": "string"
+                },
+                "opn": {
+                    "type": "string"
+                },
+                "pbl": {
+                    "type": "string"
+                },
+                "pbs": {
+                    "type": "string"
+                },
+                "pemisah": {
+                    "type": "string"
+                },
+                "pjl": {
+                    "type": "string"
+                },
+                "pnj": {
+                    "type": "string"
+                },
+                "po": {
+                    "type": "string"
+                },
+                "pos": {
+                    "type": "string"
+                },
+                "ppl": {
+                    "type": "string"
+                },
+                "pr": {
+                    "type": "string"
+                },
+                "pt": {
+                    "type": "string"
+                },
+                "rbj": {
+                    "type": "string"
+                },
+                "rbp": {
+                    "type": "string"
+                },
+                "rbpb": {
+                    "type": "string"
+                },
+                "reset": {
+                    "type": "integer"
+                },
+                "rkl": {
+                    "type": "string"
+                },
+                "rpb": {
+                    "type": "string"
+                },
+                "rpbs": {
+                    "type": "string"
+                },
+                "rpj": {
+                    "type": "string"
+                },
+                "rspb": {
+                    "type": "string"
+                },
+                "sc": {
+                    "type": "string"
+                },
+                "ship": {
+                    "type": "string"
+                },
+                "so": {
+                    "type": "string"
+                },
+                "spb": {
+                    "type": "string"
+                },
+                "spg": {
+                    "type": "string"
+                },
+                "spk": {
+                    "description": "Other string codes",
+                    "type": "string"
+                },
+                "spp": {
+                    "type": "string"
+                },
+                "spr": {
+                    "type": "string"
+                },
+                "sprk": {
+                    "type": "string"
+                },
+                "tbj": {
+                    "type": "string"
+                },
+                "trc": {
+                    "type": "string"
+                },
+                "trs": {
+                    "type": "string"
+                },
+                "tt": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_models.SDBPERUSAHAAN": {
+            "type": "object",
+            "properties": {
+                "alamat1": {
+                    "type": "string"
+                },
+                "alamat2": {
+                    "type": "string"
+                },
+                "alamatpkp1": {
+                    "type": "string"
+                },
+                "alamatpkp2": {
+                    "type": "string"
+                },
+                "alamatpkp21": {
+                    "type": "string"
+                },
+                "alamatpkp22": {
+                    "type": "string"
+                },
+                "direksi": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "fax": {
+                    "type": "string"
+                },
+                "jabatan": {
+                    "type": "string"
+                },
+                "kodeusaha": {
+                    "type": "string"
+                },
+                "kota": {
+                    "type": "string"
+                },
+                "kotapkp": {
+                    "type": "string"
+                },
+                "kotapkp1": {
+                    "type": "string"
+                },
+                "nama": {
+                    "type": "string"
+                },
+                "namapkp": {
+                    "type": "string"
+                },
+                "namapkp1": {
+                    "type": "string"
+                },
+                "npwp": {
+                    "type": "string"
+                },
+                "npwp1": {
+                    "type": "string"
+                },
+                "telpon": {
+                    "type": "string"
+                },
+                "tglpengukuhan": {
+                    "type": "string"
+                },
+                "tglpengukuhan1": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_masza1_dapen-backend_internal_models.SDbMenu": {
             "type": "object",
             "properties": {
                 "access": {
@@ -1211,6 +2524,7 @@
                     "type": "integer"
                 },
                 "platformMask": {
+                    "description": "Ignored in DB since it doesn't exist in legacy table",
                     "type": "integer"
                 },
                 "routename": {
@@ -1221,7 +2535,7 @@
                 }
             }
         },
-        "models.SLoginRequest": {
+        "github_com_masza1_dapen-backend_internal_models.SLoginRequest": {
             "type": "object",
             "required": [
                 "password",
@@ -1232,6 +2546,21 @@
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handlers.SetPeriodeRequest": {
+            "type": "object",
+            "required": [
+                "BULAN",
+                "TAHUN"
+            ],
+            "properties": {
+                "BULAN": {
+                    "type": "string"
+                },
+                "TAHUN": {
                     "type": "string"
                 }
             }

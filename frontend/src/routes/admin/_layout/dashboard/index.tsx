@@ -23,6 +23,7 @@ import { usePagination } from "@/hooks/usePagination";
 import React, { memo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/data/table";
 import { Each, Show } from "@/components/ui/layout/Render";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/_layout/dashboard/")({
     component: AdminDashboard,
@@ -70,6 +71,7 @@ const SubStatCard = memo(({ icon: Icon, value, label, year, color, isDark }: any
 });
 
 function AdminDashboard() {
+    const { t } = useTranslation('dashboard');
     const isDark = useThemeStore((state) => state.isDark);
     const { page, limit, renderPagination } = usePagination(10);
 
@@ -105,13 +107,13 @@ function AdminDashboard() {
             {/* Top Two Main Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <MainStatCard
-                    label="TOTAL KARYAWAN AKTIF"
+                    label={t("total_active_employees")}
                     value={stats.total_active}
                     icon={Users}
                     isDark={isDark}
                 />
                 <MainStatCard
-                    label="TOTAL KARYAWAN PENSIUN"
+                    label={t("total_retired_employees")}
                     value={stats.total_retired}
                     icon={UserCheck}
                     isDark={isDark}
@@ -125,13 +127,13 @@ function AdminDashboard() {
                     <div className={`p-2.5 rounded-2xl ${isDark ? "bg-green-500/10 text-green-400" : "bg-green-500/10 text-green-500"}`}>
                         <Activity size={22} />
                     </div>
-                    <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e293b]"}`}>Statistik Karyawan Aktif</h3>
+                    <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e293b]"}`}>{t("active_employees_stats")}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <SubStatCard
                         icon={Users}
                         value={stats.active_current_year}
-                        label={`TAHUN INI`}
+                        label={t("this_year")}
                         year={currentYear}
                         color="blue"
                         isDark={isDark}
@@ -139,7 +141,7 @@ function AdminDashboard() {
                     <SubStatCard
                         icon={Activity}
                         value={stats.active_last_year}
-                        label={`TAHUN LALU`}
+                        label={t("last_year")}
                         year={currentYear - 1}
                         color="green"
                         isDark={isDark}
@@ -147,7 +149,7 @@ function AdminDashboard() {
                     <SubStatCard
                         icon={Activity}
                         value={stats.active_next_year}
-                        label={`TAHUN DEPAN`}
+                        label={t("next_year")}
                         year={currentYear + 1}
                         color="purple"
                         isDark={isDark}
@@ -162,13 +164,13 @@ function AdminDashboard() {
                     <div className={`p-2.5 rounded-2xl ${isDark ? "bg-orange-500/10 text-orange-400" : "bg-orange-500/10 text-orange-500"}`}>
                         <Clock size={22} />
                     </div>
-                    <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e293b]"}`}>Statistik Karyawan Pensiun</h3>
+                    <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e293b]"}`}>{t("retired_employees_stats")}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <SubStatCard
                         icon={CalendarCheck}
                         value={stats.retiring_current_year}
-                        label={`TAHUN INI`}
+                        label={t("this_year")}
                         year={currentYear}
                         color="red"
                         isDark={isDark}
@@ -176,7 +178,7 @@ function AdminDashboard() {
                     <SubStatCard
                         icon={UserX}
                         value={stats.retiring_last_year}
-                        label={`TAHUN LALU`}
+                        label={t("last_year")}
                         year={currentYear - 1}
                         color="orange"
                         isDark={isDark}
@@ -184,7 +186,7 @@ function AdminDashboard() {
                     <SubStatCard
                         icon={Clock}
                         value={stats.retiring_next_year}
-                        label={`TAHUN DEPAN`}
+                        label={t("next_year")}
                         year={currentYear + 1}
                         color="yellow"
                         isDark={isDark}
@@ -200,21 +202,21 @@ function AdminDashboard() {
                         <div className="w-10 h-10 rounded-2xl bg-orange-500 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-orange-500/20">
                             !
                         </div>
-                        <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e293b]"}`}>Pensiunan Tanpa Berkas</h3>
+                        <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e293b]"}`}>{t("retired_no_docs")}</h3>
                     </div>
                     <span className="bg-orange-500/10 text-orange-500 text-xs font-black px-5 py-2 rounded-full uppercase tracking-wider border border-orange-500/20">
-                        {pensiunanTotal} Pensiunan
+                        {t("pensiunan_count", { count: pensiunanTotal })}
                     </span>
                 </div>
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>No</TableHead>
-                                <TableHead>Nama</TableHead>
-                                <TableHead>No. Pegawai</TableHead>
-                                <TableHead>Tgl Lahir</TableHead>
-                                <TableHead>Tgl Pensiun</TableHead>
+                                <TableHead>{t("headers.no")}</TableHead>
+                                <TableHead>{t("headers.name")}</TableHead>
+                                <TableHead>{t("headers.employee_no")}</TableHead>
+                                <TableHead>{t("headers.birth_date")}</TableHead>
+                                <TableHead>{t("headers.retirement_date")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -225,7 +227,7 @@ function AdminDashboard() {
                                         <TableCell
                                             colSpan={5}
                                             className="py-10 text-center font-medium italic">
-                                            Semua pensiunan telah melengkapi berkas dokumen.
+                                            {t("all_docs_completed")}
                                         </TableCell>
                                     </TableRow>
                                 }>
@@ -258,7 +260,7 @@ function AdminDashboard() {
                 </div>
                 <div className={`p-6 text-center border-t border-white/5 ${isDark ? "bg-black/20" : "bg-slate-50/30"}`}>
                     <p className="text-[12px] text-slate-500 flex items-center justify-center gap-2 font-bold italic">
-                        <span className="text-orange-500 not-italic text-lg">|</span> Pensiunan yang belum melengkapi berkas dokumen
+                        <span className="text-orange-500 not-italic text-lg">|</span> {t("pensiunan_no_docs_footer")}
                     </p>
                 </div>
             </div>

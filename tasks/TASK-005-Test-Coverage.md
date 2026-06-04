@@ -4,7 +4,7 @@
 Document the missing user scenarios for legacy features (Dashboard, Menu, Periode, Filter) and achieve >80% test coverage for the entire frontend and backend.
 
 ## Status
-⏳ **IN_PROGRESS** - May 31, 2026
+✅ **COMPLETED** - June 1, 2026
 
 ## User Scenarios
 
@@ -17,12 +17,12 @@ Document the missing user scenarios for legacy features (Dashboard, Menu, Period
 - [x] ✅ DONE: **[Edge Case] Empty Menu**: User has a role with no assigned menus. The sidebar gracefully displays "No menus available" without crashing.
 
 ### Periode Feature
-- [ ] ⬜ PENDING: **[Positive] Setup Periode**: Admin opens the periode setup modal, inputs month/year, and saves. The system updates the active accounting period globally.
+- [x] ✅ PASS: **[Positive] Setup Periode**: Admin opens the periode setup modal, inputs month/year, and saves. The system updates the active accounting period globally.
 
 ### Filter Feature
-- [ ] ⬜ PENDING: **[Positive] Search Customer**: User types "John" into a customer select dropdown. The system fetches and displays matching customers correctly.
-- [ ] ⬜ PENDING: **[Negative] Fetch Kas Error**: User attempts to fetch Kas groups, but the API returns 500. The dropdown gracefully shows empty options instead of crashing the form.
+- [x] ✅ PASS: **[Positive] Search Customer**: User types "John" into a customer select dropdown. The system fetches and displays matching customers correctly.
+- [x] ✅ PASS: **[Negative] Fetch Kas Error**: User attempts to fetch Kas groups, but the API returns 500. The dropdown gracefully shows empty options instead of crashing the form.
 
 ### Settings Feature (TASK-003 Retroactive)
-- [ ] ⬜ PENDING: **[Positive] Get Settings**: System retrieves company and numbering settings.
-- [ ] ⬜ PENDING: **[Positive] Update Settings**: Admin saves new company details successfully.
+- [x] ✅ PASS: **[Positive] Get Settings**: System retrieves company and numbering settings.
+- [x] ✅ PASS: **[Positive] Update Settings**: Admin saves new company details successfully.

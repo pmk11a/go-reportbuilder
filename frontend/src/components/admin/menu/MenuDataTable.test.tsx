@@ -5,6 +5,22 @@ import { MenuDataTable } from './MenuDataTable'
 import React from 'react'
 
 // Mock custom hooks
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const keys: Record<string, string> = {
+        'headers.code': 'Kode Menu',
+        'headers.description': 'Keterangan',
+        'headers.level': 'Level (L0)',
+        'headers.icon': 'Icon',
+        'headers.route': 'Route',
+        'headers.actions': 'Actions',
+      }
+      return keys[key] || key
+    }
+  })
+}))
+
 vi.mock('@/hooks/useMenu', () => ({
   useMenus: vi.fn(() => ({
     data: { data: { data: [{ KODEMENU: 'M01', Keterangan: 'Test Menu', L0: 0, ACCESS: 0, OL: 0, Icon: 'home' }] } },
@@ -39,7 +55,14 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 describe('MenuDataTable Component', () => {
-  const queryClient = new QueryClient()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        gcTime: 0,
+        retry: false,
+      },
+    },
+  })
 
   it('renders table headers correctly', () => {
     render(

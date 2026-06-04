@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "frontend"
+		},
+		{
+			"path": "scripts"
+		},
+		{
+			"path": "tasks"
+		},
+		{
+			"path": "tmp"
+		}
+	],
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"/^bash scripts/check-all\\.sh 2>&1 \\| tail -100$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
+}

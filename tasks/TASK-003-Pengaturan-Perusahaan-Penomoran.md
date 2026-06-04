@@ -4,7 +4,7 @@
 Adapt `DbPERUSAHAAN` and `DbNOMOR` from the reference project (Laravel) to be displayed as Tabs (Company & Numbering) at `/admin/berkas/perusahaan`.
 
 ## Status
-⏳ **IN_PROGRESS** - May 31, 2026
+✅ **COMPLETED** - May 31, 2026
 
 ## Backend
 - [x] Create `backend/internal/models/perusahaan.go`

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { IDbMenu } from '@/types/menu';;
+import { IDbMenu } from '@/types/menu';
 import { useMenus, useDeleteMenu, menuKeys } from "@/hooks/useMenu";
 import { Button } from "@/components/ui/overlay/button";
 import { Input } from "@/components/ui/form/input";
@@ -13,8 +13,10 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { usePagination } from "@/hooks/usePagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/data/table";
 import { Badge } from "@/components/ui";
+import { useTranslation } from "react-i18next";
 
 export function MenuDataTable() {
+    const { t } = useTranslation(['menu', 'common']);
     const queryClient = useQueryClient();
     const [search, setSearch] = useState("");
     const debouncedSearch = useDebounce(search, 500);
@@ -31,7 +33,7 @@ export function MenuDataTable() {
     const deleteMutation = useDeleteMenu();
 
     const handleDelete = (kode: string) => {
-        if (confirm(`Yakin ingin menghapus menu ${kode}?`)) {
+        if (confirm(t("delete_confirm", { kode }))) {
             deleteMutation.mutate(kode);
         }
     };
@@ -52,11 +54,11 @@ export function MenuDataTable() {
     return (
         <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex w-full sm:w-auto">
+                <div className="flex w-full sm:w-auto items-center">
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
-                            placeholder="Cari kode atau nama menu..."
+                            placeholder={t("search_placeholder")}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => {
@@ -64,16 +66,17 @@ export function MenuDataTable() {
                                     setPage(1);
                                 }
                             }}
-                            className="pl-9 bg-white dark:bg-slate-950 rounded-r-none border-r-0 focus:z-10 focus:ring-secondary-500"
+                            className="pl-9 h-9 bg-white dark:bg-slate-950 rounded-r-none border-r-0 focus:z-10 focus:ring-secondary-500 text-sm"
                         />
                     </div>
                     <Button
                         variant="secondary"
-                        className="rounded-l-none rounded-r-xl h-auto px-6 font-semibold"
+                        size="sm"
+                        className="rounded-l-none rounded-r-xl h-9 px-6 font-semibold flex items-center justify-center"
                         onClick={() => {
                             setPage(1);
                         }}>
-                        Cari
+                        {t("search_button")}
                     </Button>
                 </div>
 
@@ -84,13 +87,13 @@ export function MenuDataTable() {
                         onClick={() => queryClient.invalidateQueries({ queryKey: menuKeys.all })}
                         disabled={isFetching}>
                         <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-                        Refresh
+                        {t("refresh")}
                     </Button>
                     <Button
                         size="sm"
                         onClick={handleAdd}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Tambah Menu
+                        {t("add_menu")}
                     </Button>
                 </div>
             </div>
@@ -99,12 +102,12 @@ export function MenuDataTable() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Kode Menu</TableHead>
-                            <TableHead>Level (L0)</TableHead>
-                            <TableHead>Keterangan</TableHead>
-                            <TableHead>Ikon</TableHead>
-                            <TableHead>Rute</TableHead>
-                            <TableHead className="text-right">Aksi</TableHead>
+                            <TableHead>{t("headers.code")}</TableHead>
+                            <TableHead>{t("headers.level")}</TableHead>
+                            <TableHead>{t("headers.description")}</TableHead>
+                            <TableHead>{t("headers.icon")}</TableHead>
+                            <TableHead>{t("headers.route")}</TableHead>
+                            <TableHead className="text-right">{t("headers.actions")}</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -142,7 +145,7 @@ export function MenuDataTable() {
                                 <TableCell
                                     colSpan={6}
                                     className="px-4 py-8 text-center text-slate-500">
-                                    Tidak ada data menu yang ditemukan.
+                                    {t("no_data")}
                                 </TableCell>
                             </TableRow>
                         ) : (

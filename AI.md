@@ -60,6 +60,7 @@ User: "Fix the login page error"
 14. **Progressive quality gates** - Verify quality continuously, not just at completion.
 15. **UPDATE FEATURE AI.MD** - When changing ANY feature code, update its contextual `AI.md` file in the SAME commit.
 16. **BATCH ERROR COLLECTION (MANDATORY)** - NEVER run individual checks one-by-one and fix in a loop. ALWAYS run `./scripts/check-all.sh` first to collect ALL errors and warnings into `tmp/` in one pass, then fix everything in batch. This prevents token waste from repeated run→fix→run cycles.
+17. **DATA RENDERING & CONDITIONAL FLOW (MANDATORY)** - All UI components MUST use `<Each />` and `<Show />` from [Render.tsx](file:///Users/codemasx/Storage/my-htdocs/dapen/golang-next/frontend/src/components/ui/layout/Render.tsx) for rendering lists or conditional views. Do NOT use raw `.map()`, `&&`, or `? :` ternaries in the primary TSX return blocks. This ensures a uniform declarative flow.
 
 ## 📂 Project Structure
 
@@ -258,6 +259,43 @@ When closing with SUCCEEDED_BY:
 - i18n applied to all user-facing text.
 - BFF layer (`api-handlers`) protects tokens in HttpOnly Cookies.
 
+## ⚡ Caching & Rate Limiting Rules (Enterprise)
+
+All caching and rate-limiting implementations must adhere strictly to these enterprise rules to prevent memory leaks, ensure reliable scaling, and maintain data consistency.
+
+### 🛡️ Rate Limiting Rules
+
+1. **Memory Leak Prevention**: Any in-memory per-IP rate limit implementation must run a background cleanup routine (ticker-based, e.g., every 10 minutes) to evict inactive client entries.
+2. **Horizontal Scaling Compliance**: Multi-instance environments must use the Redis-backed rate limiter (`INCR` + `EXPIRE`).
+3. **BFF Atomicity**: Frontend BFF rate limiting must evaluate a Lua script using atomic execution to prevent orphan keys (keys without a TTL).
+4. **Header Transparency**: All rate limiters must output standard headers:
+   - `X-RateLimit-Limit` - Max allowed requests in window
+   - `X-RateLimit-Remaining` - Remaining requests
+   - `X-RateLimit-Reset` - UNIX timestamp when limits reset
+5. **Fail-Open Policy**: If Redis is down, rate limiters should fall back to logging the incident and letting requests through, rather than blocking the application.
+
+### 💾 Caching Rules & Eligibility Criteria
+
+#### **Caching Decision Matrix (When to Cache)**
+
+| Endpoint Type / Request | Caching Decision | TTL Recommendation | Rationale |
+|---|---|---|---|
+| **Highly Static Data**<br>(e.g., `/menus/sidebar`, configuration, locales) | ✅ **Eligible** | 1 Hour | Rarely changes; high read frequency. |
+| **Heavy Aggregate / Analytical Data**<br>(e.g., `/dashboard/stats`, metrics, reports) | ✅ **Eligible** | 5 to 10 Minutes | Heavy DB calculations; identical across multiple users or requests. |
+| **Semi-Static Entity Lists**<br>(e.g., `/users` list, `/periode` accounting period list) | ✅ **Eligible** | 30 Seconds - 1 Minute | Prevents rapid consecutive request load. |
+| **User Settings / Profile Data**<br>(e.g., `/api/me`, `/api/users/:id`) | ✅ **Eligible** | 5 Minutes (with userId in cache key) | High read rate per individual session. |
+| **Write/Mutate Operations**<br>(`POST`, `PUT`, `DELETE` endpoints) | ❌ **Strictly Ineligible** | — | Modifies state; must hit database immediately. |
+| **Authentication & Security Flows**<br>(`/auth/login`, `/auth/refresh`, logout) | ❌ **Strictly Ineligible** | — | Must be fully real-time and secure. |
+
+#### **Cache Key Naming Convention**
+Cache keys in Redis must be uniquely structured using namespaces to prevent key collision:
+- **Global caches**: `cache:global:[feature]:[endpoint]` (e.g., `cache:global:menu:sidebar`)
+- **User-scoped caches**: `cache:user:[userId]:[feature]:[endpoint]` (e.g., `cache:user:1:dashboard:stats`)
+
+#### **Cache Invalidation Rules**
+1. **Manual Service Invalidation**: Whenever any data mutation occurs (`Create`, `Update`, `Delete`), the service layer MUST delete all related Redis cache keys immediately to prevent stale data.
+2. **Fail-Open Mechanism**: If Redis is unreachable, the system must log the error but retrieve data directly from the SQL database without throwing an exception to the client.
+
 ## 🚀 Slash Commands
 
 ### `/architect TASK-XXX`
@@ -278,14 +316,16 @@ Run comprehensive quality verification checklist.
 
 ## 📍 Key Resources
 
-- **Architecture docs:** `.gemini/ARCHITECTURE.md`
+- **Architecture docs:** `.gemini/ARCHITECTURE.md` (canonical — Domain-Based + DDD-Lite + Layered)
+- **Architecture memory:** `~/.claude/projects/.../memory/dapen-architecture.md` (Claude-recalled summary)
+- **Code style memory:** `~/.claude/projects/.../memory/dapen-code-style.md` (declarative names + English comments)
 - **Task details:** `tasks/` directory
 - **Frontend docs:** `frontend/AI.md`
 - **Backend docs:** `backend/AI.md`
 
 ## 📚 Feature-Specific Documentation
 
-Each feature folder (e.g., `frontend/src/components/dashboard` or `backend/internal/services/auth`) should contain its own `AI.md` documentation that auto-loads context when working in that directory.
+Each feature folder (e.g., `frontend/src/components/admin/users/` or `backend/internal/identity/permission/`) should contain its own `AI.md` documentation that auto-loads context when working in that directory.
 
 ### Documentation Template
 

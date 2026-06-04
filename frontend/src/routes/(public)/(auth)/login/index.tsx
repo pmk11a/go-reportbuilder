@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -43,9 +43,16 @@ export function LoginPage() {
     const { login } = useAuth();
     const { toast } = useToast();
     const search = Route.useSearch();
+    const user = useAuthStore((state) => state.user);
     const isInitialized = useAuthStore((state) => state.isInitialized);
     const [globalError, setGlobalError] = useState<Error | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            navigate({ to: getRedirectPath(user, search.redirect) });
+        }
+    }, [user, navigate, search.redirect]);
 
     const form = useForm<ILoginInput>({
         resolver: zodResolver(loginSchema),

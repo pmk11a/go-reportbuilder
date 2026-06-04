@@ -3,7 +3,7 @@ package services
 import (
 	"testing"
 
-	"github.com/masza1/dapen-backend/internal/config"
+	"github.com/masza1/dapen-backend/internal/shared/config"
 	"github.com/masza1/dapen-backend/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -41,6 +41,101 @@ func (m *MockUserRepository) Update(user *models.SUser) error {
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) Delete(id uint) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetPaginatedDBFLPASS(page, pageSize int, search string, status string) ([]models.SDBFLPASS, int64, error) {
+	args := m.Called(page, pageSize, search, status)
+	var users []models.SDBFLPASS
+	if args.Get(0) != nil {
+		users = args.Get(0).([]models.SDBFLPASS)
+	}
+	return users, int64(args.Int(1)), args.Error(2)
+}
+
+func (m *MockUserRepository) GetByUserIDDBFLPASS(userID string) (*models.SDBFLPASS, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.SDBFLPASS), args.Error(1)
+}
+
+func (m *MockUserRepository) CreateDBFLPASS(user *models.SDBFLPASS) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) UpdateDBFLPASS(user *models.SDBFLPASS) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) DeleteDBFLPASS(userID string) error {
+	args := m.Called(userID)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetUserPermissions(userID string) ([]models.SUserPermission, []models.SUserPermission, []models.SUserCoaAccess, error) {
+	args := m.Called(userID)
+	var menu []models.SUserPermission
+	var report []models.SUserPermission
+	var coa []models.SUserCoaAccess
+	if args.Get(0) != nil {
+		menu = args.Get(0).([]models.SUserPermission)
+	}
+	if args.Get(1) != nil {
+		report = args.Get(1).([]models.SUserPermission)
+	}
+	if args.Get(2) != nil {
+		coa = args.Get(2).([]models.SUserCoaAccess)
+	}
+	return menu, report, coa, args.Error(3)
+}
+
+func (m *MockUserRepository) UpdateUserPermissions(userID string, menuPerms []models.SUserPermission, reportPerms []models.SUserPermission, coaPerms []models.SUserCoaAccess) error {
+	args := m.Called(userID, menuPerms, reportPerms, coaPerms)
+	return args.Error(0)
+}
+
+// GetUserMenuPermissions is the TASK-009 split-getter mock implementation.
+func (m *MockUserRepository) GetUserMenuPermissions(userID string) ([]models.SUserPermission, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.SUserPermission), args.Error(1)
+}
+
+// GetUserReportPermissions is the TASK-009 split-getter mock implementation.
+func (m *MockUserRepository) GetUserReportPermissions(userID string) ([]models.SUserPermission, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.SUserPermission), args.Error(1)
+}
+
+// GetUserCoaAccess is the TASK-009 split-getter mock implementation.
+func (m *MockUserRepository) GetUserCoaAccess(userID string) ([]models.SUserCoaAccess, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.SUserCoaAccess), args.Error(1)
+}
+
+// GetPermissionReportMatrix is the TASK-009 report matrix mock implementation.
+func (m *MockUserRepository) GetPermissionReportMatrix(userID, menuCode, menuType string, page, pageSize int) ([]models.SPermissionReportRow, int64, error) {
+	args := m.Called(userID, menuCode, menuType, page, pageSize)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]models.SPermissionReportRow), args.Get(1).(int64), args.Error(2)
+}
+
 func TestAuthService_Login(t *testing.T) {
 	mockRepo := new(MockUserRepository)
 	cfg := &config.SConfig{JWTSecret: "test-secret"}
@@ -48,7 +143,7 @@ func TestAuthService_Login(t *testing.T) {
 
 	password := "password123"
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	
+
 	user := &models.SUser{
 		ID:       1,
 		Username: "testuser",
@@ -109,8 +204,8 @@ func TestAuthService_ChangePassword(t *testing.T) {
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("oldpassword"), bcrypt.DefaultCost)
 	user := &models.SUser{
-		ID:       1,
-		Password: string(hashedPassword),
+		ID:        1,
+		Password:  string(hashedPassword),
 		SDBFLPASS: &models.SDBFLPASS{},
 	}
 

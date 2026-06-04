@@ -5,6 +5,7 @@ import { useMenuStore, MenuItemType } from "@/store/menuStore";
 import { Search, Grid, X, ArrowLeft, Loader2 } from "lucide-react";
 import { useThemeStore } from "@/store/themeStore";
 import { useModalStore } from "@/store/modalStore";
+import { useTranslation } from "react-i18next";
 
 // Memoized MenuItem component matching both light and dark mode styles
 interface MenuItemProps {
@@ -96,6 +97,7 @@ const MenuItem = memo(({ item, onClick, isChild = false, isActive = false, isDar
 MenuItem.displayName = "MenuItem";
 
 const MenuListCard = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const isDark = useThemeStore((state) => state.isDark);
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
@@ -200,7 +202,7 @@ const MenuListCard = () => {
             {isMenuExpanded && !activeSubmenu && (
                 <>
                     <div className="flex justify-between items-center">
-                        <h2 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e3a8a]"}`}>Menu</h2>
+                        <h2 className={`text-xl font-black ${isDark ? "text-white" : "text-[#1e3a8a]"}`}>{t("menu_list.menu")}</h2>
                         <button
                             onClick={() => {
                                 setIsMenuExpanded(false);
@@ -216,7 +218,7 @@ const MenuListCard = () => {
                     <div className="relative w-full">
                         <input
                             type="text"
-                            placeholder="Cari menu..."
+                            placeholder={t("menu_list.search_menu")}
                             value={searchFilter}
                             onChange={(e) => setSearchFilter(e.target.value)}
                             className={`w-full py-2.5 px-4 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-bold transition-all border ${
@@ -281,7 +283,7 @@ const MenuListCard = () => {
                                     />
                                 ))
                             ) : (
-                                <p className={`text-sm ${isDark ? "text-slate-500" : "text-slate-400"}`}>Tidak ada menu tersedia</p>
+                                <p className={`text-sm ${isDark ? "text-slate-500" : "text-slate-400"}`}>{t("menu_list.no_menu")}</p>
                             )}
                         </div>
                     )}
@@ -297,11 +299,11 @@ const MenuListCard = () => {
                             className={`p-3 rounded-xl transition-colors ${
                                 isDark ? "hover:bg-white/5 text-slate-400 hover:text-sky-400" : "hover:bg-sky-50 text-slate-500 hover:text-sky-600"
                             }`}
-                            title="Perluas Menu">
+                            title={t("menu_list.expand_menu")}>
                             <Grid size={24} />
                         </button>
                         <span className={`text-[12px] font-black uppercase mt-0.5 tracking-wider ${isDark ? "text-sky-400" : "text-[#1e3a8a]"}`}>
-                            Menu
+                            {t("menu_list.menu")}
                         </span>
                     </div>
 
@@ -320,7 +322,7 @@ const MenuListCard = () => {
                                     />
                                 ))
                             ) : (
-                                <p className={`text-sm shrink-0 ${isDark ? "text-slate-500" : "text-slate-400"}`}>Tidak ada menu tersedia</p>
+                                <p className={`text-sm shrink-0 ${isDark ? "text-slate-500" : "text-slate-400"}`}>{t("menu_list.no_menu")}</p>
                             )}
                         </div>
                     </div>

@@ -3,7 +3,7 @@ package models
 // SDBNOMOR represents the numbering settings table
 type SDBNOMOR struct {
 	ALIAS   *string `gorm:"column:ALIAS;size:10" json:"alias"`
-	PEMISAH *int    `gorm:"column:PEMISAH" json:"pemisah"`
+	PEMISAH *string `gorm:"column:PEMISAH;size:10" json:"pemisah"`
 	FORMAT1 *int    `gorm:"column:FORMAT1" json:"format1"`
 	FORMAT2 *int    `gorm:"column:FORMAT2" json:"format2"`
 	FORMAT3 *int    `gorm:"column:FORMAT3" json:"format3"`
@@ -13,96 +13,97 @@ type SDBNOMOR struct {
 	NOSERI  *string `gorm:"column:NOSERI;size:20" json:"noseri"`
 	INICAB  *string `gorm:"column:INICAB;size:10" json:"inicab"`
 	DigitNomor *string `gorm:"column:DigitNomor;size:10" json:"digitNomor"`
+	MyID       *string `gorm:"column:MyID" json:"-"`
 	
 	// Dynamic Numbering Fields
-	BKK      *int    `gorm:"column:BKK" json:"bkk"`
+	BKK      *string `gorm:"column:BKK;size:50" json:"bkk"`
 	NOBKK    *string `gorm:"column:NOBKK;size:50" json:"nobkk"`
-	BKM      *int    `gorm:"column:BKM" json:"bkm"`
+	BKM      *string `gorm:"column:BKM;size:50" json:"bkm"`
 	NOBKM    *string `gorm:"column:NOBKM;size:50" json:"nobkm"`
-	BBM      *int    `gorm:"column:BBM" json:"bbm"`
+	BBM      *string `gorm:"column:BBM;size:50" json:"bbm"`
 	NOBBM    *string `gorm:"column:NOBBM;size:50" json:"nobbm"`
-	BBK      *int    `gorm:"column:BBK" json:"bbk"`
+	BBK      *string `gorm:"column:BBK;size:50" json:"bbk"`
 	NOBBK    *string `gorm:"column:NOBBK;size:50" json:"nobbk"`
-	BMM      *int    `gorm:"column:BMM" json:"bmm"`
+	BMM      *string `gorm:"column:BMM;size:50" json:"bmm"`
 	NOBMM    *string `gorm:"column:NOBMM;size:50" json:"nobmm"`
-	BJK      *int    `gorm:"column:BJK" json:"bjk"`
+	BJK      *string `gorm:"column:BJK;size:50" json:"bjk"`
 	NOBJK    *string `gorm:"column:NOBJK;size:50" json:"nobjk"`
-	PJL      *int    `gorm:"column:PJL" json:"pjl"`
+	PJL      *string `gorm:"column:PJL;size:50" json:"pjl"`
 	NoPJL    *string `gorm:"column:NoPJL;size:50" json:"nopjl"`
-	PBL      *int    `gorm:"column:PBL" json:"pbl"`
+	PBL      *string `gorm:"column:PBL;size:50" json:"pbl"`
 	NOPBL    *string `gorm:"column:NOPBL;size:50" json:"nopbl"`
-	BPPB     *int    `gorm:"column:BPPB" json:"bppb"`
+	BPPB     *string `gorm:"column:BPPB;size:50" json:"bppb"`
 	NOBPPB   *string `gorm:"column:NOBPPB;size:50" json:"nobppb"`
-	BPSB     *int    `gorm:"column:BPSB" json:"bpsb"`
+	BPSB     *string `gorm:"column:BPSB;size:50" json:"bpsb"`
 	NOBPSB   *string `gorm:"column:NOBPSB;size:50" json:"nobpsb"`
-	BBP      *int    `gorm:"column:BBP" json:"bbp"`
+	BBP      *string `gorm:"column:BBP;size:50" json:"bbp"`
 	NOBBP    *string `gorm:"column:NOBBP;size:50" json:"nobbp"`
-	BPB      *int    `gorm:"column:BPB" json:"bpb"`
+	BPB      *string `gorm:"column:BPB;size:50" json:"bpb"`
 	NOBPB    *string `gorm:"column:NOBPB;size:50" json:"nobpb"`
-	SPRK     *int    `gorm:"column:SPRK" json:"sprk"`
+	SPRK     *string `gorm:"column:SPRK;size:50" json:"sprk"`
 	NOSPRK   *string `gorm:"column:NOSPRK;size:50" json:"nosprk"`
-	BSPRK    *int    `gorm:"column:BSPRK" json:"bsprk"`
+	BSPRK    *string `gorm:"column:BSPRK;size:50" json:"bsprk"`
 	NOBSPRK  *string `gorm:"column:NOBSPRK;size:50" json:"nobsprk"`
-	PPL      *int    `gorm:"column:PPL" json:"ppl"`
+	PPL      *string `gorm:"column:PPL;size:50" json:"ppl"`
 	NOPPL    *string `gorm:"column:NOPPL;size:50" json:"noppl"`
-	BPL      *int    `gorm:"column:BPL" json:"bpl"`
+	BPL      *string `gorm:"column:BPL;size:50" json:"bpl"`
 	NOBPL    *string `gorm:"column:NOBPL;size:50" json:"nobpl"`
-	PO       *int    `gorm:"column:PO" json:"po"`
+	PO       *string `gorm:"column:PO;size:50" json:"po"`
 	NOPO     *string `gorm:"column:NOPO;size:50" json:"nopo"`
-	BPO      *int    `gorm:"column:BPO" json:"bpo"`
+	BPO      *string `gorm:"column:BPO;size:50" json:"bpo"`
 	NOBPO    *string `gorm:"column:NOBPO;size:50" json:"nobpo"`
-	BP       *int    `gorm:"column:BP" json:"bp"`
+	BP       *string `gorm:"column:BP;size:50" json:"bp"`
 	NOBP     *string `gorm:"column:NOBP;size:50" json:"nobp"`
-	BPSPRK   *int    `gorm:"column:BPSPRK" json:"bpsprk"`
-	NOBPSPRK *string `gorm:"column:NOBPSPRK;size:50" json:"nobsprk"`
-	INS      *int    `gorm:"column:INS" json:"ins"`
+	BPSPRK   *string `gorm:"column:BPSPRK;size:50" json:"bpsprk"`
+	NOBPSPRK *string `gorm:"column:NOBPSPRK;size:50" json:"nobpsprk"`
+	INS      *string `gorm:"column:INS;size:50" json:"ins"`
 	NOINS    *string `gorm:"column:NOINS;size:50" json:"noins"`
-	KNS      *int    `gorm:"column:KNS" json:"kns"`
+	KNS      *string `gorm:"column:KNS;size:50" json:"kns"`
 	NOKNS    *string `gorm:"column:NOKNS;size:50" json:"nokns"`
-	RPB      *int    `gorm:"column:RPB" json:"rpb"`
+	RPB      *string `gorm:"column:RPB;size:50" json:"rpb"`
 	NORPB    *string `gorm:"column:NORPB;size:50" json:"norpb"`
-	SPG      *int    `gorm:"column:SPG" json:"spg"`
+	SPG      *string `gorm:"column:SPG;size:50" json:"spg"`
 	NOSPG    *string `gorm:"column:NOSPG;size:50" json:"nospg"`
-	OPN      *int    `gorm:"column:OPN" json:"opn"`
+	OPN      *string `gorm:"column:OPN;size:50" json:"opn"`
 	NOOPN    *string `gorm:"column:NOOPN;size:50" json:"noopn"`
-	KMS      *int    `gorm:"column:KMS" json:"kms"`
+	KMS      *string `gorm:"column:KMS;size:50" json:"kms"`
 	NOKMS    *string `gorm:"column:NOKMS;size:50" json:"nokms"`
-	RBPB     *int    `gorm:"column:RBPB" json:"rbpb"`
+	RBPB     *string `gorm:"column:RBPB;size:50" json:"rbpb"`
 	NORBPB   *string `gorm:"column:NORBPB;size:50" json:"norbpb"`
-	ENQ      *int    `gorm:"column:ENQ" json:"enq"`
+	ENQ      *string `gorm:"column:ENQ;size:50" json:"enq"`
 	NOENQ    *string `gorm:"column:NOENQ;size:50" json:"noenq"`
-	CR       *int    `gorm:"column:CR" json:"cr"`
+	CR       *string `gorm:"column:CR;size:50" json:"cr"`
 	NOCR     *string `gorm:"column:NOCR;size:50" json:"nocr"`
-	SO       *int    `gorm:"column:SO" json:"so"`
+	SO       *string `gorm:"column:SO;size:50" json:"so"`
 	NOSO     *string `gorm:"column:NOSO;size:50" json:"noso"`
-	RKL      *int    `gorm:"column:RKL" json:"rkl"`
+	RKL      *string `gorm:"column:RKL;size:50" json:"rkl"`
 	NORKL    *string `gorm:"column:NORKL;size:50" json:"norkl"`
-	SC       *int    `gorm:"column:SC" json:"sc"`
+	SC       *string `gorm:"column:SC;size:50" json:"sc"`
 	NOSC     *string `gorm:"column:NOSC;size:50" json:"nosc"`
-	SPP      *int    `gorm:"column:SPP" json:"spp"`
+	SPP      *string `gorm:"column:SPP;size:50" json:"spp"`
 	NOSPP    *string `gorm:"column:NOSPP;size:50" json:"nospp"`
-	SPB      *int    `gorm:"column:SPB" json:"spb"`
+	SPB      *string `gorm:"column:SPB;size:50" json:"spb"`
 	NOSPB    *string `gorm:"column:NOSPB;size:50" json:"nospb"`
-	RSPB     *int    `gorm:"column:RSPB" json:"rspb"`
+	RSPB     *string `gorm:"column:RSPB;size:50" json:"rspb"`
 	NORSPB   *string `gorm:"column:NORSPB;size:50" json:"norspb"`
-	INV      *int    `gorm:"column:INV" json:"inv"`
+	INV      *string `gorm:"column:INV;size:50" json:"inv"`
 	NOINV    *string `gorm:"column:NOINV;size:50" json:"noinv"`
-	PNJ      *int    `gorm:"column:PNJ" json:"pnj"`
+	PNJ      *string `gorm:"column:PNJ;size:50" json:"pnj"`
 	NOPNJ    *string `gorm:"column:NOPNJ;size:50" json:"nopnj"`
-	TRC      *int    `gorm:"column:TRC" json:"trc"`
+	TRC      *string `gorm:"column:TRC;size:50" json:"trc"`
 	NOTRC    *string `gorm:"column:NOTRC;size:50" json:"notrc"`
-	SHIP     *int    `gorm:"column:SHIP" json:"ship"`
+	SHIP     *string `gorm:"column:SHIP;size:50" json:"ship"`
 	NOSHIP   *string `gorm:"column:NOSHIP;size:50" json:"noship"`
-	TBJ      *int    `gorm:"column:TBJ" json:"tbj"`
+	TBJ      *string `gorm:"column:TBJ;size:50" json:"tbj"`
 	NOTBJ    *string `gorm:"column:NOTBJ;size:50" json:"notbj"`
-	RBJ      *int    `gorm:"column:RBJ" json:"rbj"`
+	RBJ      *string `gorm:"column:RBJ;size:50" json:"rbj"`
 	NORBJ    *string `gorm:"column:NORBJ;size:50" json:"norbj"`
-	TRS      *int    `gorm:"column:TRS" json:"trs"`
+	TRS      *string `gorm:"column:TRS;size:50" json:"trs"`
 	NOTRS    *string `gorm:"column:NOTRS;size:50" json:"notrs"`
-	AKM      *int    `gorm:"column:AKM" json:"akm"`
-	RPJ      *int    `gorm:"column:RPJ" json:"rpj"`
+	AKM      *string `gorm:"column:AKM;size:50" json:"akm"`
+	RPJ      *string `gorm:"column:RPJ;size:50" json:"rpj"`
 	NORPJ    *string `gorm:"column:NORPJ;size:50" json:"norpj"`
-	BHN      *int    `gorm:"column:BHN" json:"bhn"`
+	BHN      *string `gorm:"column:BHN;size:50" json:"bhn"`
 	NOBHN    *string `gorm:"column:NOBHN;size:50" json:"nobhn"`
 	
 	// Other string codes

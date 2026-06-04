@@ -1,0 +1,96 @@
+{
+  "title": "User Management",
+  "subtitle": "Manage system users and access permissions.",
+  "list_title": "Users List",
+  "add_user": "Add User",
+  "edit_user": "Edit User",
+  "delete_user": "Delete User",
+  "search_placeholder": "Search user...",
+  "status_filter_all": "All Status",
+  "status_filter_active": "Active",
+  "status_filter_inactive": "Inactive",
+  "fields": {
+    "user_id": "USER ID",
+    "full_name": "FULL NAME",
+    "level": "LEVEL",
+    "status": "STATUS",
+    "actions": "ACTIONS"
+  },
+  "buttons": {
+    "edit": "Edit",
+    "permissions": "Permissions",
+    "logs": "Activity Logs",
+    "delete": "Delete",
+    "enable": "Enable",
+    "disable": "Disable"
+  },
+  "messages": {
+    "empty": "No users found.",
+    "error_loading": "Error loading users",
+    "delete_self_error": "You cannot delete your own account",
+    "status_updated": "User status updated successfully",
+    "status_update_failed": "Failed to update user status",
+    "delete_success": "User deleted successfully",
+    "delete_failed": "Failed to delete user",
+    "create_success": "User created successfully",
+    "create_failed": "Failed to create user",
+    "update_success": "User updated successfully",
+    "update_failed": "Failed to update user"
+  },
+  "dialog": {
+    "add_description": "Fill out the form below to create a new user.",
+    "edit_description": "Update user profile details below.",
+    "password_hint": "leave blank to keep unchanged",
+    "username_label": "Username",
+    "full_name_label": "Full Name",
+    "password_label": "Password",
+    "role_label": "System Role",
+    "role_admin": "Admin",
+    "role_karyawan": "Karyawan / Employee"
+  },
+  "validation": {
+    "username_min": "Username must be at least 3 characters",
+    "full_name_required": "Full name is required",
+    "password_min": "Password must be at least 6 characters"
+  },
+  "permissions": {
+    "title": "User Permissions",
+    "description": "Configure menu, report, and COA access controls for this user.",
+    "loading": "Loading permissions...",
+    "saving": "Saving...",
+    "save_changes": "Save Changes",
+    "cancel": "Cancel",
+    "tab_menu": "Menu Access",
+    "tab_report": "Report Access",
+    "tab_coa": "COA Access",
+    "no_menus": "No menu permissions configured for this user.",
+    "no_reports": "No report permissions configured for this user.",
+    "no_coa": "No COA data available.",
+    "fields": {
+      "menu_name": "Menu Name",
+      "coa_code": "COA Code",
+      "description": "Description",
+      "visible": "Visible",
+      "active": "Active",
+      "access_level": "Access Level",
+      "has_access": "Has Access",
+      "read": "Read",
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete",
+      "print": "Print",
+      "export": "Export",
+      "approve_1": "Approve L1",
+      "approve_2": "Approve L2",
+      "approve_3": "Approve L3",
+      "approve_4": "Approve L4",
+      "approve_5": "Approve L5"
+    },
+    "access": {
+      "no_access": "No Access",
+      "read": "Read Only",
+      "write": "Read & Write",
+      "full": "Full Access"
+    }
+  }
+}

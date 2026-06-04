@@ -9,33 +9,25 @@ export const Route = createFileRoute('/admin/_layout/berkas/perusahaan')({
 });
 
 function PerusahaanSettingsPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['company', 'numbering']);
 
   const tabItems = [
     {
-      label: t('settings.company_tab', 'Company'),
+      label: t('company:title'),
       value: 'company',
       content: <CompanyForm />,
     },
     {
-      label: t('settings.numbering_tab', 'Numbering'),
+      label: t('numbering:title'),
       value: 'numbering',
       content: <NumberingForm />,
     },
   ];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {t('settings.page_title', 'System Settings')}
-        </h1>
-        <p className="text-slate-500">
-          {t('settings.page_description', 'Manage company profile and document numbering formats.')}
-        </p>
-      </div>
-
+    <div className="w-full">
       <Tabs tabs={tabItems} defaultValue="company" />
     </div>
   );
 }
+

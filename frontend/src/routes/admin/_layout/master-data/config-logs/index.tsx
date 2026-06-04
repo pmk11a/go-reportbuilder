@@ -3,18 +3,22 @@ import { useState, useEffect } from "react";
 import { useThemeStore } from "@/store/themeStore";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/data/table";
 import { Badge } from "@/components/ui/overlay/badge";
+import { Button } from "@/components/ui";
+import { Input } from "@/components/ui/form/input";
 import { activityLogService } from "@/services/activityLogService";
 import { IActivityLogConfig, IActivityLogField } from "@/types/activity-log";
 import { Settings, Save, Check, X, ShieldAlert, FileText, Activity, Search } from "lucide-react";
 import { Each, Show } from "@/components/ui/layout/Render";
 import { Skeleton } from "@/components/ui/feedback/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/_layout/master-data/config-logs/")({
     component: ConfigLogsPage,
 });
 
 function ConfigLogsPage() {
+    const { t } = useTranslation(['logs', 'common']);
     const isDark = useThemeStore((state) => state.isDark);
     const { toast } = useToast();
     const [tables, setTables] = useState<string[]>([]);
@@ -101,15 +105,15 @@ function ConfigLogsPage() {
         try {
             await activityLogService.saveConfig(config);
             toast({
-                title: "Berhasil",
-                description: "Konfigurasi berhasil disimpan!",
+                title: t("success"),
+                description: t("config.success_save"),
                 variant: "success",
             });
         } catch (error) {
             console.error("Failed to save config", error);
             toast({
-                title: "Gagal",
-                description: "Gagal menyimpan konfigurasi",
+                title: t("error_title"),
+                description: t("config.fail_save"),
                 variant: "destructive",
             });
         } finally {
@@ -121,15 +125,15 @@ function ConfigLogsPage() {
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden p-4">
-                    <h3 className={`font-bold mb-4 px-2 ${isDark ? "text-slate-200" : "text-slate-700"}`}>Pilih Tabel Database</h3>
+                    <h3 className={`font-bold mb-4 px-2 ${isDark ? "text-slate-200" : "text-slate-700"}`}>{t("config.choose_db_table")}</h3>
                     <div className="relative mb-4 px-2">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <input
+                        <Input
                             type="text"
-                            placeholder="Cari tabel..."
+                            placeholder={t("config.search_table_placeholder")}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 w-full py-2 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500 font-medium transition-all dark:text-white placeholder:text-slate-400 text-sm"
+                            className="pl-9 h-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm"
                         />
                     </div>
                     <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
@@ -186,25 +190,27 @@ function ConfigLogsPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>Nama Kolom</TableHead>
-                                                    <TableHead className="text-center">Lacak Perubahan?</TableHead>
-                                                    <TableHead className="text-center">Data Sensitif?</TableHead>
+                                                    <TableHead>{t("config.column_name")}</TableHead>
+                                                    <TableHead className="text-center">{t("config.track_changes")}</TableHead>
+                                                    <TableHead className="text-center">{t("config.sensitive_data")}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {Array.from({ length: 5 }).map((_, i) => (
-                                                    <TableRow key={i}>
-                                                        <TableCell>
-                                                            <Skeleton className="h-5 w-48" />
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Skeleton className="h-5 w-5 mx-auto rounded" />
-                                                        </TableCell>
-                                                        <TableCell className="text-center">
-                                                            <Skeleton className="h-5 w-5 mx-auto rounded" />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
+                                                <Each of={Array.from({ length: 5 })}>
+                                                    {(_, i) => (
+                                                        <TableRow key={i}>
+                                                            <TableCell>
+                                                                <Skeleton className="h-5 w-48" />
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Skeleton className="h-5 w-5 mx-auto rounded" />
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <Skeleton className="h-5 w-5 mx-auto rounded" />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </Each>
                                             </TableBody>
                                         </Table>
                                     </div>
@@ -212,7 +218,7 @@ function ConfigLogsPage() {
                             ) : (
                                 <div
                                     className={`h-full min-h-[400px] flex items-center justify-center rounded-[24px] border border-slate-100 dark:border-white/5 ${isDark ? "bg-slate-800/30" : "bg-slate-50"}`}>
-                                    <p className={isDark ? "text-slate-500" : "text-slate-400"}>Silakan pilih tabel di samping kiri</p>
+                                    <p className={isDark ? "text-slate-500" : "text-slate-400"}>{t("config.select_table_left")}</p>
                                 </div>
                             )
                         }>
@@ -235,35 +241,35 @@ function ConfigLogsPage() {
                                             checked={config.is_enabled}
                                             onChange={(e) => setConfig({ ...config, is_enabled: e.target.checked })}
                                         />
-                                        <span className={`font-medium ${isDark ? "text-slate-300" : "text-slate-700"}`}>Aktifkan Logging</span>
+                                        <span className={`font-medium ${isDark ? "text-slate-300" : "text-slate-700"}`}>{t("config.enable_logging")}</span>
                                     </label>
-                                    <button
+                                    <Button
                                         onClick={handleSave}
                                         disabled={isSaving}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold transition-all disabled:opacity-50">
-                                        <Save size={18} />
-                                        {isSaving ? "Menyimpan..." : "Simpan Konfigurasi"}
-                                    </button>
+                                        size="sm"
+                                        className="flex items-center gap-2 font-bold transition-all disabled:opacity-50 h-9"
+                                    >
+                                        <Save size={16} />
+                                        {isSaving ? t("config.saving") : t("config.save_config")}
+                                    </Button>
                                 </div>
                             </div>
-
+ 
                             <div className="grid grid-cols-3 gap-6 mb-8">
                                 <div>
                                     <label className={`block text-sm font-bold mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                                        Primary Key Field
+                                        {t("config.primary_key")}
                                     </label>
-                                    <input
+                                    <Input
                                         type="text"
                                         value={config.primary_key_field}
                                         onChange={(e) => setConfig({ ...config, primary_key_field: e.target.value })}
-                                        className={`w-full px-4 py-2 rounded-lg border ${
-                                            isDark ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"
-                                        }`}
+                                        className="h-9 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     />
                                 </div>
                                 <div className="col-span-2">
                                     <label className={`block text-sm font-bold mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-                                        Operasi yang Dilacak
+                                        {t("config.tracked_operations")}
                                     </label>
                                     <div className="flex gap-6 mt-3">
                                         <label className="flex items-center gap-2 cursor-pointer">
@@ -299,16 +305,16 @@ function ConfigLogsPage() {
 
                             <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? "text-slate-200" : "text-slate-700"}`}>
                                 <FileText size={18} />
-                                Konfigurasi Kolom
+                                {t("config.column_config")}
                             </h3>
 
                             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Nama Kolom (Database)</TableHead>
-                                            <TableHead className="text-center">Lacak Perubahan?</TableHead>
-                                            <TableHead className="text-center">Data Sensitif?</TableHead>
+                                            <TableHead>{t("config.column_name")}</TableHead>
+                                            <TableHead className="text-center">{t("config.track_changes")}</TableHead>
+                                            <TableHead className="text-center">{t("config.sensitive_data")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>

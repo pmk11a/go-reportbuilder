@@ -490,15 +490,17 @@ Update feature AI.md whenever task work involves:
 ### Task Management Questions
 
 **Where to find information**:
-1. This AI.md (task lifecycle, structure, templates)
-2. `.gemini/ARCHITECTURE.md` (architecture system, delegation)
-3. `AI.md` (quick reference, essential rules)
-4. Feature AI.md files (feature-specific context)
+1. This `tasks/AI.md` (task lifecycle, structure, templates)
+2. `.gemini/ARCHITECTURE.md` (architecture system, delegation — Domain-Based + DDD-Lite + Layered)
+3. `AI.md` (root quick reference, essential rules)
+4. `~/.claude/projects/.../memory/dapen-architecture.md` (architecture memory, recalled automatically)
+5. `~/.claude/projects/.../memory/dapen-code-style.md` (code style: declarative names + English comments)
+6. Feature AI.md files (per-domain, per-feature context)
 
 ### Agent Support
 
 **Use specialized agents for**:
-- `@dapen-backend` - Go/Gin development
+- `@dapen-backend` - Go/Gin development (Domain-Based + DDD-Lite)
 - `@dapen-frontend` - React/Vite development
 - `@dapen-qa` - E2E Playwright testing
 

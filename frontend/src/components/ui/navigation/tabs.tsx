@@ -7,7 +7,7 @@ const tabsVariants = cva('w-full');
 const tabListVariants = cva('flex gap-1 border-b border-border');
 
 const tabTriggerVariants = cva(
-  'px-4 py-2 font-medium transition-colors border-b-2',
+  'px-4 py-2 font-medium transition-colors border-b-2 cursor-pointer',
   {
     variants: {
       active: {
@@ -38,24 +38,29 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
     };
 
     return (
-      <div ref={ref} className={cn(tabsVariants(), className)} {...props}>
-        <div className={cn(tabListVariants())}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => handleTabChange(tab.value)}
-              className={cn(
-                tabTriggerVariants({
-                  active: activeTab === tab.value,
-                })
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-4">
-          {tabs.find((tab) => tab.value === activeTab)?.content}
+      <div className="w-full">
+        <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
+          {/* Tab List */}
+          <div className={cn(tabListVariants(), 'px-4 bg-white dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800')}>
+            {tabs.map((tab) => (
+              <button
+                type="button"
+                key={tab.value}
+                onClick={() => handleTabChange(tab.value)}
+                className={cn(
+                  tabTriggerVariants({
+                    active: activeTab === tab.value,
+                  })
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Tab Content */}
+          <div>
+            {tabs.find((tab) => tab.value === activeTab)?.content}
+          </div>
         </div>
       </div>
     );

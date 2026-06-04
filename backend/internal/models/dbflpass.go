@@ -2,7 +2,7 @@ package models
 
 type SDBFLPASS struct {
 	USERID    string `gorm:"primaryKey;column:USERID;size:50;not null" json:"user_id"`
-	UID       string `gorm:"column:UID;size:50" json:"uid"`
+	UID       string `gorm:"column:UID;size:50" json:"-"`
 	FullName  string `gorm:"column:FullName;size:100" json:"full_name"`
 	TINGKAT   string `gorm:"column:TINGKAT;size:2" json:"tingkat"`
 	STATUS    string `gorm:"column:STATUS;size:1" json:"status"`

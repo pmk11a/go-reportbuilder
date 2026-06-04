@@ -22,12 +22,20 @@ describe('NumberingForm', () => {
   const mockMutate = vi.fn();
 
   beforeEach(() => {
-    queryClient = new QueryClient();
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          gcTime: 0,
+          retry: false,
+        },
+      },
+    });
     vi.clearAllMocks();
 
+    const stableData = { nobkk: 'BKK-PREFIX', bkk: 123 };
     (useSettings as any).mockReturnValue({
       useNumbering: () => ({
-        data: { alias: 'INV', pemisah: 1, contoh: 'INV-2026-001', reset: 1 },
+        data: stableData,
         isLoading: false,
       }),
       useUpdateNumbering: () => ({
@@ -46,12 +54,10 @@ describe('NumberingForm', () => {
 
     // Wait for the form to populate
     await waitFor(() => {
-      const aliasInput = screen.getByLabelText('Alias') as HTMLInputElement;
-      expect(aliasInput.value).toBe('INV');
+      expect(screen.getByDisplayValue('BKK-PREFIX')).toBeInTheDocument();
     });
 
-    const separatorInput = screen.getByLabelText('Separator') as HTMLInputElement;
-    expect(separatorInput.value).toBe('1');
+    expect(screen.getByDisplayValue('123')).toBeInTheDocument();
   });
 
   it('shows loading spinner when data is loading', () => {
@@ -72,7 +78,7 @@ describe('NumberingForm', () => {
       </QueryClientProvider>
     );
     
-    // Checks for a loading visual indicator
-    expect(container.querySelector('svg')).toBeInTheDocument();
+    // Skeleton renders divs with animate-pulse class
+    expect(container.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 });

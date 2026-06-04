@@ -225,11 +225,74 @@ export async function makeBackendRequest<T = any>(
     return {
       status: isTimeout ? 504 : 500,
       success: false,
-      message: isTimeout 
-        ? 'Backend request timed out (Backend is offline or unresponsive)' 
+      message: isTimeout
+        ? 'Backend request timed out (Backend is offline or unresponsive)'
         : `Network Error: ${error.message || error}`,
       data: null
     }
+  }
+}
+
+/**
+ * Raw backend request — returns the underlying Fetch Response so the BFF
+ * handler can relay binary payloads (xlsx, pdf, octet-stream, images …)
+ * to the browser without forcing a UTF-8 text decode.
+ *
+ * Authentication, timeout, and logging behaviour mirror `makeBackendRequest`.
+ *
+ * On network/timeout errors a synthetic `Response` is returned so callers
+ * never have to deal with thrown exceptions — they can always inspect
+ * `response.ok` / `response.status`.
+ */
+export async function makeBackendRequestRaw(
+  endpoint: string,
+  options: RequestInit = {},
+  incomingRequest?: Request
+): Promise<Response> {
+  const url = `${ BACKEND_URL }${ endpoint }`
+  const method = ( options.method || 'GET' ).toUpperCase()
+
+  bffLogger.logRequest( method, endpoint, null )
+
+  const headers: Record<string, string> = {
+    ...( options.headers as Record<string, string> || {} ),
+  }
+
+  if ( incomingRequest ) {
+    const sessionId = getCookie( incomingRequest, 'session_id' )
+    if ( sessionId ) {
+      const { getValidAccessToken } = await import('./session')
+      const accessToken = await getValidAccessToken( sessionId )
+      if ( accessToken ) {
+        headers[ 'Authorization' ] = `Bearer ${ accessToken }`
+      }
+    }
+  }
+
+  const backendTimeout = parseEnvTime('BFF_BACKEND_TIMEOUT', 10000)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), backendTimeout)
+
+  try {
+    const response = await fetch( url, { ...options, headers, signal: controller.signal } )
+    clearTimeout(timeoutId)
+    bffLogger.logResponse( method, endpoint, response.status, '<binary>' )
+    return response
+  } catch ( error: any ) {
+    clearTimeout(timeoutId)
+    bffLogger.logError( method, endpoint, error )
+    const isTimeout = error.name === 'AbortError'
+    const body = JSON.stringify( {
+      success: false,
+      message: isTimeout
+        ? 'Backend request timed out (Backend is offline or unresponsive)'
+        : `Network Error: ${ error.message || error }`,
+      data: null,
+    } )
+    return new Response( body, {
+      status: isTimeout ? 504 : 500,
+      headers: { 'Content-Type': 'application/json' },
+    } )
   }
 }
 
