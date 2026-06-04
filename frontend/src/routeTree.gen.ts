@@ -31,6 +31,7 @@ import { Route as publicauthRegisterIndexRouteImport } from './routes/(public)/(
 import { Route as publicauthLoginIndexRouteImport } from './routes/(public)/(auth)/login/index'
 import { Route as AdminLayoutBerkasPerusahaanRouteImport } from './routes/admin/_layout/berkas/perusahaan'
 import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layout/berkas/menu'
+import { Route as AdminLayoutReportsPermissionReportIndexRouteImport } from './routes/admin/_layout/reports/permission-report/index'
 import { Route as AdminLayoutMasterDataConfigLogsIndexRouteImport } from './routes/admin/_layout/master-data/config-logs/index'
 import { Route as AdminLayoutMasterDataActivityLogsIndexRouteImport } from './routes/admin/_layout/master-data/activity-logs/index'
 
@@ -148,6 +149,12 @@ const AdminLayoutBerkasMenuRoute = AdminLayoutBerkasMenuRouteImport.update({
   path: '/berkas/menu',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
+const AdminLayoutReportsPermissionReportIndexRoute =
+  AdminLayoutReportsPermissionReportIndexRouteImport.update({
+    id: '/reports/permission-report/',
+    path: '/reports/permission-report/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
 const AdminLayoutMasterDataConfigLogsIndexRoute =
   AdminLayoutMasterDataConfigLogsIndexRouteImport.update({
     id: '/master-data/config-logs/',
@@ -186,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/karyawan/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -211,6 +219,7 @@ export interface FileRoutesByTo {
   '/karyawan/dashboard': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/master-data/activity-logs': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/reports/permission-report': typeof AdminLayoutReportsPermissionReportIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -238,6 +247,7 @@ export interface FileRoutesById {
   '/karyawan/_layout/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/_layout/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/_layout/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/_layout/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/karyawan/dashboard/'
     | '/admin/master-data/activity-logs/'
     | '/admin/master-data/config-logs/'
+    | '/admin/reports/permission-report/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/karyawan/dashboard'
     | '/admin/master-data/activity-logs'
     | '/admin/master-data/config-logs'
+    | '/admin/reports/permission-report'
   id:
     | '__root__'
     | '/'
@@ -317,6 +329,7 @@ export interface FileRouteTypes {
     | '/karyawan/_layout/dashboard/'
     | '/admin/_layout/master-data/activity-logs/'
     | '/admin/_layout/master-data/config-logs/'
+    | '/admin/_layout/reports/permission-report/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -485,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutBerkasMenuRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/reports/permission-report/': {
+      id: '/admin/_layout/reports/permission-report/'
+      path: '/reports/permission-report'
+      fullPath: '/admin/reports/permission-report/'
+      preLoaderRoute: typeof AdminLayoutReportsPermissionReportIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/admin/_layout/master-data/config-logs/': {
       id: '/admin/_layout/master-data/config-logs/'
       path: '/master-data/config-logs'
@@ -537,6 +557,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutUsersIndexRoute: typeof AdminLayoutUsersIndexRoute
   AdminLayoutMasterDataActivityLogsIndexRoute: typeof AdminLayoutMasterDataActivityLogsIndexRoute
   AdminLayoutMasterDataConfigLogsIndexRoute: typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  AdminLayoutReportsPermissionReportIndexRoute: typeof AdminLayoutReportsPermissionReportIndexRoute
 }
 
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
@@ -550,6 +571,8 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
     AdminLayoutMasterDataActivityLogsIndexRoute,
   AdminLayoutMasterDataConfigLogsIndexRoute:
     AdminLayoutMasterDataConfigLogsIndexRoute,
+  AdminLayoutReportsPermissionReportIndexRoute:
+    AdminLayoutReportsPermissionReportIndexRoute,
 }
 
 const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(
