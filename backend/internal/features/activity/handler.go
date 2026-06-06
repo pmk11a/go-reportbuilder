@@ -5,15 +5,17 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-			"github.com/masza1/dapen-backend/internal/infrastructure/response"
+	"github.com/masza1/dapen-backend/internal/infrastructure/response"
+	"gorm.io/gorm"
 )
 
 type SActivityLogHandler struct {
 	service IActivityLogService
+	db      *gorm.DB
 }
 
-func NewActivityLogHandler(service IActivityLogService) *SActivityLogHandler {
-	return &SActivityLogHandler{service: service}
+func NewActivityLogHandler(service IActivityLogService, db *gorm.DB) *SActivityLogHandler {
+	return &SActivityLogHandler{service: service, db: db}
 }
 
 // GetConfigs godoc
@@ -77,6 +79,10 @@ func (h *SActivityLogHandler) SaveConfig(c *gin.Context) {
 		response.InternalError(c, "Failed to save configuration")
 		return
 	}
+
+	// Reload plugin cache so new config is picked up by GORM hooks
+	_ = ReloadActivityLogConfig(h.db)
+
 	response.Success(c, "Configuration saved successfully", nil)
 }
 

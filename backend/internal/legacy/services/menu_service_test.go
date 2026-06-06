@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	"github.com/masza1/dapen-backend/internal/features/menu"
@@ -103,7 +104,7 @@ func TestMenuService_CreateMenu_Success(t *testing.T) {
 		repo := menu.NewMenuRepository(tx)
 		svc := menu.NewMenuService(repo)
 
-		err := svc.CreateMenu(newMenu)
+		err := svc.CreateMenu(context.Background(), newMenu)
 		assert.NoError(t, err)
 
 		// Verify persisted
@@ -124,7 +125,7 @@ func TestMenuService_CreateMenu_EmptyCode(t *testing.T) {
 		repo := menu.NewMenuRepository(tx)
 		svc := menu.NewMenuService(repo)
 
-		err := svc.CreateMenu(invalidMenu)
+		err := svc.CreateMenu(context.Background(), invalidMenu)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "kode menu is required")
 	})
@@ -148,7 +149,7 @@ func TestMenuService_CreateMenu_Duplicate(t *testing.T) {
 			KODEMENU:   "DUP",
 			Keterangan: "Duplicate",
 		}
-		err := svc.CreateMenu(dupMenu)
+		err := svc.CreateMenu(context.Background(), dupMenu)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already exists")
 	})
@@ -173,7 +174,7 @@ func TestMenuService_UpdateMenu_Success(t *testing.T) {
 			Keterangan: "Updated Description",
 			L0:         1,
 		}
-		err := svc.UpdateMenu("UPDATE", updateReq)
+		err := svc.UpdateMenu(context.Background(), "UPDATE", updateReq)
 		assert.NoError(t, err)
 
 		retrieved, err := svc.GetMenuByID("UPDATE")
@@ -192,7 +193,7 @@ func TestMenuService_UpdateMenu_NotFound(t *testing.T) {
 		updateReq := &menu.SDbMenu{
 			Keterangan: "Update",
 		}
-		err := svc.UpdateMenu("NONEXISTENT", updateReq)
+		err := svc.UpdateMenu(context.Background(), "NONEXISTENT", updateReq)
 		assert.Error(t, err)
 	})
 }
@@ -211,7 +212,7 @@ func TestMenuService_DeleteMenu_Success(t *testing.T) {
 		repo := menu.NewMenuRepository(tx)
 		svc := menu.NewMenuService(repo)
 
-		err := svc.DeleteMenu("DELETE")
+		err := svc.DeleteMenu(context.Background(), "DELETE")
 		assert.NoError(t, err)
 
 		_, err = svc.GetMenuByID("DELETE")
@@ -226,7 +227,7 @@ func TestMenuService_DeleteMenu_NotFound(t *testing.T) {
 		repo := menu.NewMenuRepository(tx)
 		svc := menu.NewMenuService(repo)
 
-		err := svc.DeleteMenu("NONEXISTENT")
+		err := svc.DeleteMenu(context.Background(), "NONEXISTENT")
 		assert.Error(t, err)
 	})
 }

@@ -42,12 +42,12 @@ func (SActivityLogField) TableName() string {
 }
 
 // SDBLogFile represents the actual activity log record.
+// Note: dblogfile table in SQL Server does not have an explicit id column
 type SDBLogFile struct {
-	ID         uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	Tahun      int32     `gorm:"column:Tahun;type:int;not null" json:"tahun"`
 	Bulan      int32     `gorm:"column:Bulan;type:int;not null" json:"bulan"`
-	Tanggal    time.Time `gorm:"column:Tanggal;type:datetime" json:"tanggal"`
-	Pemakai    string    `gorm:"column:Pemakai;type:varchar(20);not null" json:"pemakai"`
+	Tanggal    time.Time `gorm:"column:Tanggal;type:datetime;primaryKey" json:"tanggal"` // Use as composite key
+	Pemakai    string    `gorm:"column:Pemakai;type:varchar(20);not null;primaryKey" json:"pemakai"`
 	Aktivitas  string    `gorm:"column:Aktivitas;type:varchar(200);not null" json:"aktivitas"`
 	Sumber     string    `gorm:"column:Sumber;type:varchar(200);not null" json:"sumber"`
 	NoBukti    string    `gorm:"column:NoBukti;type:varchar(30);not null" json:"no_bukti"`

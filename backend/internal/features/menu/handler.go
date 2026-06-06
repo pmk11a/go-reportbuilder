@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	cachepkg "github.com/masza1/dapen-backend/internal/infrastructure/cache"
 	"github.com/masza1/dapen-backend/internal/infrastructure/database"
-			responsepkg "github.com/masza1/dapen-backend/internal/infrastructure/response"
+	responsepkg "github.com/masza1/dapen-backend/internal/infrastructure/response"
 )
 
 type SMenuHandler struct {
@@ -117,7 +117,8 @@ func (h *SMenuHandler) CreateMenu(c *gin.Context) {
 		return
 	}
 
-	if err := h.menuService.CreateMenu(&req); err != nil {
+	// Context already has UserID injected by InjectUserContext middleware
+	if err := h.menuService.CreateMenu(c.Request.Context(), &req); err != nil {
 		responsepkg.BadRequest(c, err.Error())
 		return
 	}
@@ -149,7 +150,8 @@ func (h *SMenuHandler) UpdateMenu(c *gin.Context) {
 		return
 	}
 
-	if err := h.menuService.UpdateMenu(kodeMenu, &req); err != nil {
+	// Context already has UserID injected by InjectUserContext middleware
+	if err := h.menuService.UpdateMenu(c.Request.Context(), kodeMenu, &req); err != nil {
 		responsepkg.BadRequest(c, err.Error())
 		return
 	}
@@ -173,7 +175,9 @@ func (h *SMenuHandler) UpdateMenu(c *gin.Context) {
 // @Router /admin/menu/{kode} [delete]
 func (h *SMenuHandler) DeleteMenu(c *gin.Context) {
 	kodeMenu := c.Param("kode")
-	if err := h.menuService.DeleteMenu(kodeMenu); err != nil {
+
+	// Context already has UserID injected by InjectUserContext middleware
+	if err := h.menuService.DeleteMenu(c.Request.Context(), kodeMenu); err != nil {
 		responsepkg.BadRequest(c, err.Error())
 		return
 	}

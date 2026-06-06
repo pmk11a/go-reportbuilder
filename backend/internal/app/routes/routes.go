@@ -18,6 +18,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	authpkg "github.com/masza1/dapen-backend/internal/infrastructure/auth"
+	"github.com/masza1/dapen-backend/internal/infrastructure/middleware"
 )
 
 // SRouterConfig bundles every domain's handler so the routes setup can
@@ -61,6 +62,7 @@ func SetupRoutes(rc SRouterConfig) {
 		// Protected routes (any authenticated user)
 		protected := api.Group("/")
 		protected.Use(authpkg.AuthMiddleware(rc.SConfig))
+		protected.Use(middleware.InjectUserContext()) // Must be AFTER AuthMiddleware
 		{
 			protected.POST("/auth/change-password", rc.SAuthHandler.ChangePassword)
 			protected.GET("/me", rc.SAuthHandler.GetMe)

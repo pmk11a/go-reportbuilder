@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
-		"gorm.io/gorm"
+	"github.com/masza1/dapen-backend/internal/infrastructure/logger"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var (
@@ -45,35 +47,72 @@ func ReloadActivityLogConfig(db *gorm.DB) error {
 
 // RegisterActivityLogPlugin registers the GORM callbacks.
 func RegisterActivityLogPlugin(db *gorm.DB) {
+	log := logger.GetLogger()
+
 	// Initialize cache in background or synchronously
-	// Error ignored here; it's better to log it if it fails
-	_ = LoadActivityLogConfig(db)
+	if err := LoadActivityLogConfig(db); err != nil {
+		log.WithError(err).Error("failed to load activity log config")
+	} else {
+		log.Info("✅ Activity log config loaded successfully")
+	}
 
 	db.Callback().Create().After("gorm:create").Register("activity_log:after_create", trackActivity("CREATE"))
 	db.Callback().Update().After("gorm:update").Register("activity_log:after_update", trackActivity("UPDATE"))
 	db.Callback().Delete().After("gorm:delete").Register("activity_log:after_delete", trackActivity("DELETE"))
+
+	log.Info("✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)")
 }
 
 func trackActivity(action string) func(db *gorm.DB) {
 	return func(db *gorm.DB) {
-		if db.Error != nil || db.Statement.Schema == nil {
+		log := logger.GetLogger()
+
+		log.WithField("action", action).Debug("🔍 trackActivity callback triggered")
+
+		if db.Error != nil {
+			log.WithField("error", db.Error).Debug("❌ DB has error, skipping")
+			return
+		}
+		if db.Statement.Schema == nil {
+			log.WithField("action", action).Debug("❌ Statement.Schema is nil, skipping")
 			return
 		}
 
 		tableName := strings.ToLower(db.Statement.Schema.Table)
+		log.WithFields(map[string]interface{}{
+			"action":    action,
+			"table":     tableName,
+			"tableName": db.Statement.Schema.Table,
+		}).Info("📋 processing %s on table: %s", action, tableName)
+
 		// Skip logging for the log table itself to prevent infinite loops
 		if tableName == "dblogfile" || tableName == "activity_log_config" || tableName == "activity_log_fields" {
+			log.WithField("table", tableName).Debug("⏭️  skipping internal logging tables")
 			return
 		}
 
 		// Get config from cache
 		val, ok := activityConfigCache.Load(tableName)
 		if !ok {
+			log.WithFields(map[string]interface{}{
+				"table":       tableName,
+				"cacheLoaded": isCacheLoaded,
+			}).Warn("⚠️  table NOT in cache - either not configured or cache not loaded yet")
 			return // Not configured
 		}
 
 		config := val.(SActivityLogConfig)
+
+		log.WithFields(map[string]interface{}{
+			"table":       tableName,
+			"isEnabled":   config.IsEnabled,
+			"logCreate":   config.LogCreate,
+			"logUpdate":   config.LogUpdate,
+			"logDelete":   config.LogDelete,
+		}).Info("📊 config settings for %s", tableName)
+
 		if !config.IsEnabled {
+			log.WithField("table", tableName).Warn("⚠️  config disabled for this table")
 			return
 		}
 
@@ -81,14 +120,17 @@ func trackActivity(action string) func(db *gorm.DB) {
 		switch action {
 		case "CREATE":
 			if !config.LogCreate {
+				log.WithField("table", tableName).Debug("❌ LogCreate disabled")
 				return
 			}
 		case "UPDATE":
 			if !config.LogUpdate {
+				log.WithField("table", tableName).Debug("❌ LogUpdate disabled")
 				return
 			}
 		case "DELETE":
 			if !config.LogDelete {
+				log.WithField("table", tableName).Debug("❌ LogDelete disabled")
 				return
 			}
 		}
@@ -101,8 +143,7 @@ func trackActivity(action string) func(db *gorm.DB) {
 		keterangan := extractKeterangan(db, action, config)
 		noBukti := extractPrimaryKeyValue(db, config.PrimaryKeyField)
 		
-		// Extract user from context (requires middleware to inject user ID into GORM context)
-		// E.g., db.WithContext(context.WithValue(ctx, "userID", "admin"))
+		// Extract user from context (middleware injects user ID via InjectUserContext)
 		pemakai := "System"
 		if userID, ok := db.Statement.Context.Value("userID").(string); ok {
 			pemakai = userID
@@ -119,13 +160,29 @@ func trackActivity(action string) func(db *gorm.DB) {
 			Keterangan: keterangan,
 		}
 
-		// Insert asynchronously
+		log.WithFields(map[string]interface{}{
+			"activity": logEntry.Aktivitas,
+			"user":     pemakai,
+			"table":    tableName,
+			"pk":       noBukti,
+		}).Info("logging activity")
+
+		// Insert asynchronously with background context (not request context which may be cancelled)
 		go func(dbClone *gorm.DB, entry SDBLogFile) {
-			// Create a new session without hooks to prevent infinite loops (though we excluded dblogfile above)
-			dbSession := dbClone.Session(&gorm.Session{SkipHooks: true, NewDB: true})
+			// Use background context instead of request context which gets cancelled
+			bgCtx := context.Background()
+			dbSession := dbClone.WithContext(bgCtx).Session(&gorm.Session{SkipHooks: true, NewDB: true})
+
+			// Explicitly avoid constraints check (for composite key)
+			dbSession = dbSession.Omit(clause.Associations)
+
 			if err := dbSession.Create(&entry).Error; err != nil {
-				// We can't do much here besides logging the error to stdout
-				fmt.Printf("Failed to insert activity log: %v\n", err)
+				logger.GetLogger().WithError(err).WithFields(map[string]interface{}{
+					"activity": entry.Aktivitas,
+					"table":    entry.Sumber,
+				}).Error("❌ failed to insert activity log")
+			} else {
+				logger.GetLogger().WithField("activity", entry.Aktivitas).Info("✅ activity log inserted successfully")
 			}
 		}(db, logEntry)
 	}

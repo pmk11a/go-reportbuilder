@@ -1,7 +1,6 @@
 package activity
 
 import (
-	"github.com/masza1/dapen-backend/internal/infrastructure/database"
 )
 
 // IActivityLogService is the business-logic entry point for the activity log
@@ -76,16 +75,12 @@ func (s *activityLogService) SaveConfig(req *SActivityLogConfigReq) error {
 		})
 	}
 
-	err := s.repo.SaveConfig(&config)
-	if err != nil {
+	if err := s.repo.SaveConfig(&config); err != nil {
 		return err
 	}
 
-	// Reload GORM plugin cache so the in-process tracker picks up the new config.
-	// We intentionally ignore the error here: a cache reload failure should not fail
-	// a successful config write — the next request will re-trigger the load.
-	_ = ReloadActivityLogConfig(database.DB)
-
+	// NOTE: Cache reload is handled by caller (handler or db.go during initialization).
+	// We don't reload here to avoid circular dependency on database package.
 	return nil
 }
 
@@ -98,7 +93,7 @@ func (s *activityLogService) GetLogs(limit int, offset int) ([]SActivityLogRes, 
 	var res []SActivityLogRes
 	for _, l := range logs {
 		res = append(res, SActivityLogRes{
-			ID:         l.ID,
+			ID:         0, // dblogfile table doesn't have id column
 			Tahun:      int(l.Tahun),
 			Bulan:      int(l.Bulan),
 			Tanggal:    l.Tanggal,

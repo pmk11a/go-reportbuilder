@@ -16,7 +16,7 @@ export const activityLogService = {
   },
 
   saveConfig: async (config: IActivityLogConfig): Promise<IAPIResponse> => {
-    return await fetchHelper<IAPIResponse>('/admin/activity-logs/configs/index', {
+    return await fetchHelper<IAPIResponse>('/admin/activity-logs/configs', {
       method: 'POST',
       body: JSON.stringify(config),
     });

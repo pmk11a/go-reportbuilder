@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/masza1/dapen-backend/internal/features/activity"
 	"github.com/masza1/dapen-backend/internal/infrastructure/config"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
@@ -34,8 +35,11 @@ func InitDB(cfg *config.SConfig) *gorm.DB {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Register Activity Log Plugin
+	// Register Activity Log Plugin to track database changes
+	// Loads activity_log_config from DB and registers GORM callbacks
+	activity.RegisterActivityLogPlugin(DB)
 
 	log.Println("Database connection established")
+	log.Println("Activity logging plugin registered")
 	return DB
 }

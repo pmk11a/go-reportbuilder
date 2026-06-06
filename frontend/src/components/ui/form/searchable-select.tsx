@@ -36,6 +36,7 @@ export interface SearchableSelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  icon?: React.ReactNode; // Optional icon to render in dropdown
 }
 
 export interface SearchableSelectProps
@@ -203,6 +204,11 @@ const SearchableSelect = React.forwardRef<
                   >
                     {internalValue === option.value && (
                       <Check className="h-4 w-4 shrink-0" />
+                    )}
+                    {option.icon && (
+                      <div className="w-4 h-4 flex-shrink-0 flex items-center justify-center">
+                        {option.icon}
+                      </div>
                     )}
                     <span className="flex-1 truncate">{option.label}</span>
                   </button>

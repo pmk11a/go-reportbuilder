@@ -62,10 +62,25 @@ export async function dispatchBffRequest( req: any, res: any, ssrLoadModule: any
     // Convert /api/auth/login to ./api-handlers/auth/login.ts
     // We strip the leading /api/ from pathname (which is e.g. /api/auth/login)
     const handlerPath = pathname.substring( 4 ) // "/auth/login"
-    const modulePath = `/src/api-handlers${ handlerPath }.ts`
+
+    // Try flat file first: /src/api-handlers/auth/login.ts
+    let modulePath = `/src/api-handlers${ handlerPath }.ts`
+    let mod = null
+
+    try {
+      mod = await ssrLoadModule( modulePath )
+    } catch {
+      // Fallback: try index file in directory: /src/api-handlers/auth/login/index.ts
+      modulePath = `/src/api-handlers${ handlerPath }/index.ts`
+      try {
+        mod = await ssrLoadModule( modulePath )
+      } catch {
+        // Both paths failed, will be handled below
+      }
+    }
 
     // Load the "API Route" module
-    const mod = await ssrLoadModule( modulePath )
+    // mod is now either loaded or null
 
     if ( mod && mod.APIRoute ) {
       const handler = mod.APIRoute[ req.method ]

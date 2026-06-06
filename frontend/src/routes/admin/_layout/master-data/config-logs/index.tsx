@@ -29,6 +29,7 @@ function ConfigLogsPage() {
 
     const [config, setConfig] = useState<IActivityLogConfig>({
         table_name: "",
+        target_table: "",
         display_name: "",
         source_name: "",
         primary_key_field: "ID",
@@ -66,15 +67,24 @@ function ConfigLogsPage() {
         setIsLoading(true);
         try {
             const configRes = await activityLogService.getConfigByTableName(tableName);
+
+            // Debug: log response format
+            console.log('Config Response:', configRes);
+
+            if (!configRes) {
+                throw new Error('No response from config endpoint');
+            }
+
             if (configRes.success && configRes.data) {
                 setConfig(configRes.data);
             } else {
                 // Fetch columns to build a new config
                 const colRes = await activityLogService.getTableColumns(tableName);
-                if (colRes.success && colRes.data) {
+                if (colRes && colRes.success && colRes.data) {
                     const cols = colRes.data;
                     setConfig({
                         table_name: tableName,
+                        target_table: tableName,
                         display_name: tableName,
                         source_name: "System",
                         primary_key_field: cols.includes("ID") ? "ID" : cols[0],
@@ -93,8 +103,13 @@ function ConfigLogsPage() {
                     });
                 }
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to fetch config", error);
+            toast({
+                title: "Error",
+                description: error?.message || "Failed to load configuration",
+                variant: "destructive",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -120,6 +135,20 @@ function ConfigLogsPage() {
             setIsSaving(false);
         }
     };
+
+    // Check all/uncheck all tracked fields
+    const handleCheckAllTracked = (checked: boolean) => {
+        setConfig({
+            ...config,
+            fields: config.fields.map(field => ({
+                ...field,
+                is_tracked: checked
+            }))
+        });
+    };
+
+    // Check if all fields are tracked
+    const areAllTracked = config.fields && config.fields.length > 0 && config.fields.every(f => f.is_tracked);
 
     return (
         <div className="space-y-4">
@@ -313,7 +342,20 @@ function ConfigLogsPage() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>{t("config.column_name")}</TableHead>
-                                            <TableHead className="text-center">{t("config.track_changes")}</TableHead>
+                                            <TableHead className="text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span>{t("config.track_changes")}</span>
+                                                    <Button
+                                                        size="sm"
+                                                        variant={areAllTracked ? "default" : "outline"}
+                                                        onClick={() => handleCheckAllTracked(!areAllTracked)}
+                                                        className="h-7 px-2 text-xs font-medium"
+                                                        title={areAllTracked ? "Uncheck all" : "Check all"}
+                                                    >
+                                                        {areAllTracked ? "✓ All" : "All"}
+                                                    </Button>
+                                                </div>
+                                            </TableHead>
                                             <TableHead className="text-center">{t("config.sensitive_data")}</TableHead>
                                         </TableRow>
                                     </TableHeader>

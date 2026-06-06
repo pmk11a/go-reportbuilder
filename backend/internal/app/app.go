@@ -51,7 +51,7 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	// 3. Initialize Activity Log domain.
 	activityLogRepo := activity.NewActivityLogRepository(dbConn)
 	activityLogService := activity.NewActivityLogService(activityLogRepo)
-	activityLogHandler := activity.NewActivityLogHandler(activityLogService)
+	activityLogHandler := activity.NewActivityLogHandler(activityLogService, database.DB)
 
 	// 3.5 Initialize Session domain (depends on Redis for session storage).
 	sessionRepo := session.NewSessionRepository(database.RedisClient)

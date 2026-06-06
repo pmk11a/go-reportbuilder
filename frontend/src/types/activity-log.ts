@@ -11,6 +11,7 @@ export interface IActivityLogField {
 export interface IActivityLogConfig {
   id?: number;
   table_name: string;
+  target_table: string;
   display_name: string;
   source_name: string;
   primary_key_field: string;

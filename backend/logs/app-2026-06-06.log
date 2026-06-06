@@ -1,0 +1,63 @@
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:51:16"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:51:16"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:51:16"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:51:25"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:51:25"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:51:25"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:51:30"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:51:30"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:51:30"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:51:42"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:51:42"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:51:42"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:51:59"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:51:59"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:51:59"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:52:05"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:52:05"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:52:05"}
+{"action":"UPDATE","level":"info","msg":"📋 processing %s on table: %sUPDATEdbmenu","table":"dbmenu","tableName":"DBMENU","time":"2026-06-06 22:55:38"}
+{"isEnabled":true,"level":"info","logCreate":true,"logDelete":true,"logUpdate":true,"msg":"📊 config settings for %sdbmenu","table":"dbmenu","time":"2026-06-06 22:55:38"}
+{"activity":"UPDATE_DBMENU","level":"info","msg":"logging activity","pk":"02001","table":"dbmenu","time":"2026-06-06 22:55:38","user":"System"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEdblogfile","table":"dblogfile","tableName":"dblogfile","time":"2026-06-06 22:55:38"}
+{"activity":"UPDATE_DBMENU","level":"info","msg":"✅ activity log inserted successfully","time":"2026-06-06 22:55:38"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:56:47"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:56:47"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:56:47"}
+{"action":"UPDATE","level":"info","msg":"📋 processing %s on table: %sUPDATEdbmenu","table":"dbmenu","tableName":"DBMENU","time":"2026-06-06 22:58:41"}
+{"isEnabled":true,"level":"info","logCreate":true,"logDelete":true,"logUpdate":true,"msg":"📊 config settings for %sdbmenu","table":"dbmenu","time":"2026-06-06 22:58:41"}
+{"activity":"UPDATE_DBMENU","level":"info","msg":"logging activity","pk":"02001","table":"dbmenu","time":"2026-06-06 22:58:41","user":"System"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEdblogfile","table":"dblogfile","tableName":"dblogfile","time":"2026-06-06 22:58:41"}
+{"activity":"UPDATE_DBMENU","level":"info","msg":"✅ activity log inserted successfully","time":"2026-06-06 22:58:41"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:59:36"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:59:36"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:59:36"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:59:42"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:59:42"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:59:42"}
+{"channel":"daily","fields.level":"info","file":"logs/app-2026-06-06.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-06-06 22:59:57"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-06-06 22:59:57"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-06-06 22:59:57"}
+{"action":"UPDATE","level":"info","msg":"📋 processing %s on table: %sUPDATEdbmenu","table":"dbmenu","tableName":"DBMENU","time":"2026-06-06 23:00:46"}
+{"isEnabled":true,"level":"info","logCreate":true,"logDelete":true,"logUpdate":true,"msg":"📊 config settings for %sdbmenu","table":"dbmenu","time":"2026-06-06 23:00:46"}
+{"activity":"UPDATE_DBMENU","level":"info","msg":"logging activity","pk":"02001","table":"dbmenu","time":"2026-06-06 23:00:46","user":"SA"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEdblogfile","table":"dblogfile","tableName":"dblogfile","time":"2026-06-06 23:00:46"}
+{"activity":"UPDATE_DBMENU","level":"info","msg":"✅ activity log inserted successfully","time":"2026-06-06 23:00:46"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEactivity_log_fields","table":"activity_log_fields","tableName":"activity_log_fields","time":"2026-06-06 23:07:50"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEactivity_log_config","table":"activity_log_config","tableName":"activity_log_config","time":"2026-06-06 23:07:50"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEactivity_log_fields","table":"activity_log_fields","tableName":"activity_log_fields","time":"2026-06-06 23:08:05"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEactivity_log_config","table":"activity_log_config","tableName":"activity_log_config","time":"2026-06-06 23:08:05"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEdbflpass","table":"dbflpass","tableName":"DBFLPASS","time":"2026-06-06 23:27:20"}
+{"isEnabled":true,"level":"info","logCreate":true,"logDelete":true,"logUpdate":true,"msg":"📊 config settings for %sdbflpass","table":"dbflpass","time":"2026-06-06 23:27:20"}
+{"activity":"CREATE_DBFLPASS","level":"info","msg":"logging activity","pk":"SA","table":"dbflpass","time":"2026-06-06 23:27:20","user":"System"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEdblogfile","table":"dblogfile","tableName":"dblogfile","time":"2026-06-06 23:27:20"}
+{"activity":"CREATE_DBFLPASS","level":"info","msg":"✅ activity log inserted successfully","time":"2026-06-06 23:27:20"}
+{"action":"UPDATE","level":"info","msg":"📋 processing %s on table: %sUPDATEusers","table":"users","tableName":"users","time":"2026-06-06 23:27:20"}
+{"isEnabled":true,"level":"info","logCreate":true,"logDelete":true,"logUpdate":true,"msg":"📊 config settings for %susers","table":"users","time":"2026-06-06 23:27:20"}
+{"activity":"UPDATE_USERS","level":"info","msg":"logging activity","pk":"1","table":"users","time":"2026-06-06 23:27:20","user":"System"}
+{"action":"UPDATE","level":"info","msg":"📋 processing %s on table: %sUPDATEdbflpass","table":"dbflpass","tableName":"DBFLPASS","time":"2026-06-06 23:27:20"}
+{"isEnabled":true,"level":"info","logCreate":true,"logDelete":true,"logUpdate":true,"msg":"📊 config settings for %sdbflpass","table":"dbflpass","time":"2026-06-06 23:27:20"}
+{"activity":"UPDATE_DBFLPASS","level":"info","msg":"logging activity","pk":"SA","table":"dbflpass","time":"2026-06-06 23:27:20","user":"System"}
+{"action":"CREATE","level":"info","msg":"📋 processing %s on table: %sCREATEdblogfile","table":"dblogfile","tableName":"dblogfile","time":"2026-06-06 23:27:20"}
+{"activity":"UPDATE_DBFLPASS","error":"sql: transaction has already been committed or rolled back","level":"error","msg":"❌ failed to insert activity log","table":"System","time":"2026-06-06 23:27:20"}
+{"activity":"UPDATE_USERS","level":"info","msg":"✅ activity log inserted successfully","time":"2026-06-06 23:27:20"}

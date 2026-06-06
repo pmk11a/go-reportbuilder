@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"context"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -18,11 +19,11 @@ type IMenuRepository interface {
 	// FindByID fetches a single menu by its primary key (KODEMENU).
 	FindByID(kodeMenu string) (*SDbMenu, error)
 	// Create inserts a new menu row.
-	Create(menu *SDbMenu) error
+	Create(ctx context.Context, menu *SDbMenu) error
 	// Update overwrites an existing menu (GORM Save).
-	Update(menu *SDbMenu) error
+	Update(ctx context.Context, menu *SDbMenu) error
 	// Delete removes a menu by KODEMENU.
-	Delete(kodeMenu string) error
+	Delete(ctx context.Context, kodeMenu string) error
 }
 
 type menuRepository struct {
@@ -74,23 +75,24 @@ func (r *menuRepository) FindByID(kodeMenu string) (*SDbMenu, error) {
 	return &menu, nil
 }
 
-func (r *menuRepository) Create(menu *SDbMenu) error {
-	if err := r.db.Create(menu).Error; err != nil {
+func (r *menuRepository) Create(ctx context.Context, menu *SDbMenu) error {
+	if err := r.db.WithContext(ctx).Create(menu).Error; err != nil {
 		return fmt.Errorf("creating menu %q: %w", menu.KODEMENU, err)
 	}
 	return nil
 }
 
-func (r *menuRepository) Update(menu *SDbMenu) error {
+func (r *menuRepository) Update(ctx context.Context, menu *SDbMenu) error {
 	// Use Save to update all fields based on primary key KODEMENU
-	if err := r.db.Save(menu).Error; err != nil {
+	// WithContext passes the context (containing UserID) to GORM hooks/callbacks
+	if err := r.db.WithContext(ctx).Save(menu).Error; err != nil {
 		return fmt.Errorf("updating menu %q: %w", menu.KODEMENU, err)
 	}
 	return nil
 }
 
-func (r *menuRepository) Delete(kodeMenu string) error {
-	if err := r.db.Where("KODEMENU = ?", kodeMenu).Delete(&SDbMenu{}).Error; err != nil {
+func (r *menuRepository) Delete(ctx context.Context, kodeMenu string) error {
+	if err := r.db.WithContext(ctx).Where("KODEMENU = ?", kodeMenu).Delete(&SDbMenu{}).Error; err != nil {
 		return fmt.Errorf("deleting menu %q: %w", kodeMenu, err)
 	}
 	return nil

@@ -85,12 +85,16 @@ export function MenuFormDialog(props: PMenuFormDialogProps) {
     }))
   }, [parentResponse])
 
-  // Icon Options from Lucide
+  // Icon Options from Lucide with preview
   const iconOptions = useMemo(() => {
-    return Object.keys(icons).map(key => ({
-      value: key,
-      label: key
-    }))
+    return Object.keys(icons).map(key => {
+      const IconComponent = (icons as any)[key];
+      return {
+        value: key,
+        label: key,
+        icon: <IconComponent className="h-4 w-4 text-current" />
+      }
+    })
   }, [])
 
   // Mutations

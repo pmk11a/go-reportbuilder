@@ -1,9 +1,10 @@
 package menu
 
 import (
+	"context"
 	"errors"
 
-			"github.com/masza1/dapen-backend/internal/infrastructure/response"
+	"github.com/masza1/dapen-backend/internal/infrastructure/response"
 )
 
 // IMenuService is the business-logic entry point for menu CRUD + sidebar
@@ -18,11 +19,11 @@ type IMenuService interface {
 	// GetMenuByID fetches a single menu by KODEMENU.
 	GetMenuByID(kodeMenu string) (*SDbMenu, error)
 	// CreateMenu validates (non-empty KODEMENU, no duplicate) and persists.
-	CreateMenu(menu *SDbMenu) error
+	CreateMenu(ctx context.Context, menu *SDbMenu) error
 	// UpdateMenu overwrites an existing menu by KODEMENU.
-	UpdateMenu(kodeMenu string, menu *SDbMenu) error
+	UpdateMenu(ctx context.Context, kodeMenu string, menu *SDbMenu) error
 	// DeleteMenu removes a menu by KODEMENU.
-	DeleteMenu(kodeMenu string) error
+	DeleteMenu(ctx context.Context, kodeMenu string) error
 }
 
 type menuService struct {
@@ -53,7 +54,7 @@ func (s *menuService) GetMenuByID(kodeMenu string) (*SDbMenu, error) {
 	return s.repo.FindByID(kodeMenu)
 }
 
-func (s *menuService) CreateMenu(menu *SDbMenu) error {
+func (s *menuService) CreateMenu(ctx context.Context, menu *SDbMenu) error {
 	// KODEMENU is the primary key; an empty value would crash GORM at INSERT time.
 	if menu.KODEMENU == "" {
 		return errors.New("kode menu is required")
@@ -65,10 +66,10 @@ func (s *menuService) CreateMenu(menu *SDbMenu) error {
 		return errors.New("menu with this kode already exists")
 	}
 
-	return s.repo.Create(menu)
+	return s.repo.Create(ctx, menu)
 }
 
-func (s *menuService) UpdateMenu(kodeMenu string, req *SDbMenu) error {
+func (s *menuService) UpdateMenu(ctx context.Context, kodeMenu string, req *SDbMenu) error {
 	existing, err := s.repo.FindByID(kodeMenu)
 	if err != nil {
 		return errors.New("menu not found")
@@ -83,13 +84,13 @@ func (s *menuService) UpdateMenu(kodeMenu string, req *SDbMenu) error {
 	existing.Icon = req.Icon
 	existing.PlatformMask = req.PlatformMask
 
-	return s.repo.Update(existing)
+	return s.repo.Update(ctx, existing)
 }
 
-func (s *menuService) DeleteMenu(kodeMenu string) error {
+func (s *menuService) DeleteMenu(ctx context.Context, kodeMenu string) error {
 	_, err := s.repo.FindByID(kodeMenu)
 	if err != nil {
 		return errors.New("menu not found")
 	}
-	return s.repo.Delete(kodeMenu)
+	return s.repo.Delete(ctx, kodeMenu)
 }

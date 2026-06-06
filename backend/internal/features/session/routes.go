@@ -7,13 +7,13 @@ import "github.com/gin-gonic/gin"
 func RegisterRoutes(adminGroup *gin.RouterGroup, handler *SSessionHandler) {
 	sessionGroup := adminGroup.Group("/users")
 	{
-		// GET  /api/admin/users/{userId}/sessions           - List active sessions
-		sessionGroup.GET("/:userId/sessions", handler.ListUserSessions)
+		// GET  /api/admin/users/{id}/sessions           - List active sessions
+		sessionGroup.GET("/:id/sessions", handler.ListUserSessions)
 
-		// DELETE /api/admin/users/{userId}/sessions/{sessionId} - Revoke single session
-		sessionGroup.DELETE("/:userId/sessions/:sessionId", handler.RevokeSession)
+		// DELETE /api/admin/users/{id}/sessions/{sessionId} - Revoke single session
+		sessionGroup.DELETE("/:id/sessions/:sessionId", handler.RevokeSession)
 
-		// DELETE /api/admin/users/{userId}/sessions         - Revoke all sessions
-		sessionGroup.DELETE("/:userId/sessions", handler.RevokeAllSessions)
+		// DELETE /api/admin/users/{id}/sessions         - Revoke all sessions
+		sessionGroup.DELETE("/:id/sessions", handler.RevokeAllSessions)
 	}
 }

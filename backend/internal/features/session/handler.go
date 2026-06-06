@@ -23,7 +23,7 @@ func NewSessionHandler(svc ISessionService) *SSessionHandler {
 // @Description Fetch all active sessions for a specific user. Admin-only endpoint.
 // @Tags Session Management
 // @Security BearerAuth
-// @Param userId path uint true "User ID"
+// @Param id path uint true "User ID"
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]interface{}
@@ -31,9 +31,9 @@ func NewSessionHandler(svc ISessionService) *SSessionHandler {
 // @Failure 401 {object} map[string]interface{}
 // @Failure 403 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @Router /api/admin/users/{userId}/sessions [get]
+// @Router /api/admin/users/{id}/sessions [get]
 func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
-	userIDStr := c.Param("userId")
+	userIDStr := c.Param("id")
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
 		response.BadRequest(c, "Invalid user ID format")
@@ -56,7 +56,7 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 // @Description Revoke a specific session by sessionId. The user will be logged out from that device/session.
 // @Tags Session Management
 // @Security BearerAuth
-// @Param userId path uint true "User ID"
+// @Param id path uint true "User ID"
 // @Param sessionId path string true "Session ID"
 // @Accept json
 // @Produce json
@@ -66,9 +66,9 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 // @Failure 403 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @Router /api/admin/users/{userId}/sessions/{sessionId} [delete]
+// @Router /api/admin/users/{id}/sessions/{sessionId} [delete]
 func (h *SSessionHandler) RevokeSession(c *gin.Context) {
-	userIDStr := c.Param("userId")
+	userIDStr := c.Param("id")
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
 		response.BadRequest(c, "Invalid user ID format")
@@ -110,7 +110,7 @@ func (h *SSessionHandler) RevokeSession(c *gin.Context) {
 // @Description Revoke all active sessions for a user. The user will be logged out from all devices.
 // @Tags Session Management
 // @Security BearerAuth
-// @Param userId path uint true "User ID"
+// @Param id path uint true "User ID"
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]interface{}
@@ -118,9 +118,9 @@ func (h *SSessionHandler) RevokeSession(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{}
 // @Failure 403 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @Router /api/admin/users/{userId}/sessions [delete]
+// @Router /api/admin/users/{id}/sessions [delete]
 func (h *SSessionHandler) RevokeAllSessions(c *gin.Context) {
-	userIDStr := c.Param("userId")
+	userIDStr := c.Param("id")
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
 		response.BadRequest(c, "Invalid user ID format")

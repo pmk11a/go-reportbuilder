@@ -7,6 +7,7 @@ import (
 	"github.com/masza1/dapen-backend/internal/infrastructure/config"
 	"github.com/masza1/dapen-backend/internal/infrastructure/database"
 	"github.com/masza1/dapen-backend/internal/infrastructure/database/seeders"
+	"github.com/masza1/dapen-backend/internal/infrastructure/logger"
 	"github.com/masza1/dapen-backend/internal/app"
 
 	_ "github.com/masza1/dapen-backend/docs"
@@ -23,6 +24,12 @@ func main() {
 	runMigrate := flag.Bool("migrate", false, "Run database migrations")
 	runSeed := flag.Bool("seed", false, "Run database seeds")
 	flag.Parse()
+
+	// 0.5 Initialize Logger
+	if err := logger.InitLogger(); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer logger.Close()
 
 	// 1. Load SConfig
 	cfg := config.LoadConfig()

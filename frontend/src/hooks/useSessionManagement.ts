@@ -9,12 +9,29 @@ import { formatAPIError } from '@/utils/errorMapper'
  * Refetch on tab focus or manual invalidation.
  */
 export function useUserSessions(userId?: string | number) {
+  const { toast } = useToast()
+
   return useQuery({
     queryKey: ['sessions', userId],
     queryFn: async () => {
       if (!userId) return []
-      const response = await sessionService.getUserSessions(userId)
-      return response.data?.sessions || []
+      try {
+        const response = await sessionService.getUserSessions(userId)
+        if (!response || !response.data) {
+          throw new Error('Invalid response format')
+        }
+        return response.data.sessions || []
+      } catch (error: any) {
+        const errorMsg = error.response
+          ? formatAPIError(error.response.status, error.message)
+          : error.message || 'Failed to fetch sessions'
+        toast({
+          title: 'Error',
+          description: errorMsg,
+          variant: 'destructive',
+        })
+        throw error
+      }
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes
