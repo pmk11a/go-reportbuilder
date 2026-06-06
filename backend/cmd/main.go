@@ -4,10 +4,10 @@ import (
 	"flag"
 	"log"
 
-	"github.com/masza1/dapen-backend/internal/shared/config"
-	"github.com/masza1/dapen-backend/internal/shared/database"
-	"github.com/masza1/dapen-backend/internal/shared/database/seeders"
-	"github.com/masza1/dapen-backend/internal/server"
+	"github.com/masza1/dapen-backend/internal/infrastructure/config"
+	"github.com/masza1/dapen-backend/internal/infrastructure/database"
+	"github.com/masza1/dapen-backend/internal/infrastructure/database/seeders"
+	"github.com/masza1/dapen-backend/internal/app"
 
 	_ "github.com/masza1/dapen-backend/docs"
 )
@@ -43,7 +43,7 @@ func main() {
 	}
 
 	// 5. Initialize Server (DI & Routing)
-	engine := server.NewServer(dbConn, cfg)
+	engine := app.NewApp(dbConn, cfg)
 
 	// 10. Start server
 	log.Printf("Starting server on port 8080...")

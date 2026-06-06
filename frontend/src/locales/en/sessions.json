@@ -1,0 +1,19 @@
+{
+  "loginTime": "Login Time",
+  "expiresAt": "Expires At",
+  "ipAddress": "IP Address",
+  "browser": "Browser",
+  "status": "Status",
+  "active": "Active",
+  "expired": "Expired",
+  "expiringKoon": "Expiring Soon",
+  "revokeAll": "Logout All Sessions",
+  "revoke": "Logout",
+  "confirmRevokeAll": "Logout All Sessions?",
+  "revokeAllDescription": "This will immediately logout the user from all {{count}} active sessions. They will need to log in again.",
+  "confirmRevoke": "Logout This Session?",
+  "revokeDescription": "This will immediately logout the user from this device.",
+  "confirm": "Confirm",
+  "noActiveSessions": "No active sessions",
+  "loadingFailed": "Failed to load sessions"
+}

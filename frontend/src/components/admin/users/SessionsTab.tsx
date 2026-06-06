@@ -1,0 +1,265 @@
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { formatDistanceToNow, format } from 'date-fns'
+import { id, enUS } from 'date-fns/locale'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  Badge,
+  Button,
+  Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui'
+import { Loader2, AlertCircle } from 'lucide-react'
+import { useUserSessions, useRevokeSession, useRevokeAllSessions } from '@/hooks/useSessionManagement'
+import { Each, Show } from '@/components/ui/layout/Render'
+import type { ISessionInfo } from '@/services/sessionService'
+
+interface ISessionsTabProps {
+  userId: string | number
+}
+
+/**
+ * SessionsTab renders the active sessions list for a user within the User Detail Modal.
+ * Users can revoke individual sessions or all sessions at once with confirmation dialogs.
+ * Shows session metadata: login time, expiry, IP address, browser, status.
+ */
+export function SessionsTab({ userId }: ISessionsTabProps) {
+  const { t, i18n } = useTranslation(['sessions', 'common'])
+  const dateLocale = i18n.language === 'id' ? id : enUS
+
+  const { data: sessions, isLoading, isError, error } = useUserSessions(userId)
+  const revokeSession = useRevokeSession(userId)
+  const revokeAll = useRevokeAllSessions(userId)
+
+  const [revokeConfirmOpen, setRevokeConfirmOpen] = useState(false)
+  const [revokeAllConfirmOpen, setRevokeAllConfirmOpen] = useState(false)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3 p-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/20 flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-red-700 dark:text-red-300">
+          {t('common.error', 'Error')}: {error?.message || t('sessions.loadingFailed', 'Failed to load sessions')}
+        </div>
+      </div>
+    )
+  }
+
+  const now = Date.now()
+
+  // Determine if session is expiring soon (less than 1 hour remaining)
+  const isExpiringKoon = (expiresAt: number): boolean => {
+    return expiresAt - now > 0 && expiresAt - now < 1 * 60 * 60 * 1000
+  }
+
+  // Determine if session is already expired
+  const isExpired = (expiresAt: number): boolean => {
+    return now > expiresAt
+  }
+
+  // Mask IP address for privacy: show only first 3 octets
+  function maskIP(ip: string): string {
+    const parts = ip.split('.')
+    if (parts.length === 4) {
+      return `${parts[0]}.${parts[1]}.${parts[2]}.***`
+    }
+    return ip
+  }
+
+  // Get badge variant based on session status
+  function getStatusBadgeVariant(session: ISessionInfo): 'success' | 'warning' | 'secondary' {
+    if (isExpired(session.expires_at)) {
+      return 'secondary'
+    }
+    if (isExpiringKoon(session.expires_at)) {
+      return 'warning'
+    }
+    return 'success'
+  }
+
+  // Get status label based on session status
+  function getStatusLabel(session: ISessionInfo): string {
+    if (isExpired(session.expires_at)) {
+      return t('sessions.expired', 'Expired')
+    }
+    if (isExpiringKoon(session.expires_at)) {
+      return t('sessions.expiringKoon', 'Expiring Soon')
+    }
+    return t('sessions.active', 'Active')
+  }
+
+  return (
+    <div className="space-y-4 p-4">
+      {/* Bulk Revoke All Sessions Button */}
+      <Show when={(sessions?.length ?? 0) > 0}>
+        <AlertDialog open={revokeAllConfirmOpen} onOpenChange={setRevokeAllConfirmOpen}>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm">
+              {t('sessions.revokeAll', 'Logout All Sessions')}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogTitle>
+              {t('sessions.confirmRevokeAll', 'Logout All Sessions?')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('sessions.revokeAllDescription', 'This will immediately logout the user from all {{count}} active sessions. They will need to log in again.', {
+                count: sessions?.length || 0,
+              })}
+            </AlertDialogDescription>
+            <div className="flex gap-2 justify-end pt-4">
+              <AlertDialogCancel>{t('common.cancel', 'Cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  revokeAll.mutate(undefined, {
+                    onSuccess: () => setRevokeAllConfirmOpen(false),
+                  })
+                }}
+                disabled={revokeAll.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {revokeAll.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {t('sessions.confirm', 'Confirm')}
+              </AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Show>
+
+      {/* Session List Table */}
+      <Show
+        when={(sessions?.length ?? 0) > 0}
+        fallback={
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+            {t('sessions.noActiveSessions', 'No active sessions')}
+          </div>
+        }
+      >
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <Table>
+            <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+              <TableRow>
+                <TableHead>{t('sessions.loginTime', 'Login Time')}</TableHead>
+                <TableHead>{t('sessions.expiresAt', 'Expires At')}</TableHead>
+                <TableHead>{t('sessions.ipAddress', 'IP Address')}</TableHead>
+                <TableHead>{t('sessions.browser', 'Browser')}</TableHead>
+                <TableHead>{t('sessions.status', 'Status')}</TableHead>
+                <TableHead className="text-right">{t('common.actions', 'Actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <Each of={sessions || []}>
+                {(session: ISessionInfo) => (
+                  <TableRow key={session.session_id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                    {/* Login Time */}
+                    <TableCell className="text-sm">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                        {formatDistanceToNow(new Date(session.login_time), {
+                          addSuffix: true,
+                          locale: dateLocale,
+                        })}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {format(new Date(session.login_time), 'PPpp', { locale: dateLocale })}
+                      </div>
+                    </TableCell>
+
+                    {/* Expires At */}
+                    <TableCell className="text-sm">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
+                        {formatDistanceToNow(new Date(session.expires_at), {
+                          addSuffix: true,
+                          locale: dateLocale,
+                        })}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {format(new Date(session.expires_at), 'PPpp', { locale: dateLocale })}
+                      </div>
+                    </TableCell>
+
+                    {/* IP Address (masked) */}
+                    <TableCell className="text-sm font-mono text-slate-600 dark:text-slate-300">
+                      {maskIP(session.login_ip)}
+                    </TableCell>
+
+                    {/* Browser */}
+                    <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                      {session.browser || '-'}
+                    </TableCell>
+
+                    {/* Status Badge */}
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(session)}>
+                        {getStatusLabel(session)}
+                      </Badge>
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell className="text-right">
+                      <AlertDialog open={revokeConfirmOpen} onOpenChange={setRevokeConfirmOpen}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isExpired(session.expires_at) || revokeSession.isPending}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          >
+                            {t('sessions.revoke', 'Logout')}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogTitle>
+                            {t('sessions.confirmRevoke', 'Logout This Session?')}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('sessions.revokeDescription', 'This will immediately logout the user from this device.')}
+                          </AlertDialogDescription>
+                          <div className="flex gap-2 justify-end pt-4">
+                            <AlertDialogCancel>{t('common.cancel', 'Cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                revokeSession.mutate(session.session_id, {
+                                  onSuccess: () => setRevokeConfirmOpen(false),
+                                })
+                              }}
+                              disabled={revokeSession.isPending}
+                              className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                              {revokeSession.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                              {t('sessions.confirm', 'Confirm')}
+                            </AlertDialogAction>
+                          </div>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </Each>
+            </TableBody>
+          </Table>
+        </div>
+      </Show>
+    </div>
+  )
+}

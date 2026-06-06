@@ -1,0 +1,105 @@
+package app
+
+import (
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/masza1/dapen-backend/internal/features/activity"
+	"github.com/masza1/dapen-backend/internal/app/routes"
+	"github.com/masza1/dapen-backend/internal/features/dashboard"
+	"github.com/masza1/dapen-backend/internal/features/filters"
+	"github.com/masza1/dapen-backend/internal/legacy/handlers"
+	"github.com/masza1/dapen-backend/internal/features/identity/auth"
+	"github.com/masza1/dapen-backend/internal/features/identity/permission"
+	"github.com/masza1/dapen-backend/internal/features/identity/user"
+	"github.com/masza1/dapen-backend/internal/features/menu"
+	"github.com/masza1/dapen-backend/internal/features/session"
+	"github.com/masza1/dapen-backend/internal/legacy/repositories"
+	"github.com/masza1/dapen-backend/internal/legacy/services"
+	"github.com/masza1/dapen-backend/internal/infrastructure/config"
+	"github.com/masza1/dapen-backend/internal/infrastructure/database"
+	"github.com/masza1/dapen-backend/internal/infrastructure/middleware"
+	"golang.org/x/time/rate"
+	"gorm.io/gorm"
+)
+
+// NewApp initializes all dependencies, middlewares, and routes, returning a configured Gin engine.
+//
+// Domain-Based DI: each domain package owns its repository + service + handler constructors.
+// Shared infrastructure (config, database connection, redis) is injected once and passed down.
+func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
+	// 1. Initialize Identity domain (auth + user + permission).
+	userRepo := user.NewUserRepository(dbConn)
+	authService := auth.NewAuthService(userRepo, cfg)
+	userService := user.NewUserService(userRepo)
+	permissionRepo := permission.NewPermissionRepository(dbConn)
+	permissionService := permission.NewPermissionService(permissionRepo)
+
+	authHandler := auth.NewAuthHandler(authService)
+	userHandler := user.NewUserHandler(userRepo, userService)
+	permissionHandler := permission.NewPermissionHandler(permissionRepo, permissionService)
+
+	// 2. Initialize Menu and Filter domains.
+	menuRepo := menu.NewMenuRepository(dbConn)
+	menuService := menu.NewMenuService(menuRepo)
+	menuHandler := menu.NewMenuHandler(menuService)
+
+	filterRepo := filters.NewFilterRepository(dbConn)
+	filterService := filters.NewFilterService(filterRepo)
+	filterHandler := filters.NewFilterHandler(filterService)
+
+	// 3. Initialize Activity Log domain.
+	activityLogRepo := activity.NewActivityLogRepository(dbConn)
+	activityLogService := activity.NewActivityLogService(activityLogRepo)
+	activityLogHandler := activity.NewActivityLogHandler(activityLogService)
+
+	// 3.5 Initialize Session domain (depends on Redis for session storage).
+	sessionRepo := session.NewSessionRepository(database.RedisClient)
+	sessionService := session.NewSessionService(sessionRepo, dbConn)
+	sessionHandler := session.NewSessionHandler(sessionService)
+
+	// 4. Initialize Dashboard domain (handler-only, no separate service).
+	dashboardHandler := dashboard.NewDashboardHandler(dbConn)
+
+	// 5. Initialize the legacy Berkas/Settings handlers (periode + setting).
+	//    These still live in the legacy handlers/ package and depend on
+	//    legacy models + services. They are scheduled for migration to
+	//    accounting/periode and a new settings/ domain in a follow-up sprint.
+	periodeRepo := repositories.NewPeriodeRepository(dbConn)
+	periodeService := services.NewPeriodeService(periodeRepo)
+	periodeHandler := handlers.NewPeriodeHandler(periodeService)
+	settingHandler := handlers.NewSettingHandler(dbConn)
+
+	// 6. Initialize the Gin engine and global middlewares.
+	engine := gin.Default()
+	engine.SetTrustedProxies(nil)
+	engine.Use(gin.Recovery())
+	engine.Use(gin.Logger())
+
+	// Rate Limit: 10 req/sec per IP with burst of 20. The limiter factory
+	// transparently switches between an in-memory token bucket and a Redis-backed
+	// limiter based on whether the Redis client is available.
+	limiter := middleware.GetRateLimiter(database.RedisClient, rate.Limit(10), 20)
+	engine.Use(limiter.RateLimitMiddleware())
+
+	// Timeout: 60 seconds for the request context.
+	engine.Use(middleware.TimeoutMiddleware(60 * time.Second))
+
+	// 7. Wire all routes.
+	routes.SetupRoutes(routes.SRouterConfig{
+		Engine:              engine,
+		SAuthHandler:        authHandler,
+		SDashboardHandler:   dashboardHandler,
+		SFilterHandler:      filterHandler,
+		SMenuHandler:        menuHandler,
+		SActivityLogHandler: activityLogHandler,
+		SPeriodeHandler:     periodeHandler,
+		SSettingHandler:     settingHandler,
+		SUserHandler:        userHandler,
+		SPermissionHandler:  permissionHandler,
+		SSessionHandler:     sessionHandler,
+		SConfig:             cfg,
+	})
+
+	return engine
+}

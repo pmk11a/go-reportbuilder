@@ -19,6 +19,7 @@
   "buttons": {
     "edit": "Edit",
     "permissions": "Permissions",
+    "sessions": "Active Sessions",
     "logs": "Activity Logs",
     "delete": "Delete",
     "enable": "Enable",
@@ -40,6 +41,7 @@
   "dialog": {
     "add_description": "Fill out the form below to create a new user.",
     "edit_description": "Update user profile details below.",
+    "session_description": "View and manage active sessions for this user.",
     "password_hint": "leave blank to keep unchanged",
     "username_label": "Username",
     "full_name_label": "Full Name",
@@ -52,6 +54,9 @@
     "username_min": "Username must be at least 3 characters",
     "full_name_required": "Full name is required",
     "password_min": "Password must be at least 6 characters"
+  },
+  "sessions": {
+    "title": "Active Sessions"
   },
   "permissions": {
     "title": "User Permissions",

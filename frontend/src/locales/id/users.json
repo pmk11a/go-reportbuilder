@@ -19,6 +19,7 @@
   "buttons": {
     "edit": "Edit",
     "permissions": "Hak Akses",
+    "sessions": "Sesi Aktif",
     "logs": "Log Aktivitas",
     "delete": "Hapus",
     "enable": "Aktifkan",
@@ -40,6 +41,7 @@
   "dialog": {
     "add_description": "Isi formulir di bawah ini untuk membuat pengguna baru.",
     "edit_description": "Perbarui detail profil pengguna di bawah ini.",
+    "session_description": "Lihat dan kelola sesi aktif untuk pengguna ini.",
     "password_hint": "kosongkan jika tidak ingin mengubah",
     "username_label": "Username",
     "full_name_label": "Nama Lengkap",
@@ -52,6 +54,9 @@
     "username_min": "Username minimal 3 karakter",
     "full_name_required": "Nama lengkap wajib diisi",
     "password_min": "Kata sandi minimal 6 karakter"
+  },
+  "sessions": {
+    "title": "Sesi Aktif"
   },
   "permissions": {
     "title": "Hak Akses Pengguna",

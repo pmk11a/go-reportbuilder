@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/masza1/dapen-backend/internal/models"
+	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"github.com/stretchr/testify/assert"
 )
 

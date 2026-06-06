@@ -20,19 +20,21 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/data/table";
 import { Skeleton } from "@/components/ui/feedback/skeleton";
 import { Input } from "@/components/ui/form/input";
-import { 
-  Pencil, 
-  Shield, 
-  History, 
-  Trash, 
-  Check, 
-  X, 
-  Plus, 
-  Search, 
-  RefreshCw 
+import {
+  Pencil,
+  Shield,
+  History,
+  Trash,
+  Check,
+  X,
+  Plus,
+  Search,
+  RefreshCw,
+  Clock
 } from "lucide-react";
 import { UserFormDialog } from "@/components/admin/users/UserFormDialog";
 import { UserPermissionsDialog } from "@/components/admin/users/UserPermissionsDialog";
+import { UserSessionsModal } from "@/components/admin/users/UserSessionsModal";
 import { Each, Show } from "@/components/ui/layout/Render";
 import type { IDbflpass } from "@/types/user";
 
@@ -55,6 +57,8 @@ function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<IDbflpass | null>(null);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [permissionUser, setPermissionUser] = useState<IDbflpass | null>(null);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState<IDbflpass | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [deleteUserName, setDeleteUserName] = useState<string>("");
 
@@ -288,6 +292,20 @@ function UserManagementPage() {
                                       <Shield className="h-4 w-4" />
                                     </Button>
 
+                                    {/* Sessions Button */}
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-teal-600 hover:text-teal-700"
+                                      title={t("buttons.sessions", "Active Sessions")}
+                                      onClick={() => {
+                                        setSessionUser(user);
+                                        setSessionsOpen(true);
+                                      }}
+                                    >
+                                      <Clock className="h-4 w-4" />
+                                    </Button>
+
                                     {/* Logs Button */}
                                     <Button
                                       variant="ghost"
@@ -379,6 +397,9 @@ function UserManagementPage() {
 
       {/* User Permissions Dialog */}
       <UserPermissionsDialog open={permissionsOpen} onOpenChange={setPermissionsOpen} user={permissionUser} />
+
+      {/* User Sessions Modal */}
+      <UserSessionsModal open={sessionsOpen} onOpenChange={setSessionsOpen} user={sessionUser} />
 
       {/* Delete Confirmation */}
       <DeleteConfirmationDialog

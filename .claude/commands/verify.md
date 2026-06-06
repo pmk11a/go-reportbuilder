@@ -59,7 +59,7 @@ For each failing check:
   5. **Build / runtime warnings** (informational; surface but don't block).
 
 ### Next step
-A one-line recommendation, e.g. "Fix `backend/internal/handlers/user_handler.go:42` first — 3 build errors block 12 downstream test failures."
+A one-line recommendation, e.g. "Fix `backend/internal/legacy/handlers/user_handler.go:42` first — 3 build errors block 12 downstream test failures."
 
 ## Step 5 — Optional follow-up
 If the user wants to go straight to fixing, hand the report to the relevant subagent (`@dapen-backend` for `backend/**` errors, `@dapen-frontend` for `frontend/**` errors, `@dapen-qa` for test/coverage issues) and iterate.

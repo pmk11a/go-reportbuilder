@@ -13,21 +13,21 @@ When asked to scaffold or create a new feature end-to-end, follow this 6-phase s
 - `tasks/TASK-XXX-*.md` — the feature's spec (if it exists; otherwise create one per `tasks/AI.md`)
 
 ## Phase 1 — Backend Database
-1. Create the GORM model in `backend/internal/models/` with prefix `S` (e.g., `SInvoice`). Implement `TableName() string`.
-2. Define the Repository interface (`I*Repository`) and implementation in `backend/internal/repositories/`.
+1. Create the GORM model in `backend/internal/infrastructure/persistence/models/` with prefix `S` (e.g., `SInvoice`). Implement `TableName() string`.
+2. Define the Repository interface (`I*Repository`) and implementation in `backend/internal/features/<domain>/<sub>/`.
 3. **Legacy tables warning:** Do NOT add `CreatedAt`/`UpdatedAt` or change primary keys on legacy SQL Server tables (the `db*.go` models). For new entities, follow standard GORM conventions.
 4. After this phase: `cd backend && go build ./...` should be green.
 
 ## Phase 2 — Backend Business
-1. Define DTOs in `backend/internal/dto/` for HTTP requests and responses. Do not declare request/response structs in handler files.
-2. Define the Service interface (`I*Service`) and implementation in `backend/internal/services/`.
+1. Define DTOs in `backend/internal/features/<domain>/<sub>/` for HTTP requests and responses. Do not declare request/response structs in handler files.
+2. Define the Service interface (`I*Service`) and implementation in `backend/internal/features/<domain>/<sub>/`.
 3. Write a **unit test** for the service using mocks (mockery + testify).
-4. After this phase: `cd backend && go test ./internal/services/...` should be green.
+4. After this phase: `cd backend && go test ./internal/features/...` should be green.
 
 ## Phase 3 — Backend Delivery
-1. Create the Handler in `backend/internal/handlers/`. Use the standard envelope — `utils.Success` / `utils.Error` / etc. — never `c.JSON` directly.
+1. Create the Handler in `backend/internal/features/<domain>/<sub>/`. Use the standard envelope — `utils.Success` / `utils.Error` / etc. — never `c.JSON` directly.
 2. Add **Swaggo/Swagger annotations** above every handler method.
-3. Register routes in `backend/internal/routes/routes.go` (and apply the right middleware: `AuthMiddleware`, role guards, rate limit).
+3. Register routes in `backend/internal/app/routes/routes.go` (and apply the right middleware: `AuthMiddleware`, role guards, rate limit).
 4. Run `swag init` to regenerate `backend/docs/`.
 5. After this phase: `cd backend && go build ./...` AND `./scripts/check-all.sh --backend-only` should be green.
 

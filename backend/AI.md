@@ -18,8 +18,8 @@ Primary work in this area is always assigned to: **`@dapen-backend`**
 - [ ] **Dependency Injection** via Interfaces (starting with `I`). Service depends on Repository interface, not concrete.
 - [ ] **Struct naming** starts with `S` (e.g., `SUser`). **Interface** naming starts with `I` (e.g., `IUserRepository`).
 - [ ] **Inter-domain access** goes through the owning domain's service, NEVER through another domain's repository.
-- [ ] All protected routes are secured using `internal/shared/auth/` middleware.
-- [ ] All API responses MUST use helpers from `internal/shared/response/` (e.g., `response.Success(c, "msg", data)`, `response.Error(c, status, "msg")`, `response.BadRequest(c, "msg")`, `response.InternalError(c, "msg")`). Direct calls to `c.JSON` are strictly forbidden.
+- [ ] All protected routes are secured using `internal/infrastructure/auth/` middleware.
+- [ ] All API responses MUST use helpers from `internal/infrastructure/response/` (e.g., `response.Success(c, "msg", data)`, `response.Error(c, status, "msg")`, `response.BadRequest(c, "msg")`, `response.InternalError(c, "msg")`). Direct calls to `c.JSON` are strictly forbidden.
 - [ ] **API Documentation**: EVERY endpoint (existing or new) MUST have Swagger annotations (Swaggo) above its handler function, and `swag init` must be run.
 - [ ] `Unit Tests` are written adjacent to source files (`_test.go`) using Mocking (testify + `DATA-DOG/go-sqlmock`).
 - [ ] `E2E Tests` are written in `backend/tests/e2e/` using `httptest` to test the full router layer without mocking.
@@ -27,7 +27,7 @@ Primary work in this area is always assigned to: **`@dapen-backend`**
 
 ### 📝 REST API Response Rules
 
-All REST API handler responses must use the centralized helpers from `internal/shared/response/`.
+All REST API handler responses must use the centralized helpers from `internal/infrastructure/response/`.
 
 **Standard Response Structure:**
 ```json
@@ -153,7 +153,7 @@ Run Quality Gate (recommended before/after changes):
 
 ### Domain Location (target)
 
-`internal/identity/permission/` — handler, service, repository, export, entity, dto, routes, tests.
+`internal/features/identity/permission/` — handler, service, repository, export, entity, dto, routes, tests.
 
 ### Database Schema
 

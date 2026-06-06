@@ -77,7 +77,7 @@ handler → service → repository → database
 ### Database models
 
 - Database models live in the **owning domain's `entity.go`**, NOT in a global `models/`.
-- Example: `SDbFlmenu` lives in `internal/identity/permission/entity.go`, not `internal/models/`.
+- Example: `SDbFlmenu` lives in `internal/features/identity/permission/entity.go`, not `internal/infrastructure/persistence/models/`.
 
 ## Code Style (MANDATORY)
 
