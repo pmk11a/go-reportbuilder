@@ -1,10 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sessionService, type ISessionInfo } from '@/services/sessionService'
+import { sessionService, type ISessionInfo, type ISessionListResponse } from '@/services/sessionService'
 import { useToast } from '@/hooks/use-toast'
 import { formatAPIError } from '@/utils/errorMapper'
 
 /**
+ * Session data with current session indicator.
+ */
+interface ISessionsData {
+  sessions: ISessionInfo[]
+  currentSessionId: string
+}
+
+/**
  * useUserSessions fetches the list of active sessions for a specific user.
+ * Returns sessions array and the current session ID for highlighting.
  * Cache key: ['sessions', userId]
  * Refetch on tab focus or manual invalidation.
  */
@@ -13,14 +22,18 @@ export function useUserSessions(userId?: string | number) {
 
   return useQuery({
     queryKey: ['sessions', userId],
-    queryFn: async () => {
-      if (!userId) return []
+    queryFn: async (): Promise<ISessionsData> => {
+      if (!userId) return { sessions: [], currentSessionId: '' }
       try {
         const response = await sessionService.getUserSessions(userId)
         if (!response || !response.data) {
           throw new Error('Invalid response format')
         }
-        return response.data.sessions || []
+        const data = response.data as ISessionListResponse
+        return {
+          sessions: data.sessions || [],
+          currentSessionId: data.current_session_id || '',
+        }
       } catch (error: any) {
         const errorMsg = error.response
           ? formatAPIError(error.response.status, error.message)

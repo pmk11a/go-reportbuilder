@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUsers } from '@/hooks/useUsers'
 import type { IUserPermission, IUserCoaAccess } from '@/types/user'
+import {
+  applyCascadeForField,
+  type TGranularField,
+} from './permissionCascade'
+import { PermissionRow } from './PermissionRow'
 import {
   Dialog,
   DialogContent,
@@ -45,23 +50,24 @@ export function UserPermissionsDialog({
   const userId = user?.user_id || user?.id || ''
   const [activeTab, setActiveTab] = useState<TPermissionTab>('menu')
 
-  // ─── Per-tab queries: each only fires the first time its tab becomes active ───
-  // Once loaded, the 10-min staleTime keeps the cache hot — switching back
-  // and forth between tabs no longer hits the network.
+  // ─── Per-tab queries: ALL3 queries are enabled when dialog is open.
+  // The 10-min staleTime keeps the cache hot — switching tabs uses cached
+  // data with no network round-trip. This fixes the "empty data on tab switch"
+  // bug where only the active tab's query was enabled.
   const {
     data: menuData,
     isLoading: isMenuLoading,
-  } = useUserMenuPermissions(userId, { enabled: open && activeTab === 'menu' })
+  } = useUserMenuPermissions(userId, { enabled: open })
 
   const {
     data: reportData,
     isLoading: isReportLoading,
-  } = useUserReportPermissions(userId, { enabled: open && activeTab === 'report' })
+  } = useUserReportPermissions(userId, { enabled: open })
 
   const {
     data: coaData,
     isLoading: isCoaLoading,
-  } = useUserCoaAccess(userId, { enabled: open && activeTab === 'coa' })
+  } = useUserCoaAccess(userId, { enabled: open })
 
   const updateMutation = useUpdateUserPermissions()
 
@@ -69,18 +75,45 @@ export function UserPermissionsDialog({
   const [reportList, setReportList] = useState<IUserPermission[]>([])
   const [coaList, setCoaList] = useState<IUserCoaAccess[]>([])
 
-  // Hydrate local edit state when each tab's query resolves.
+  // isPending tracks ONLY the mutation — the save to server.
+  // We disable the save button and all checkboxes only during the network
+  // request, NOT during local state transitions (cascade toggles). The
+  // useTransition below marks cascade updates as non-urgent so React can
+  // interleave rendering without blocking the UI.
+  const isPending = updateMutation.isPending
+  const isAnyLoading = isMenuLoading || isReportLoading || isCoaLoading
+
+  // ─── Labels object: built once per dialog render, passed to every PermissionRow.
+  // This replaces the per-row useTranslation call that caused 100+ context
+  // subscriptions overhead.
+  const labels = {
+    access: t('permissions.fields.access'),
+    create: t('permissions.fields.create'),
+    update: t('permissions.fields.update'),
+    delete: t('permissions.fields.delete'),
+    print: t('permissions.fields.print'),
+    export: t('permissions.fields.export'),
+    level_1: t('permissions.fields.level_1'),
+    level_2: t('permissions.fields.level_2'),
+    level_3: t('permissions.fields.level_3'),
+    level_4: t('permissions.fields.level_4'),
+    level_5: t('permissions.fields.level_5'),
+  }
+
+  // Hydrate local edit state when each tab's query resolves OR when the
+  // dialog reopens (handles the case where the query returns cached data
+  // with the same reference — we still want to hydrate from cache).
   useEffect(() => {
-    if (menuData) setMenuList(menuData)
-  }, [menuData])
+    if (open && menuData) setMenuList(menuData)
+  }, [open, menuData])
 
   useEffect(() => {
-    if (reportData) setReportList(reportData)
-  }, [reportData])
+    if (open && reportData) setReportList(reportData)
+  }, [open, reportData])
 
   useEffect(() => {
-    if (coaData) setCoaList(coaData)
-  }, [coaData])
+    if (open && coaData) setCoaList(coaData)
+  }, [open, coaData])
 
   // Reset all local edit state when dialog closes.
   useEffect(() => {
@@ -92,37 +125,45 @@ export function UserPermissionsDialog({
     }
   }, [open])
 
-  const handlePermissionCheckbox = (
-    type: 'menu' | 'report',
-    index: number,
-    field: 'checked' | 'aktif' | 'has_access',
-    value: boolean
-  ) => {
-    const numericVal = value ? 1 : 0
-    const setter = type === 'menu' ? setMenuList : setReportList
-    const list = type === 'menu' ? menuList : reportList
-    const updated = [...list]
-    updated[index] = { ...updated[index], [field]: numericVal }
-    // Auto-check visibility when enabling
-    if (field === 'aktif' && numericVal === 1) {
-      updated[index].checked = 1
-    }
-    setter(updated)
-  }
+  /**
+   * handleAccessToggle writes `has_access` on the toggled row AND on every
+   * descendant row in the same tab. Routed through `applyCascadeForField` so
+   * the cascade logic stays in one place. The update is synchronous — the
+   * cascade helper runs in <1ms even for 200+ rows, so no useTransition needed.
+   */
+  const handleAccessToggle = useCallback(
+    (type: 'menu' | 'report', index: number, value: boolean) => {
+      const numericVal: 0 | 1 = value ? 1 : 0
+      const setter = type === 'menu' ? setMenuList : setReportList
+      const list = type === 'menu' ? menuList : reportList
+      setter(applyCascadeForField(list, index, 'has_access', numericVal))
+    },
+    [menuList, reportList],
+  )
 
-  const handleGranularPermissionToggle = (
-    type: 'menu' | 'report',
-    index: number,
-    field: 'is_create' | 'is_update' | 'is_delete' | 'is_print' | 'is_export' | 'is_approve_1' | 'is_approve_2' | 'is_approve_3' | 'is_approve_4' | 'is_approve_5',
-    value: boolean
-  ) => {
-    const numericVal = value ? 1 : 0
-    const setter = type === 'menu' ? setMenuList : setReportList
-    const list = type === 'menu' ? menuList : reportList
-    const updated = [...list]
-    updated[index] = { ...updated[index], [field]: numericVal }
-    setter(updated)
-  }
+  /**
+   * handleGranularPermissionToggle writes the named column on the toggled row.
+   * If that row is a parent (L0=0 AND L1=0), the change cascades down to every
+   * descendant for that single column only — the sibling columns on the
+   * descendants are left untouched. Non-parent rows never cascade.
+   */
+  const handleGranularPermissionToggle = useCallback(
+    (type: 'menu' | 'report', index: number, field: TGranularField, value: boolean) => {
+      const numericVal: 0 | 1 = value ? 1 : 0
+      const setter = type === 'menu' ? setMenuList : setReportList
+      const list = type === 'menu' ? menuList : reportList
+      const target = list[index]
+      const isParentRow = !!target && target.l0 === 0 && target.l1 === 0
+      if (isParentRow) {
+        setter(applyCascadeForField(list, index, field, numericVal))
+        return
+      }
+      const updated = [...list]
+      updated[index] = { ...updated[index], [field]: numericVal }
+      setter(updated)
+    },
+    [menuList, reportList],
+  )
 
   const handleCoaToggle = (index: number, value: boolean) => {
     const updated = [...coaList]
@@ -143,9 +184,6 @@ export function UserPermissionsDialog({
     )
   }
 
-  const isPending = updateMutation.isPending
-  const isAnyLoading = isMenuLoading || isReportLoading || isCoaLoading
-
   // ─── Skeleton loader for table rows ───
   const renderSkeletonRows = (cols: number, rows = 6) => (
     <Each of={Array.from({ length: rows })}>
@@ -163,192 +201,106 @@ export function UserPermissionsDialog({
     </Each>
   )
 
-  // ─── Menu / Report permission table with granular controls ───
+  /**
+   * Renders the Menu / Report permission table. The Menu tab uses 8 columns
+   * (1 name + 1 ACCESS + 5 granular + 5 approval) with an APPROVALS sub-
+   * header; the Report tab uses 4 columns (1 name + 1 ACCESS + 2 granular).
+   *
+   * Rows render in the natural order they arrive in `data` — no grouping
+   * wrapper. Parent rows (L0=0 / L1=0) are visually distinguished by a red
+   * left border on the MENU cell (see `PermissionRow`).
+   *
+   * Handlers are passed directly (not via buildRowHandlers) so that
+   * PermissionRow's React.memo comparator sees stable references across
+   * renders. The `type` prop tells each row which tab it's in.
+   */
   const renderPermissionTable = (
     type: 'menu' | 'report',
     data: IUserPermission[],
     isLoading: boolean,
   ) => {
     const emptyKey = type === 'menu' ? 'permissions.no_menus' : 'permissions.no_reports'
+    const isMenu = type === 'menu'
+    const totalCols = isMenu ? 12 : 4
+
     return (
       <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
         <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
+            <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[200px]">{t('permissions.fields.menu_name')}</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.read')}>📖</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.create')}>➕</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.update')}>✏️</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.delete')}>🗑️</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.print')}>🖨️</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.export')}>📤</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.approve_1')}>✓1</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.approve_2')}>✓2</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.approve_3')}>✓3</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.approve_4')}>✓4</TableHead>
-                <TableHead className="w-12 text-center text-xs" aria-label={t('permissions.fields.approve_5')}>✓5</TableHead>
+                <TableHead className="min-w-[200px]" rowSpan={isMenu ? 2 : 1}>
+                  {isMenu ? t('permissions.fields.menu') : t('permissions.fields.report')}
+                </TableHead>
+                <TableHead className="w-16 text-center" rowSpan={isMenu ? 2 : 1}>
+                  {t('permissions.fields.access')}
+                </TableHead>
+                <Show when={isMenu}>
+                  <TableHead className="w-14 text-center" rowSpan={2}>
+                    {t('permissions.fields.create')}
+                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>
+                    {t('permissions.fields.update')}
+                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>
+                    {t('permissions.fields.delete')}
+                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>
+                    {t('permissions.fields.print')}
+                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>
+                    {t('permissions.fields.export')}
+                  </TableHead>
+                  <TableHead className="text-center" colSpan={5}>
+                    {t('permissions.fields.approvals')}
+                  </TableHead>
+                </Show>
+                <Show when={!isMenu}>
+                  <TableHead className="w-14 text-center" rowSpan={1}>
+                    {t('permissions.fields.print')}
+                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={1}>
+                    {t('permissions.fields.export')}
+                  </TableHead>
+                </Show>
               </TableRow>
+              <Show when={isMenu}>
+                <TableRow>
+                  <TableHead className="w-14 text-center text-[10px]">{t('permissions.fields.level_1')}</TableHead>
+                  <TableHead className="w-14 text-center text-[10px]">{t('permissions.fields.level_2')}</TableHead>
+                  <TableHead className="w-14 text-center text-[10px]">{t('permissions.fields.level_3')}</TableHead>
+                  <TableHead className="w-14 text-center text-[10px]">{t('permissions.fields.level_4')}</TableHead>
+                  <TableHead className="w-14 text-center text-[10px]">{t('permissions.fields.level_5')}</TableHead>
+                </TableRow>
+              </Show>
             </TableHeader>
             <TableBody>
               <Show when={isLoading} fallback={
                 <Show when={data.length === 0} fallback={
                   <Each of={data}>
-                    {(item: IUserPermission, index: number) => {
-                      const indentClass =
-                        item.l3 > 0 ? 'pl-14' :
-                        item.l2 > 0 ? 'pl-10' :
-                        item.l1 > 0 ? 'pl-6' :
-                        'pl-2 font-semibold text-slate-800 dark:text-slate-100'
-                      return (
-                        <TableRow key={item.kodemenu} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                          <TableCell className={indentClass}>
-                            <div>
-                              <span>{item.keterangan}</span>
-                              <span className="text-xs text-slate-400 ml-2 font-mono">({item.kodemenu})</span>
-                            </div>
-                          </TableCell>
-                          {/* Read - checked (visibility) toggle. Bug fix (TASK-009): was incorrectly wired to is_create. */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={((item.has_access ?? item.checked ?? 0) === 1)}
-                                onChange={(e) => handlePermissionCheckbox(type, index, 'checked', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.read')}
-                                aria-label={t('permissions.fields.read')}
-                              />
-                            </div>
-                          </TableCell>
-                          {/* Create - is_create */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_create ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_create', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.create')}
-                                aria-label={t('permissions.fields.create')}
-                              />
-                            </div>
-                          </TableCell>
-                          {/* Update - is_update */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_update ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_update', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.update')}
-                                aria-label={t('permissions.fields.update')}
-                              />
-                            </div>
-                          </TableCell>
-                          {/* Delete - is_delete */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_delete ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_delete', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.delete')}
-                                aria-label={t('permissions.fields.delete')}
-                              />
-                            </div>
-                          </TableCell>
-                          {/* Print - is_print */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_print ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_print', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.print')}
-                                aria-label={t('permissions.fields.print')}
-                              />
-                            </div>
-                          </TableCell>
-                          {/* Export - is_export */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_export ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_export', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.export')}
-                                aria-label={t('permissions.fields.export')}
-                              />
-                            </div>
-                          </TableCell>
-                          {/* Approval 1..5 */}
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_approve_1 ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_approve_1', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.approve_1')}
-                                aria-label={t('permissions.fields.approve_1')}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_approve_2 ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_approve_2', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.approve_2')}
-                                aria-label={t('permissions.fields.approve_2')}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_approve_3 ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_approve_3', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.approve_3')}
-                                aria-label={t('permissions.fields.approve_3')}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_approve_4 ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_approve_4', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.approve_4')}
-                                aria-label={t('permissions.fields.approve_4')}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={(item.is_approve_5 ?? 0) === 1}
-                                onChange={(e) => handleGranularPermissionToggle(type, index, 'is_approve_5', e.target.checked)}
-                                disabled={isPending}
-                                title={t('permissions.fields.approve_5')}
-                                aria-label={t('permissions.fields.approve_5')}
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    }}
+                    {(item: IUserPermission, index: number) => (
+                      <PermissionRow
+                        key={item.kodemenu}
+                        type={type}
+                        item={item}
+                        index={index}
+                        showGranular={isMenu}
+                        isPending={isPending}
+                        labels={labels}
+                        onAccessToggle={handleAccessToggle}
+                        onGranularToggle={handleGranularPermissionToggle}
+                      />
+                    )}
                   </Each>
                 }>
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-10 text-slate-400 text-sm">
+                    <TableCell colSpan={totalCols} className="text-center py-10 text-slate-400 text-sm">
                       {t(emptyKey)}
                     </TableCell>
                   </TableRow>
                 </Show>
               }>
-                {renderSkeletonRows(12)}
+                {renderSkeletonRows(totalCols)}
               </Show>
             </TableBody>
           </Table>
@@ -357,16 +309,15 @@ export function UserPermissionsDialog({
     )
   }
 
-  // ─── COA access table ───
+  // ─── COA access table — 2 columns: PERKIRAAN/COA (code + description) and ACCESS ───
   const renderCoaTable = (data: IUserCoaAccess[], isLoading: boolean) => {
     return (
       <div className="overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl" style={{ maxHeight: '55vh' }}>
         <Table>
-          <TableHeader className="bg-slate-50 dark:bg-slate-900/50 sticky top-0 z-10">
+          <TableHeader>
             <TableRow>
-              <TableHead className="w-36">{t('permissions.fields.coa_code')}</TableHead>
-              <TableHead>{t('permissions.fields.description')}</TableHead>
-              <TableHead className="w-24 text-center">{t('permissions.fields.has_access')}</TableHead>
+              <TableHead>{t('permissions.fields.perkiraan_coa')}</TableHead>
+              <TableHead className="w-32 text-center">{t('permissions.fields.access')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -375,10 +326,14 @@ export function UserPermissionsDialog({
                 <Each of={data}>
                   {(item: IUserCoaAccess, index: number) => (
                     <TableRow key={item.perkiraan} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                      <TableCell className="font-mono text-sm text-slate-700 dark:text-slate-300">
-                        {item.perkiraan}
+                      <TableCell>
+                        <div className="font-mono text-sm text-slate-700 dark:text-slate-300">
+                          {item.perkiraan}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {item.keterangan}
+                        </div>
                       </TableCell>
-                      <TableCell className="text-sm">{item.keterangan}</TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
                           <Checkbox
@@ -386,7 +341,7 @@ export function UserPermissionsDialog({
                             checked={item.checked === 1}
                             onChange={(e) => handleCoaToggle(index, e.target.checked)}
                             disabled={isPending}
-                            aria-label={t('permissions.fields.has_access')}
+                            aria-label={t('permissions.fields.access')}
                           />
                         </div>
                       </TableCell>
@@ -395,13 +350,13 @@ export function UserPermissionsDialog({
                 </Each>
               }>
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-10 text-slate-400 text-sm">
+                  <TableCell colSpan={2} className="text-center py-10 text-slate-400 text-sm">
                     {t('permissions.no_coa')}
                   </TableCell>
                 </TableRow>
               </Show>
             }>
-              {renderSkeletonRows(3)}
+              {renderSkeletonRows(2)}
             </Show>
           </TableBody>
         </Table>

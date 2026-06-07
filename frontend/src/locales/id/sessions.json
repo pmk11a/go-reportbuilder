@@ -1,6 +1,8 @@
 {
+  "session": "Sesi",
+  "current": "Saat Ini",
   "loginTime": "Waktu Login",
-  "expiresAt": "Kadaluarsa Pada",
+  "expiresAt": "Kadaluarsa",
   "ipAddress": "Alamat IP",
   "browser": "Browser",
   "status": "Status",

@@ -35,6 +35,7 @@ import { Route as AdminLayoutReportsPermissionReportIndexRouteImport } from './r
 import { Route as AdminLayoutMasterDataUserManagementIndexRouteImport } from './routes/admin/_layout/master-data/user-management/index'
 import { Route as AdminLayoutMasterDataConfigLogsIndexRouteImport } from './routes/admin/_layout/master-data/config-logs/index'
 import { Route as AdminLayoutMasterDataActivityLogsIndexRouteImport } from './routes/admin/_layout/master-data/activity-logs/index'
+import { Route as AdminLayoutAccountingKasbankIndexRouteImport } from './routes/admin/_layout/accounting/kasbank/index'
 
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
@@ -174,6 +175,12 @@ const AdminLayoutMasterDataActivityLogsIndexRoute =
     path: '/master-data/activity-logs/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
+const AdminLayoutAccountingKasbankIndexRoute =
+  AdminLayoutAccountingKasbankIndexRouteImport.update({
+    id: '/accounting/kasbank/',
+    path: '/accounting/kasbank/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports/': typeof AdminLayoutReportsIndexRoute
   '/admin/users/': typeof AdminLayoutUsersIndexRoute
   '/karyawan/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
+  '/admin/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
   '/admin/master-data/user-management/': typeof AdminLayoutMasterDataUserManagementIndexRoute
@@ -225,6 +233,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminLayoutReportsIndexRoute
   '/admin/users': typeof AdminLayoutUsersIndexRoute
   '/karyawan/dashboard': typeof KaryawanLayoutDashboardIndexRoute
+  '/admin/accounting/kasbank': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs': typeof AdminLayoutMasterDataConfigLogsIndexRoute
   '/admin/master-data/user-management': typeof AdminLayoutMasterDataUserManagementIndexRoute
@@ -254,6 +263,7 @@ export interface FileRoutesById {
   '/admin/_layout/reports/': typeof AdminLayoutReportsIndexRoute
   '/admin/_layout/users/': typeof AdminLayoutUsersIndexRoute
   '/karyawan/_layout/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
+  '/admin/_layout/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/_layout/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/_layout/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
   '/admin/_layout/master-data/user-management/': typeof AdminLayoutMasterDataUserManagementIndexRoute
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/admin/reports/'
     | '/admin/users/'
     | '/karyawan/dashboard/'
+    | '/admin/accounting/kasbank/'
     | '/admin/master-data/activity-logs/'
     | '/admin/master-data/config-logs/'
     | '/admin/master-data/user-management/'
@@ -311,6 +322,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/karyawan/dashboard'
+    | '/admin/accounting/kasbank'
     | '/admin/master-data/activity-logs'
     | '/admin/master-data/config-logs'
     | '/admin/master-data/user-management'
@@ -339,6 +351,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/reports/'
     | '/admin/_layout/users/'
     | '/karyawan/_layout/dashboard/'
+    | '/admin/_layout/accounting/kasbank/'
     | '/admin/_layout/master-data/activity-logs/'
     | '/admin/_layout/master-data/config-logs/'
     | '/admin/_layout/master-data/user-management/'
@@ -539,6 +552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutMasterDataActivityLogsIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/accounting/kasbank/': {
+      id: '/admin/_layout/accounting/kasbank/'
+      path: '/accounting/kasbank'
+      fullPath: '/admin/accounting/kasbank/'
+      preLoaderRoute: typeof AdminLayoutAccountingKasbankIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
   }
 }
 
@@ -575,6 +595,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutDocumentsIndexRoute: typeof AdminLayoutDocumentsIndexRoute
   AdminLayoutReportsIndexRoute: typeof AdminLayoutReportsIndexRoute
   AdminLayoutUsersIndexRoute: typeof AdminLayoutUsersIndexRoute
+  AdminLayoutAccountingKasbankIndexRoute: typeof AdminLayoutAccountingKasbankIndexRoute
   AdminLayoutMasterDataActivityLogsIndexRoute: typeof AdminLayoutMasterDataActivityLogsIndexRoute
   AdminLayoutMasterDataConfigLogsIndexRoute: typeof AdminLayoutMasterDataConfigLogsIndexRoute
   AdminLayoutMasterDataUserManagementIndexRoute: typeof AdminLayoutMasterDataUserManagementIndexRoute
@@ -588,6 +609,8 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutDocumentsIndexRoute: AdminLayoutDocumentsIndexRoute,
   AdminLayoutReportsIndexRoute: AdminLayoutReportsIndexRoute,
   AdminLayoutUsersIndexRoute: AdminLayoutUsersIndexRoute,
+  AdminLayoutAccountingKasbankIndexRoute:
+    AdminLayoutAccountingKasbankIndexRoute,
   AdminLayoutMasterDataActivityLogsIndexRoute:
     AdminLayoutMasterDataActivityLogsIndexRoute,
   AdminLayoutMasterDataConfigLogsIndexRoute:

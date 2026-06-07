@@ -40,14 +40,19 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 		return
 	}
 
-	sessions, err := h.service.ListUserSessions(c.Request.Context(), uint(userID))
+	// Extract the current session ID from the HttpOnly cookie set by the BFF.
+	// This allows the frontend to highlight the row belonging to the current session.
+	currentSessionID, _ := c.Cookie("session_id")
+
+	sessions, currentSessionID, err := h.service.ListUserSessions(c.Request.Context(), uint(userID), currentSessionID)
 	if err != nil {
 		response.InternalError(c, "Failed to fetch sessions: "+err.Error())
 		return
 	}
 
 	response.Success(c, "Sessions retrieved successfully", SListSessionsResponse{
-		Sessions: sessions,
+		Sessions:         sessions,
+		CurrentSessionID: currentSessionID,
 	})
 }
 

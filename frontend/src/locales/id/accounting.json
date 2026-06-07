@@ -1,0 +1,137 @@
+{
+  "title": "Akuntansi Kas / Bank",
+  "subtitle": "Pencatatan bukti kas bank dengan otorisasi 2 tingkat",
+  "tipe": {
+    "bkm": "Bukti Kas Masuk (BKM)",
+    "bkk": "Bukti Kas Keluar (BKK)",
+    "bbm": "Bukti Bank Masuk (BBM)",
+    "bbk": "Bukti Bank Keluar (BBK)"
+  },
+  "fields": {
+    "no_bukti": "No. Bukti",
+    "tanggal": "Tanggal",
+    "tipe": "Tipe",
+    "perkiraan": "Perkiraan",
+    "perkiraan_hd": "Akun Kas/Bank",
+    "lawan": "Akun Lawan",
+    "note": "Catatan / Keterangan",
+    "total": "Total",
+    "debet": "Debet",
+    "kredit": "Kredit",
+    "valas": "Valuta Asing",
+    "kurs": "Kurs",
+    "keterangan": "Keterangan",
+    "no_urut": "No. Urut",
+    "total_d": "Total Debet",
+    "total_k": "Total Kredit"
+  },
+  "actions": {
+    "add": "Tambah",
+    "add_new": "Tambah Bukti Baru",
+    "edit": "Ubah",
+    "delete": "Hapus",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "otorisasi1": "Otorisasi Tingkat 1",
+    "otorisasi2": "Otorisasi Tingkat 2",
+    "batal_otorisasi": "Batal Otorisasi",
+    "pdf": "Unduh PDF",
+    "add_detail": "Tambah Baris",
+    "edit_detail": "Ubah Baris",
+    "delete_detail": "Hapus Baris",
+    "search": "Cari",
+    "refresh": "Segarkan",
+    "filter": "Filter",
+    "clear_filter": "Hapus Filter"
+  },
+  "headers": {
+    "no_bukti": "No. Bukti",
+    "tanggal": "Tanggal",
+    "tipe": "Tipe",
+    "perkiraan": "Perkiraan",
+    "note": "Catatan",
+    "total": "Total",
+    "otorisasi": "Otorisasi",
+    "actions": "Aksi"
+  },
+  "filter": {
+    "tipe_all": "Semua Tipe",
+    "date_range": "Rentang Tanggal",
+    "from": "Dari",
+    "to": "Sampai",
+    "search_placeholder": "Cari no. bukti atau catatan..."
+  },
+  "otorisasi": {
+    "level1": "Tingkat 1",
+    "level2": "Tingkat 2",
+    "not_authorized": "Belum Otorisasi",
+    "authorized": "Sudah Otorisasi",
+    "locked": "Terkunci",
+    "pending": "Menunggu"
+  },
+  "permissions": {
+    "unauthorized": "Anda tidak memiliki izin untuk melakukan aksi ini",
+    "unauthorized_view": "Anda tidak memiliki izin untuk melihat data ini"
+  },
+  "validation": {
+    "tanggal_required": "Tanggal wajib diisi",
+    "tanggal_out_of_period": "Tanggal harus berada dalam periode akuntansi aktif",
+    "tipe_required": "Tipe transaksi wajib dipilih",
+    "perkiraan_required": "Akun perkiraan wajib dipilih",
+    "perkiraan_hd_required": "Akun kas/bank wajib dipilih",
+    "details_min_1": "Minimal harus ada 1 baris jurnal",
+    "balance_error": "Total debet dan kredit harus seimbang",
+    "debet_kredit_both_zero": "Jumlah debet atau kredit harus lebih dari nol",
+    "debet_kredit_both_nonzero": "Debet dan kredit tidak boleh keduanya lebih dari nol"
+  },
+  "messages": {
+    "created": "Bukti berhasil dibuat",
+    "updated": "Bukti berhasil diperbarui",
+    "deleted": "Bukti berhasil dihapus",
+    "otorisasi1_success": "Otorisasi tingkat 1 berhasil",
+    "otorisasi2_success": "Otorisasi tingkat 2 berhasil",
+    "otorisasi_canceled": "Otorisasi berhasil dibatalkan",
+    "detail_added": "Baris jurnal berhasil ditambahkan",
+    "detail_updated": "Baris jurnal berhasil diperbarui",
+    "detail_deleted": "Baris jurnal berhasil dihapus",
+    "fetch_error": "Gagal memuat data",
+    "save_error": "Gagal menyimpan data",
+    "delete_error": "Gagal menghapus data",
+    "otorisasi_error": "Gagal memproses otorisasi",
+    "pdf_error": "Gagal membuat PDF",
+    "confirm_delete": "Apakah Anda yakin ingin menghapus bukti ini?",
+    "confirm_delete_detail": "Apakah Anda yakin ingin menghapus baris ini?",
+    "confirm_otorisasi1": "Berikan otorisasi tingkat 1 untuk bukti ini?",
+    "confirm_otorisasi2": "Berikan otorisasi tingkat 2 untuk bukti ini?",
+    "confirm_batal": "Batalkan otorisasi untuk bukti ini?",
+    "self_otorisasi_error": "Anda tidak dapat otorisasi tingkat 2 — Anda sudah otorisasi tingkat 1",
+    "locked_error": "Bukti ini terkunci dan tidak dapat diubah",
+    "no_data": "Tidak ada data bukti",
+    "no_detail_data": "Tidak ada baris jurnal"
+  },
+  "table": {
+    "detail_title": "Baris Jurnal",
+    "expand_row": "Tampilkan Detail",
+    "collapse_row": "Sembunyikan Detail"
+  },
+  "form": {
+    "create_title": "Buat Bukti Baru",
+    "edit_title": "Ubah Bukti",
+    "detail_create_title": "Tambah Baris Jurnal",
+    "detail_edit_title": "Ubah Baris Jurnal",
+    "form_desc_create": "Isi formulir berikut untuk membuat bukti baru.",
+    "form_desc_edit": "Isi formulir berikut untuk memperbarui bukti.",
+    "form_desc_detail_create": "Isi formulir berikut untuk menambahkan baris jurnal.",
+    "form_desc_detail_edit": "Isi formulir berikut untuk memperbarui baris jurnal.",
+    "saving": "Menyimpan...",
+    "submitting": "Mengirim..."
+  },
+  "pdf": {
+    "title": "Bukti Kas / Bank",
+    "company": "PT DAPEN",
+    "generated_by": "Dibuat oleh",
+    "authorized_by": "Diotorisasi oleh",
+    "authorized_by_level2": "Diotorisasi oleh (Tingkat 2)",
+    "signature_line": "(tanda tangan)"
+  }
+}

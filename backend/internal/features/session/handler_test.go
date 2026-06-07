@@ -84,14 +84,15 @@ func TestListUserSessions_Success(t *testing.T) {
 	svc := NewSessionService(mockRepo, nil)
 	handler := NewSessionHandler(svc)
 
-	// Create request
+	// Create request with session_id cookie
 	req := httptest.NewRequest("GET", "/api/admin/users/1/sessions", nil)
+	req.AddCookie(&http.Cookie{Name: "session_id", Value: "session-1"})
 	w := httptest.NewRecorder()
 
 	// Setup Gin context
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	c.Params = gin.Params{{Key: "userId", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 	c.Set("user_id", 999.0) // Mock admin user
 
 	// Execute
@@ -109,6 +110,7 @@ func TestListUserSessions_Success(t *testing.T) {
 	dataMap := resp["data"].(map[string]interface{})
 	sessionsList := dataMap["sessions"].([]interface{})
 	assert.Equal(t, 2, len(sessionsList))
+	assert.Equal(t, "session-1", dataMap["current_session_id"])
 }
 
 func TestListUserSessions_InvalidUserID(t *testing.T) {
@@ -122,7 +124,7 @@ func TestListUserSessions_InvalidUserID(t *testing.T) {
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	c.Params = gin.Params{{Key: "userId", Value: "invalid"}}
+	c.Params = gin.Params{{Key: "id", Value: "invalid"}}
 
 	handler.ListUserSessions(c)
 
@@ -159,7 +161,7 @@ func TestRevokeSessionHandler_Success(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "userId", Value: "1"},
+		{Key: "id", Value: "1"},
 		{Key: "sessionId", Value: "session-1"},
 	}
 	c.Set("user_id", 999.0) // Admin user
@@ -190,7 +192,7 @@ func TestRevokeSessionHandler_SessionNotFound(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "userId", Value: "1"},
+		{Key: "id", Value: "1"},
 		{Key: "sessionId", Value: "nonexistent"},
 	}
 	c.Set("user_id", 999.0)
@@ -229,7 +231,7 @@ func TestRevokeSessionHandler_SessionBelongsToOtherUser(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "userId", Value: "1"},
+		{Key: "id", Value: "1"},
 		{Key: "sessionId", Value: "session-1"},
 	}
 	c.Set("user_id", 999.0)
@@ -280,7 +282,7 @@ func TestRevokeAllSessions_Success(t *testing.T) {
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	c.Params = gin.Params{{Key: "userId", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "1"}}
 	c.Set("user_id", 999.0)
 
 	handler.RevokeAllSessions(c)
@@ -308,7 +310,7 @@ func TestRevokeSessionHandler_NoUserIDInContext(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "userId", Value: "1"},
+		{Key: "id", Value: "1"},
 		{Key: "sessionId", Value: "session-1"},
 	}
 	// Don't set user_id in context

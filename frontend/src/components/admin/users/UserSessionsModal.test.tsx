@@ -29,6 +29,11 @@ const mockSessions: ISessionInfo[] = [
   },
 ]
 
+const mockSessionsResponse = {
+  sessions: mockSessions,
+  currentSessionId: 'session-1',
+}
+
 describe('UserSessionsModal', () => {
   let queryClient: QueryClient
 
@@ -40,7 +45,7 @@ describe('UserSessionsModal', () => {
     })
 
     vi.spyOn(sessionHooks, 'useUserSessions').mockReturnValue({
-      data: mockSessions,
+      data: mockSessionsResponse,
       isLoading: false,
       isError: false,
       error: null,

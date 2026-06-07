@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/masza1/dapen-backend/internal/features/accounting/kasbank"
 	"github.com/masza1/dapen-backend/internal/features/accounting/periode"
 	"github.com/masza1/dapen-backend/internal/features/activity"
 	"github.com/masza1/dapen-backend/internal/features/dashboard"
@@ -36,6 +37,8 @@ type SRouterConfig struct {
 	SUserHandler        *user.SUserHandler
 	SPermissionHandler  *permission.SPermissionHandler
 	SSessionHandler     *session.SSessionHandler
+	SKasBankHandler     *kasbank.SKasBankHandler
+	SKasBankPermMW      *middleware.PermissionMiddleware
 	SConfig             *config.SConfig
 }
 
@@ -95,6 +98,18 @@ func SetupRoutes(rc SRouterConfig) {
 				permission.RegisterRoutes(admin, rc.SPermissionHandler, nil)
 				session.RegisterRoutes(admin, rc.SSessionHandler)
 				settings.RegisterRoutes(admin, rc.SSettingHandler)
+			}
+
+			// Accounting domain routes (kasbank is mounted under /api/accounting).
+			// They live outside the /admin group because the legacy schema treats
+			// accounting voucher posting as a regular authenticated activity
+			// gated by the granular menu permission (02001), not by the
+			// "admin" role alone.
+			accounting := protected.Group("/accounting")
+			{
+				if rc.SKasBankHandler != nil && rc.SKasBankPermMW != nil {
+					kasbank.RegisterKasBankRoutes(accounting, rc.SKasBankHandler, rc.SKasBankPermMW)
+				}
 			}
 		}
 	}

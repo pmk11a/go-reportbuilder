@@ -13,7 +13,10 @@ import (
 type ISessionService interface {
 	// ListUserSessions retrieves all active sessions for a specific user.
 	// Admin use: viewing active sessions for the target user.
-	ListUserSessions(ctx context.Context, userID uint) ([]SSessionInfo, error)
+	// The currentSessionID parameter is passed through to the response so the caller
+	// (typically the handler) can include it in the DTO without the service knowing
+	// about HTTP details.
+	ListUserSessions(ctx context.Context, userID uint, currentSessionID string) ([]SSessionInfo, string, error)
 
 	// RevokeUserSession revokes a single session by sessionId.
 	// Logs the revocation action to the audit trail (who revoked, when, which user/session).
@@ -40,10 +43,11 @@ func NewSessionService(repo ISessionRepository, db *gorm.DB) *SSessionService {
 
 // ListUserSessions retrieves all active sessions for a given user from Redis.
 // Sessions are returned sorted by LoginTime DESC (most recent first).
-func (s *SSessionService) ListUserSessions(ctx context.Context, userID uint) ([]SSessionInfo, error) {
+// The currentSessionID is passed through to the response unchanged.
+func (s *SSessionService) ListUserSessions(ctx context.Context, userID uint, currentSessionID string) ([]SSessionInfo, string, error) {
 	sessions, err := s.repo.GetUserSessions(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("fetching sessions for user %d: %w", userID, err)
+		return nil, "", fmt.Errorf("fetching sessions for user %d: %w", userID, err)
 	}
 
 	// Filter out expired sessions for cleaner output
@@ -55,7 +59,7 @@ func (s *SSessionService) ListUserSessions(ctx context.Context, userID uint) ([]
 		}
 	}
 
-	return activeSessions, nil
+	return activeSessions, currentSessionID, nil
 }
 
 // RevokeUserSession marks a specific session for revocation. The BFF layer will
@@ -92,8 +96,8 @@ func (s *SSessionService) RevokeUserSession(ctx context.Context, adminID, userID
 // RevokeAllUserSessions revokes all active sessions for a user in bulk.
 // Each session is marked for revocation, and a single audit log entry records the bulk action.
 func (s *SSessionService) RevokeAllUserSessions(ctx context.Context, adminID, userID uint) error {
-	// Fetch all active sessions for the user
-	sessions, err := s.ListUserSessions(ctx, userID)
+	// Fetch all active sessions for the user (currentSessionID not needed here)
+	sessions, _, err := s.ListUserSessions(ctx, userID, "")
 	if err != nil {
 		return fmt.Errorf("fetching sessions for user %d: %w", userID, err)
 	}

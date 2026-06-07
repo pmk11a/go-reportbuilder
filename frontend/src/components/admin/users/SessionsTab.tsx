@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatDistanceToNow, format } from 'date-fns'
+import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
 import {
   AlertDialog,
@@ -38,7 +38,9 @@ export function SessionsTab({ userId }: ISessionsTabProps) {
   const { t, i18n } = useTranslation(['sessions', 'common'])
   const dateLocale = i18n.language === 'id' ? id : enUS
 
-  const { data: sessions, isLoading, isError, error } = useUserSessions(userId)
+  const { data: sessionsResponse, isLoading, isError, error } = useUserSessions(userId)
+  const sessions = sessionsResponse?.sessions
+  const currentSessionId = sessionsResponse?.currentSessionId
   const revokeSession = useRevokeSession(userId)
   const revokeAll = useRevokeAllSessions(userId)
 
@@ -160,11 +162,12 @@ export function SessionsTab({ userId }: ISessionsTabProps) {
           <Table>
             <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
               <TableRow>
+                <TableHead>{t('sessions.session', 'Session')}</TableHead>
+                <TableHead>{t('sessions.status', 'Status')}</TableHead>
                 <TableHead>{t('sessions.loginTime', 'Login Time')}</TableHead>
-                <TableHead>{t('sessions.expiresAt', 'Expires At')}</TableHead>
+                <TableHead>{t('sessions.expiresAt', 'Expires')}</TableHead>
                 <TableHead>{t('sessions.ipAddress', 'IP Address')}</TableHead>
                 <TableHead>{t('sessions.browser', 'Browser')}</TableHead>
-                <TableHead>{t('sessions.status', 'Status')}</TableHead>
                 <TableHead className="text-right">{t('common.actions', 'Actions')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -172,30 +175,39 @@ export function SessionsTab({ userId }: ISessionsTabProps) {
               <Each of={sessions || []}>
                 {(session: ISessionInfo) => (
                   <TableRow key={session.session_id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                    {/* Session indicator */}
+                    <TableCell>
+                      <Show
+                        when={session.session_id === currentSessionId}
+                        fallback={<span className="block w-2 h-2" />}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                          </span>
+                          <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                            {t('sessions.current', 'Current')}
+                          </span>
+                        </div>
+                      </Show>
+                    </TableCell>
+
+                    {/* Status Badge */}
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(session)}>
+                        {getStatusLabel(session)}
+                      </Badge>
+                    </TableCell>
+
                     {/* Login Time */}
                     <TableCell className="text-sm">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">
-                        {formatDistanceToNow(new Date(session.login_time), {
-                          addSuffix: true,
-                          locale: dateLocale,
-                        })}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {format(new Date(session.login_time), 'PPpp', { locale: dateLocale })}
-                      </div>
+                      {format(new Date(session.login_time), 'dd MMM yyyy, HH:mm:ss', { locale: dateLocale })}
                     </TableCell>
 
                     {/* Expires At */}
                     <TableCell className="text-sm">
-                      <div className="font-medium text-slate-900 dark:text-slate-100">
-                        {formatDistanceToNow(new Date(session.expires_at), {
-                          addSuffix: true,
-                          locale: dateLocale,
-                        })}
-                      </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {format(new Date(session.expires_at), 'PPpp', { locale: dateLocale })}
-                      </div>
+                      {format(new Date(session.expires_at), 'dd MMM yyyy, HH:mm:ss', { locale: dateLocale })}
                     </TableCell>
 
                     {/* IP Address (masked) */}
@@ -206,13 +218,6 @@ export function SessionsTab({ userId }: ISessionsTabProps) {
                     {/* Browser */}
                     <TableCell className="text-sm text-slate-600 dark:text-slate-300">
                       {session.browser || '-'}
-                    </TableCell>
-
-                    {/* Status Badge */}
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(session)}>
-                        {getStatusLabel(session)}
-                      </Badge>
                     </TableCell>
 
                     {/* Actions */}

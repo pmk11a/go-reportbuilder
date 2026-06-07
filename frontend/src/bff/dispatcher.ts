@@ -79,6 +79,39 @@ export async function dispatchBffRequest( req: any, res: any, ssrLoadModule: any
       }
     }
 
+    // If module not found, check for dynamic path pattern like /api/admin/users/{userId}/sessions
+    // These should route to /src/api-handlers/admin/users/sessions.ts
+    if (!mod) {
+      const pathParts = handlerPath.split('/').filter(Boolean)
+      const lastPart = pathParts[pathParts.length - 1]
+      const secondLastPart = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : null
+
+      // Known static sub-paths that can appear after a dynamic userId segment
+      // e.g., /api/admin/users/SA/sessions → sessions.ts
+      //       /api/admin/users/SA/permissions → permissions.ts
+      const staticSubPaths = ['sessions', 'permissions', 'detail']
+
+      if (secondLastPart && staticSubPaths.includes(lastPart) && secondLastPart !== lastPart) {
+        // Construct the path without the userId segment: /admin/users/sessions
+        const adjustedParts = pathParts.slice(0, -2) // Remove userId and static part
+        const adjustedPath = adjustedParts.join('/')
+
+        // Try /src/api-handlers/admin/users/sessions.ts
+        modulePath = `/src/api-handlers/${adjustedPath}/${lastPart}.ts`
+        try {
+          mod = await ssrLoadModule( modulePath )
+        } catch {
+          // Try index: /src/api-handlers/admin/users/sessions/index.ts
+          modulePath = `/src/api-handlers/${adjustedPath}/${lastPart}/index.ts`
+          try {
+            mod = await ssrLoadModule( modulePath )
+          } catch {
+            // Still failed, will fall through
+          }
+        }
+      }
+    }
+
     // Load the "API Route" module
     // mod is now either loaded or null
 

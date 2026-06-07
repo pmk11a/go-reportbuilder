@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/masza1/dapen-backend/internal/features/activity"
 	"github.com/masza1/dapen-backend/internal/app/routes"
+	"github.com/masza1/dapen-backend/internal/features/accounting/kasbank"
 	"github.com/masza1/dapen-backend/internal/features/dashboard"
 	"github.com/masza1/dapen-backend/internal/features/filters"
 	"github.com/masza1/dapen-backend/internal/legacy/handlers"
@@ -70,6 +71,14 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	periodeHandler := handlers.NewPeriodeHandler(periodeService)
 	settingHandler := handlers.NewSettingHandler(dbConn)
 
+	// 5.5 Initialize Accounting > Kas Bank domain (TASK-015). The
+	// permission middleware is shared so other accounting sub-domains
+	// (jurnal, periode migration, ...) can reuse it.
+	kasBankPermMW := middleware.NewPermissionMiddleware(dbConn)
+	kasBankRepo := kasbank.NewSKasBankRepository(dbConn)
+	kasBankService := kasbank.NewSKasBankService(kasBankRepo, dbConn)
+	kasBankHandler := kasbank.NewSKasBankHandler(kasBankService)
+
 	// 6. Initialize the Gin engine and global middlewares.
 	engine := gin.Default()
 	engine.SetTrustedProxies(nil)
@@ -98,6 +107,8 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 		SUserHandler:        userHandler,
 		SPermissionHandler:  permissionHandler,
 		SSessionHandler:     sessionHandler,
+		SKasBankHandler:     kasBankHandler,
+		SKasBankPermMW:      kasBankPermMW,
 		SConfig:             cfg,
 	})
 

@@ -55,7 +55,7 @@ func TestListUserSessions_FilterExpiredSessions(t *testing.T) {
 	mockRepo.On("GetUserSessions", mock.Anything, uint(1)).Return(sessions, nil)
 
 	svc := NewSessionService(mockRepo, mockDB)
-	result, err := svc.ListUserSessions(context.Background(), 1)
+	result, _, err := svc.ListUserSessions(context.Background(), 1, "active-1")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(result)) // Only active sessions
@@ -71,7 +71,7 @@ func TestListUserSessions_Empty(t *testing.T) {
 	mockRepo.On("GetUserSessions", mock.Anything, uint(1)).Return([]SSessionInfo{}, nil)
 
 	svc := NewSessionService(mockRepo, mockDB)
-	result, err := svc.ListUserSessions(context.Background(), 1)
+	result, _, err := svc.ListUserSessions(context.Background(), 1, "")
 
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(result))
@@ -85,7 +85,7 @@ func TestListUserSessions_RepositoryError(t *testing.T) {
 	mockRepo.On("GetUserSessions", mock.Anything, uint(1)).Return(nil, assert.AnError)
 
 	svc := NewSessionService(mockRepo, mockDB)
-	_, err := svc.ListUserSessions(context.Background(), 1)
+	_, _, err := svc.ListUserSessions(context.Background(), 1, "")
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "fetching sessions for user 1")

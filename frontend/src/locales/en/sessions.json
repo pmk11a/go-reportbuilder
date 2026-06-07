@@ -1,6 +1,8 @@
 {
+  "session": "Session",
+  "current": "Current",
   "loginTime": "Login Time",
-  "expiresAt": "Expires At",
+  "expiresAt": "Expires",
   "ipAddress": "IP Address",
   "browser": "Browser",
   "status": "Status",

@@ -45,6 +45,12 @@ const mockSessions: ISessionInfo[] = [
   },
 ]
 
+// Mock response structure with sessions and currentSessionId
+const mockSessionsResponse = {
+  sessions: mockSessions,
+  currentSessionId: 'session-1',
+}
+
 describe('SessionsTab', () => {
   let queryClient: QueryClient
 
@@ -57,7 +63,7 @@ describe('SessionsTab', () => {
     })
 
     vi.spyOn(sessionHooks, 'useUserSessions').mockReturnValue({
-      data: mockSessions,
+      data: mockSessionsResponse,
       isLoading: false,
       isError: false,
       error: null,
@@ -139,7 +145,7 @@ describe('SessionsTab', () => {
 
   it('shows "No active sessions" when empty', () => {
     vi.spyOn(sessionHooks, 'useUserSessions').mockReturnValue({
-      data: [],
+      data: { sessions: [], currentSessionId: '' },
       isLoading: false,
       isError: false,
       error: null,

@@ -12,6 +12,7 @@ export interface ISessionInfo {
 
 export interface ISessionListResponse {
   sessions: ISessionInfo[]
+  current_session_id: string  // ID of the current session (for highlighting)
 }
 
 /**
