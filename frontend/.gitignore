@@ -42,3 +42,5 @@ yarn-error.log*
 # backup
 src.backup
 
+test-results/
+
