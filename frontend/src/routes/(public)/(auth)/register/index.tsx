@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { Helmet } from "react-helmet-async";
 import { registerSchema, type IRegisterInput } from "@/schemas/auth";
 import { useThemeStore } from "@/store/themeStore";
 import { useAuthStore } from "@/store/authStore";
@@ -21,6 +20,12 @@ import { useTranslation } from "react-i18next";
 import "./register.css";
 
 export const Route = createFileRoute("/(public)/(auth)/register/")({
+    head: () => ({
+        meta: [
+            { title: 'Register | DAPEN' },
+            { name: 'description', content: 'Register a new DAPEN account.' },
+        ],
+    }),
     beforeLoad: async () => {
         const auth = useAuthStore.getState();
         if (auth.user) {
@@ -71,10 +76,6 @@ function RegisterPage() {
     if (!isInitialized) {
         return (
             <div className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 relative overflow-hidden transition-colors duration-300">
-                <Helmet>
-                    <title>{t('auth.register.title')} | DAPEN</title>
-                    <meta name="description" content="Register a new DAPEN account." />
-                </Helmet>
                 <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
                     <div className="flex flex-col items-center space-y-4">
                         <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full animate-pulse" />
@@ -93,9 +94,6 @@ function RegisterPage() {
 
     return (
         <>
-            <Helmet>
-                <title>{t('auth.register.title')} | DAPEN</title>
-            </Helmet>
             <div
                 className={cn(
                     "relative w-full min-h-screen overflow-hidden flex items-center justify-center p-4",

@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthStore } from "@/store/authStore";
-import { Helmet } from 'react-helmet-async';
 import { useToast } from '@/hooks/use-toast';
 import { loginSchema, type ILoginInput } from "@/schemas/auth";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
@@ -23,6 +22,12 @@ type LoginSearch = {
 };
 
 export const Route = createFileRoute("/(public)/(auth)/login/")({
+    head: () => ({
+        meta: [
+            { title: 'Login | DAPEN' },
+            { name: 'description', content: 'Login to access your DAPEN account.' },
+        ],
+    }),
     validateSearch: (search: Record<string, unknown>): LoginSearch => {
         return {
             redirect: search.redirect as string | undefined,
@@ -83,10 +88,6 @@ export function LoginPage() {
     if (!isInitialized) {
         return (
             <div className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 relative overflow-hidden transition-colors duration-300">
-                <Helmet>
-                    <title>{t('auth.login.title')} | DAPEN</title>
-                    <meta name="description" content="Login to access your DAPEN account." />
-                </Helmet>
                 <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 shadow-2xl space-y-6">
                     <div className="flex flex-col items-center space-y-4">
                         <div className="w-16 h-16 bg-slate-200 dark:bg-slate-800 rounded-full animate-pulse" />
@@ -104,9 +105,6 @@ export function LoginPage() {
 
     return (
         <>
-            <Helmet>
-                <title>{t('auth.login.title')} | DAPEN</title>
-            </Helmet>
             <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
                 <LanguageToggle />
                 <ThemeToggle />

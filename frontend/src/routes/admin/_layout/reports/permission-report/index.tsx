@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Helmet } from 'react-helmet-async'
 import { useTranslation } from 'react-i18next'
 import {
   PermissionReportActions,
@@ -12,6 +11,11 @@ import type { IPermissionReportFilters } from '@/types/permissionReport'
 import '@/styles/print.css'
 
 export const Route = createFileRoute('/admin/_layout/reports/permission-report/')({
+  head: () => ({
+    meta: [
+      { title: 'Permission Report - DAPEN' },
+    ],
+  }),
   component: PermissionReportPage,
 })
 
@@ -49,11 +53,6 @@ function PermissionReportPage() {
 
   return (
     <div className="space-y-6 p-8 permission-report-page">
-      <Helmet>
-        <title>{t('permission_report.title')} - DAPEN</title>
-        <meta name="description" content={t('permission_report.description')} />
-      </Helmet>
-
       <PermissionReportFilters
         value={draftFilters}
         onChange={setDraftFilters}

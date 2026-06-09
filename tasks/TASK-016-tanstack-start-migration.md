@@ -16,7 +16,7 @@ TanStack Start (RC, preparing v1.0) provides native SSR, server functions, and m
 ## Priority: High
 
 ## Status
-📋 **TODO**
+⏳ **IN_PROGRESS** — Phase 1: Configuration & Entry Points (started 2026-06-09)
 
 ## Acceptance Criteria
 
@@ -30,25 +30,25 @@ TanStack Start (RC, preparing v1.0) provides native SSR, server functions, and m
 - [ ] A basic page renders via SSR (HTML visible in page source)
 
 ### Phase 2: Middleware & Server Infrastructure
-- [ ] `src/server/middleware/session.ts` — Redis session management (from `bff/session.ts`)
-- [ ] `src/server/middleware/csrf.ts` — CSRF protection (from `bff/csrf.ts`)
-- [ ] `src/server/middleware/rate-limit.ts` — Rate limiting (from `bff/rate-limit.ts`)
-- [ ] `src/server/middleware/auth.ts` — Auth guard combining session + token validation
-- [ ] Middleware composable and applied to server functions
+- [x] `src/server/middleware/session.ts` — Redis session management (from `bff/session.ts`)
+- [x] `src/server/middleware/csrf.ts` — CSRF protection (from `bff/csrf.ts`)
+- [x] `src/server/middleware/rate-limit.ts` — Rate limiting (from `bff/rate-limit.ts`)
+- [x] `src/server/middleware/auth.ts` — Auth guard combining session + token validation
+- [x] Middleware composable and applied to server functions
 
 ### Phase 3: Server Functions (Auth Domain)
-- [ ] `createServerFn` for login (POST, validates credentials, creates session)
-- [ ] `createServerFn` for logout (POST, destroys session)
-- [ ] `createServerFn` for me (GET, returns current user from session)
-- [ ] `createServerFn` for refresh (POST, rotates tokens with RTR lock)
+- [x] `createServerFn` for login (POST, validates credentials, creates session)
+- [x] `createServerFn` for logout (POST, destroys session)
+- [x] `createServerFn` for me (GET, returns current user from session)
+- [x] `createServerFn` for refresh (POST, rotates tokens with RTR lock)
 - [ ] Auth hooks updated to call server functions directly (no HTTP fetch to `/api/auth/*`)
 - [ ] Login → session → dashboard → logout flow works end-to-end
 
 ### Phase 4: Server Functions (Admin Domain)
-- [ ] Server functions for all `api-handlers/admin/*` endpoints
-- [ ] Server functions for `api-handlers/menus/sidebar.ts`
-- [ ] Server functions for `api-handlers/dashboard/*`
-- [ ] Server functions for `api-handlers/berkas/*`
+- [x] Server functions for all `api-handlers/admin/*` endpoints
+- [x] Server functions for `api-handlers/menus/sidebar.ts`
+- [x] Server functions for `api-handlers/dashboard/*`
+- [x] Server functions for `api-handlers/berkas/*`
 - [ ] All hooks updated to call server functions instead of HTTP service
 - [ ] Admin pages load data correctly
 

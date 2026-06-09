@@ -6,15 +6,26 @@
 
 ---
 
-## Upcoming: TanStack Start Migration (TASK-016)
+## TanStack Start Migration (TASK-016)
 
-A migration from Vite SPA + custom BFF to TanStack Start (SSR + server functions) is planned. Key changes:
-- `createServerFn` replaces `src/api-handlers/` (custom BFF dispatcher)
-- Native SSR via `@tanstack/start-vite-plugin`
-- Composable middleware for session/csrf/auth
-- Route loaders for server-side data prefetching
+**Phase 1 COMPLETE** — Build infrastructure migrated from Vite SPA to TanStack Start SSR.
 
-**Until migration is complete, the current BFF pattern below remains the source of truth.**
+Changes:
+- `vite.config.ts` uses `tanstackStart()` from `@tanstack/react-start/plugin/vite`
+- `src/router.tsx` — router factory (replaces inline creation in old main.tsx)
+- `src/start.ts` — TanStack Start instance (`createStart()`)
+- `__root.tsx` wraps full `<html>` document with `<HeadContent />` + `<Scripts />`
+- `index.html` and `src/main.tsx` deleted (plugin provides default entries)
+- `react-helmet-async` removed — routes use `head()` option instead
+- `QueryClientProvider` moved into `__root.tsx`
+
+**Remaining (Phase 2-6):**
+- Phase 2: Middleware (session/csrf/auth → `createMiddleware()`)
+- Phase 3-4: Server functions replace `src/api-handlers/`
+- Phase 5: Route loaders for SSR data prefetching
+- Phase 6: Cleanup old BFF, E2E tests
+
+**Until Phase 3+ complete, the BFF pattern below still exists in codebase (unused at runtime).**
 
 ---
 

@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Helmet } from 'react-helmet-async'
 import {
   Card,
   CardContent,
@@ -12,6 +11,11 @@ import { Each } from '@/components/ui/layout/Render'
 import { ShieldCheck } from 'lucide-react'
 
 export const Route = createFileRoute('/admin/_layout/reports/')({
+  head: () => ({
+    meta: [
+      { title: 'Reports - DAPEN' },
+    ],
+  }),
   component: ReportsPage,
 })
 
@@ -36,11 +40,6 @@ function ReportsPage() {
 
   return (
     <div className="space-y-6 p-8">
-      <Helmet>
-        <title>{t('reports_index.title')} - DAPEN</title>
-        <meta name="description" content={t('reports_index.description')} />
-      </Helmet>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Each of={REPORT_LINKS}>
           {(report: IReportLink) => (
