@@ -8,7 +8,24 @@
 
 ---
 
-## RULE #0: Delegation (CRITICAL)
+## RULE #0: Plan Mode Before Implementation (CRITICAL)
+
+**NEVER start editing code for large work without Plan Mode approval.**
+
+| Request type | Requires Plan Mode? |
+|---|---|
+| Migrasi framework/teknologi | ✅ WAJIB — enter plan mode, get user approval, THEN edit |
+| Feature baru | ✅ WAJIB |
+| Refactor besar (>4h) | ✅ WAJIB |
+| Bug fix / cleanup ringan | ❌ Langsung |
+
+**After plan is approved → create/update task file FIRST → then start coding.**
+
+Violation of this rule = immediate revert + self-improve.
+
+---
+
+## RULE #1: Delegation (CRITICAL)
 
 **YOU ARE THE ARCHITECT, NOT THE BUILDER.**
 
