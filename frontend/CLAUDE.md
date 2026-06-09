@@ -6,6 +6,18 @@
 
 ---
 
+## Upcoming: TanStack Start Migration (TASK-016)
+
+A migration from Vite SPA + custom BFF to TanStack Start (SSR + server functions) is planned. Key changes:
+- `createServerFn` replaces `src/api-handlers/` (custom BFF dispatcher)
+- Native SSR via `@tanstack/start-vite-plugin`
+- Composable middleware for session/csrf/auth
+- Route loaders for server-side data prefetching
+
+**Until migration is complete, the current BFF pattern below remains the source of truth.**
+
+---
+
 ## Architecture: Strict Separation of Concerns
 
 ```
