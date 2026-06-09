@@ -4,13 +4,7 @@
 			"path": "frontend"
 		},
 		{
-			"path": "scripts"
-		},
-		{
 			"path": "tasks"
-		},
-		{
-			"path": "tmp"
 		}
 	],
 	"settings": {

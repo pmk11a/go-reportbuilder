@@ -15,10 +15,6 @@
       "Bash(git log:*)",
       "Bash(git diff:*)",
       "Bash(git show:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git branch:*)",
-      "Bash(git checkout:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(find:*)",
@@ -37,29 +33,6 @@
       "Bash(python3:*)",
       "Bash(xargs:*)",
       "Bash(jq:*)"
-    ]
-  },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cat /Users/codemasx/Storage/my-htdocs/dapen/golang-next/AI.md"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/codemasx/Storage/my-htdocs/dapen/golang-next/.claude/hooks/auto-check.sh"
-          }
-        ]
-      }
     ]
   }
 }
