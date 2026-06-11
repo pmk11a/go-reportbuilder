@@ -6,7 +6,7 @@ import {
   SelectContent, SelectItem, Rating, Slider, Counter, FileUpload,
   PhoneInput, TimeInput, SearchableSelect, Textarea, ImageUpload,
   RichTextEditor
-} from '@/components/ui';
+} from '@/shared/ui';
 import { SectionHeading, ComponentDoc } from './-components/doc-utils';
 
 export const Route = createFileRoute('/(public)/docs/form')({

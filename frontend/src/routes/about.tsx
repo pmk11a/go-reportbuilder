@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useThemeStore } from '@/store/themeStore'
+import { useThemeStore } from '@/shared/stores/themeStore'
 
 export const Route = createFileRoute('/about')({
   component: About,

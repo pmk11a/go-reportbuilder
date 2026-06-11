@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Button, Card, EmptyState, Input, FileUpload } from '@/components/ui'
+import { Button, Card, EmptyState, Input, FileUpload } from '@/shared/ui'
 import { FileText, Upload } from 'lucide-react'
 
 export const Route = createFileRoute('/admin/_layout/documents/')({

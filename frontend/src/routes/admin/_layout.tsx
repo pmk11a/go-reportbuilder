@@ -1,8 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { AdminLayout } from '@/components/layouts/AdminLayout'
-import { NotFoundComponent, GlobalErrorComponent } from '@/components/ui/feedback/error-pages'
-import { useAuthStore } from '@/store/authStore'
-import { getHomePath, isAdmin } from '@/utils/auth'
+import { AdminLayout } from '@/shared/components/layouts/AdminLayout'
+import { NotFoundComponent, GlobalErrorComponent } from '@/shared/ui/feedback/error-pages'
+import { useAuthStore } from '@/shared/stores/authStore'
+import { getHomePath, isAdmin } from '@/shared/auth/auth'
 import { meFn } from '@/server/functions/auth'
 
 export const Route = createFileRoute('/admin/_layout')({

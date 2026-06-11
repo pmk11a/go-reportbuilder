@@ -8,10 +8,10 @@ import {
   TrendingUp,
   CheckCircle2
 } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-import { useThemeStore } from '@/store/themeStore'
-import { StatCard } from '@/components/dashboard/StatCard'
-import { QuickLink } from '@/components/dashboard/QuickLink'
+import { useAuthStore } from '@/shared/stores/authStore'
+import { useThemeStore } from '@/shared/stores/themeStore'
+import { StatCard } from '@/domains/dashboard/components/dashboard/StatCard'
+import { QuickLink } from '@/domains/dashboard/components/dashboard/QuickLink'
 import { useTranslation } from 'react-i18next'
 
 export const Route = createFileRoute('/karyawan/_layout/dashboard/')({

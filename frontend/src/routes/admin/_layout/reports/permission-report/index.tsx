@@ -5,9 +5,9 @@ import {
   PermissionReportActions,
   PermissionReportFilters,
   PermissionReportTable,
-} from '@/components/admin/reports/permission-report'
-import { usePermissionReportMatrix } from '@/hooks/usePermissionReport'
-import type { IPermissionReportFilters } from '@/types/permissionReport'
+} from '@/domains/reports/components/reports/permission-report'
+import { usePermissionReportMatrix } from '@/domains/reports/hooks/usePermissionReport'
+import type { IPermissionReportFilters } from '@/domains/reports/permissionReport'
 import '@/styles/print.css'
 
 export const Route = createFileRoute('/admin/_layout/reports/permission-report/')({

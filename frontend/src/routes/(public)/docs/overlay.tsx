@@ -7,7 +7,7 @@ import {
   Badge, Tag, TagGroup, Chip, Sheet, SheetTrigger, SheetContent,
   SheetHeader, SheetTitle, SheetDescription, SheetFooter,
   ScrollArea, Divider
-} from '@/components/ui';
+} from '@/shared/ui';
 import { SectionHeading, ComponentDoc } from './-components/doc-utils';
 import { Layers, User, Settings, Info, Bell } from 'lucide-react';
 

@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { IKasBankHeader } from '@/types/kasbank';
-import { KasBankDataTable } from '@/components/admin/accounting/kasbank/KasBankDataTable';
-import { KasBankFormDialog } from '@/components/admin/accounting/kasbank/KasBankFormDialog';
+import { IKasBankHeader } from '@/domains/accounting/kasbank';
+import { KasBankDataTable } from '@/domains/accounting/components/accounting/kasbank/KasBankDataTable';
+import { KasBankFormDialog } from '@/domains/accounting/components/accounting/kasbank/KasBankFormDialog';
 
 export const Route = createFileRoute('/admin/_layout/accounting/kasbank/')({
   component: KasBankIndexPage,

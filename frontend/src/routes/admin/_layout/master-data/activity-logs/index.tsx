@@ -1,16 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useThemeStore } from "@/store/themeStore";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/data/table";
-import { Badge } from "@/components/ui/overlay/badge";
-import { Button } from "@/components/ui";
-import { Input } from "@/components/ui/form/input";
-import { activityLogService } from "@/services/activityLogService";
-import { IActivityLogRes } from "@/types/activity-log";
+import { useThemeStore } from "@/shared/stores/themeStore";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/shared/ui/data/table";
+import { Badge } from "@/shared/ui/overlay/badge";
+import { Button } from "@/shared/ui";
+import { Input } from "@/shared/ui/form/input";
+import { activityLogService } from "@/domains/activity/services/activityLogService";
+import { IActivityLogRes } from "@/domains/activity/activity-log";
 import { History, Search, RefreshCw, Eye } from "lucide-react";
-import { Each, Show } from "@/components/ui/layout/Render";
-import { usePagination } from "@/hooks/usePagination";
-import { Skeleton } from "@/components/ui/feedback/skeleton";
+import { Each, Show } from "@/shared/ui/layout/Render";
+import { usePagination } from "@/shared/hooks/usePagination";
+import { Skeleton } from "@/shared/ui/feedback/skeleton";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/_layout/master-data/activity-logs/")({

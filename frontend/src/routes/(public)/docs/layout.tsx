@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, ScrollArea, Divider, Separator } from '@/components/ui';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, Button, ScrollArea, Divider, Separator } from '@/shared/ui';
 import { SectionHeading, ComponentDoc } from './-components/doc-utils';
 
 export const Route = createFileRoute('/(public)/docs/layout')({

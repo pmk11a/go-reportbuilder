@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { Tabs } from '@/components/ui';
-import { CompanyForm } from '@/components/admin/settings/CompanyForm';
-import { NumberingForm } from '@/components/admin/settings/NumberingForm';
+import { Tabs } from '@/shared/ui';
+import { CompanyForm } from '@/domains/settings/components/settings/CompanyForm';
+import { NumberingForm } from '@/domains/settings/components/settings/NumberingForm';
 
 export const Route = createFileRoute('/admin/_layout/berkas/perusahaan')({
   component: PerusahaanSettingsPage,

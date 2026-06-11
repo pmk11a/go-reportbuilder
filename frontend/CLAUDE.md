@@ -80,73 +80,93 @@ src/server/
 4. `beforeLoad` can call server functions directly for auth checks (e.g., `meFn()` in `admin/_layout.tsx`).
 
 ### Dev Logging
-- `src/lib/fetchInterceptor.ts` — intercepts `/_serverFn/` requests in browser console
+- `src/shared/api/fetchInterceptor.ts` — intercepts `/_serverFn/` requests in browser console
 - Decodes server function URL (base64url JSON `{file, export}`) — no TanStack utility for this, custom decoder
 - Decodes response body using `fromCrossJSON` from `seroval` — same decoder TanStack Start uses internally
 
 ---
 
-## Architecture: Strict Separation of Concerns
+## Architecture: Domain + Shared
 
 ```
 Types → Services → Hooks → Components → Routes
 ```
 
-All network I/O lives in `src/services/`, consumed via custom hooks in `src/hooks/`. UI components are pure presentational.
+All network I/O lives in `src/domains/*/services/`, consumed via `src/domains/*/hooks/`. UI components are pure presentational.
 
 ---
 
-## Folder Layout
+## Folder Layout — Domain + Shared
 
 ```
 frontend/src/
-├── server/              # Server-side code (runs in Node.js, NOT browser)
-│   ├── utils.ts         # getEnv(), parseEnvTime()
-│   ├── backend.ts       # makeBackendRequest() — Go backend fetch wrapper
-│   ├── session.ts       # Redis session CRUD + RTR token refresh
-│   ├── redis.ts         # Redis client singleton
-│   ├── functions/       # Server functions (createServerFn)
-│   │   ├── auth/        # login, logout, me, change-password
-│   │   ├── accounting/  # kasbank, perkiraan, etc.
-│   │   ├── admin/       # sessions, users
-│   │   └── shared/      # cross-domain (menu, dashboard, etc.)
-│   └── middleware/       # session, csrf, auth middleware
-├── lib/                 # Client-side utilities
-│   ├── fetchInterceptor.ts  # Dev console logger (seroval decode)
-│   └── serverFnLogger.ts    # Server-side function logger
-├── components/          # UI components
-│   ├── ui/              # Atomic design primitives (Shadcn-style, NO Glassmorphism)
-│   └── admin/           # Admin-specific components grouped by feature
-│       ├── menu/
-│       ├── users/
-│       ├── perkiraan/
-│       └── reports/
-├── hooks/               # TanStack Query integration hooks
-├── locales/             # i18n translations (en + id)
+├── server/              # TanStack Start server-side (unchanged)
+├── shared/              # Cross-cutting: 2+ domains use this
+│   ├── api/            # fetchInterceptor, queryClient, apiLogger, errors
+│   ├── auth/           # AUTH_KEY, Tingkat constants, isAdmin/isKaryawan
+│   ├── components/      # Navbar, ThemeToggle, LanguageToggle, layouts, modals, providers
+│   ├── hooks/          # useDebounce, usePagination, useMediaQuery, useMobile, useToast
+│   ├── i18n/           # i18next config
+│   ├── schemas/         # Shared Zod schemas (pagination, common)
+│   ├── services/        # sharedFilterService (shared filters)
+│   ├── stores/          # authStore, modalStore, themeStore (Zustand global)
+│   ├── theme/           # ThemeProvider, theme tokens
+│   ├── types/           # api.ts, components.ts (shared types)
+│   ├── ui/              # shadcn-style primitives (button, dialog, form, etc.)
+│   └── utils/           # cn, errorMapper
+│
+├── domains/              # One folder per business domain
+│   ├── auth/            # login, logout, session
+│   ├── users/           # user management, permissions, sessions
+│   ├── menu/            # sidebar, menu catalogue
+│   ├── settings/         # company, numbers, configuration
+│   ├── berkas/          # document management
+│   ├── activity/        # activity logs
+│   ├── accounting/      # kasbank, perkiraan, jurnal
+│   ├── reports/         # permission reports
+│   └── dashboard/        # dashboard widgets
+│   └── [each domain]/    # components/, hooks/, services/, types/
+│
 ├── routes/              # TanStack Router (file-based)
-├── services/            # Service layer (calls server functions, NOT raw fetch)
-├── store/               # Zustand global state (skipHydration: true for persist)
-├── types/               # CENTRALIZED TypeScript types
-├── utils/               # Pure helpers (errorMapper, etc.)
-└── ...                  # api-handlers/ and bff/ deleted (Phase 6 cleanup)
+└── [old dirs]          # Stale dirs kept as re-export shims during migration.
+                          # Source of truth is shared/ and domains/. Clean up in Step 25.
+```
+
+### Per-Domain Internal Layout
+
+```
+domains/<name>/
+├── components/        # Domain UI components (owned by this domain)
+├── hooks/             # TanStack Query hooks (domain-owned)
+├── services/          # Service layer (calls server functions)
+├── stores/            # Domain-owned Zustand stores
+├── types.ts           # Domain types (I-prefix, T-prefix, P-prefix)
+├── locales/en/        # English locale (domain-owned)
+├── locales/id/        # Indonesian locale (domain-owned)
+└── index.ts          # Public barrel (export *)
+```
+
+**Migration note:** Old dirs (`src/hooks/`, `src/services/`, `src/types/`, `src/store/`, `src/components/admin/`, `src/components/ui/`, `src/components/dashboard/`) are kept as re-export shims so imports in unconverted files keep working. **New code uses shared/ and domains/ directly.** Old dirs will be removed in the final cleanup step.
 ```
 
 ---
 
 ## Mandatory Checklist
 
-- [ ] Use components from `src/components/ui` when they already exist.
+- [ ] **NO new code in flat dirs.** All code goes into `shared/` (cross-cutting) or `domains/<name>/` (domain-owned).
+- [ ] **3+ domain usage → promote to `shared/`**. Domain-local aliases are fine; explicit promotion to shared/ when other domains start importing.
+- [ ] Use components from `src/shared/ui` when they already exist.
 - [ ] **NO Glassmorphism.** Use Shadcn-style solid surfaces only (`globals.css`).
 - [ ] All forms use `react-hook-form` + `zod` via `<Form>`.
-- [ ] All types and interfaces in `src/types/`. No local type declarations inside components.
-- [ ] No `axios`/`fetch` calls inside components. Use `src/services/` via hooks.
-- [ ] All errors go through `src/utils/errorMapper.ts`. Components MUST NOT format errors.
-- [ ] All user-facing strings use `useTranslation()`. Update `locales/en` AND `locales/id` together.
+- [ ] No `axios`/`fetch` calls inside components. Use `src/domains/*/services/` via `src/domains/*/hooks/`.
+- [ ] All errors go through `src/shared/utils/errorMapper.ts`. Components MUST NOT format errors.
+- [ ] All user-facing strings use `useTranslation()`. Update `domains/*/locales/{en,id}/` together.
 - [ ] **NO page-specific headers.** `MainHeader.tsx` owns the page title. No `<h1>` in route pages.
 - [ ] **Skeleton mandatory.** All loading states use `<Skeleton />` — no plain spinners for layout loading.
 - [ ] **NProgress top bar** triggered for all API fetching operations.
 - [ ] Submit buttons use inline spinner via `loading={...}` prop on `<Button>`.
 - [ ] Use `<Each />` and `<Show />` from `Render.tsx` for lists and conditionals. No raw `.map()`, `&&`, or ternary in TSX return.
+- [ ] All Zustand stores use `skipHydration: true` + `store.persist.rehydrate()` in `useEffect`.
 
 ---
 
@@ -180,7 +200,7 @@ All functionality now in `src/server/` (functions, middleware, session, redis).
 
 ## Error Handling
 
-All API errors funnel through `src/utils/errorMapper.ts` (3-part format: What / Why / Next Steps). Components receive formatted error objects — never raw API errors.
+All API errors funnel through `src/shared/utils/errorMapper.ts` (3-part format: What / Why / Next Steps). Components receive formatted error objects — never raw API errors.
 
 ### Server Function Error Handling (MANDATORY pattern)
 
@@ -317,13 +337,13 @@ npx @tanstack/router-cli generate        # Sync routeTree.gen.ts after new route
 ## Permission Management Reference
 
 ### Types
-`src/types/user.ts` — `IUserPermission`, `IUserCoaAccess`, `IUserPermissionsData`
+`src/domains/users/types/user.ts` — `IUserPermission`, `IUserCoaAccess`, `IUserPermissionsData`
 
 ### Server Functions
 `src/server/functions/admin/users/permissions/{menu,report,coa}.ts`
 
 ### Service
-`src/services/userService.ts` — `getUserMenuPermissions`, `getUserReportPermissions`, `getUserCoaAccess`, `updatePermissions`
+`src/domains/users/services/userService.ts` — `getUserMenuPermissions`, `getUserReportPermissions`, `getUserCoaAccess`, `updatePermissions`
 
 ### Hooks
 `src/hooks/useUsers.ts`:

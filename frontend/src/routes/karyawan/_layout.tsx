@@ -1,8 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { KaryawanLayout } from '@/components/layouts/KaryawanLayout'
-import { NotFoundComponent, GlobalErrorComponent } from '@/components/ui/feedback/error-pages'
-import { useAuthStore } from '@/store/authStore'
-import { getHomePath, isKaryawan } from '@/utils/auth'
+import { KaryawanLayout } from '@/shared/components/layouts/KaryawanLayout'
+import { NotFoundComponent, GlobalErrorComponent } from '@/shared/ui/feedback/error-pages'
+import { useAuthStore } from '@/shared/stores/authStore'
+import { getHomePath, isKaryawan } from '@/shared/auth/auth'
 
 export const Route = createFileRoute('/karyawan/_layout')({
   beforeLoad: async ({ location }) => {

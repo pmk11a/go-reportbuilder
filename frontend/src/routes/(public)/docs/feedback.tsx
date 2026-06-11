@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Alert, AlertTitle, AlertDescription, Spinner, Progress, Skeleton, LoadingState } from '@/components/ui';
+import { Alert, AlertTitle, AlertDescription, Spinner, Progress, Skeleton, LoadingState } from '@/shared/ui';
 import { SectionHeading, ComponentDoc } from './-components/doc-utils';
 
 export const Route = createFileRoute('/(public)/docs/feedback')({

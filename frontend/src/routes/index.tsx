@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useAuthStore } from '@/store/authStore'
-import { getHomePath } from '@/utils/auth'
+import { useAuthStore } from '@/shared/stores/authStore'
+import { getHomePath } from '@/shared/auth/auth'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {

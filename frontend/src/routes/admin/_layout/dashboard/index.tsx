@@ -17,12 +17,12 @@ import {
     CheckCircle2,
     AlertCircle,
 } from "lucide-react";
-import { dashboardService } from "@/services/dashboardService";
-import { useThemeStore } from "@/store/themeStore";
-import { usePagination } from "@/hooks/usePagination";
+import { dashboardService } from "@/domains/dashboard/services/dashboardService";
+import { useThemeStore } from "@/shared/stores/themeStore";
+import { usePagination } from "@/shared/hooks/usePagination";
 import React, { memo } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/data/table";
-import { Each, Show } from "@/components/ui/layout/Render";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/data/table";
+import { Each, Show } from "@/shared/ui/layout/Render";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/_layout/dashboard/")({

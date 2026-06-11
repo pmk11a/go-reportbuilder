@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Stat, Timeline, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui';
+import { Stat, Timeline, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/shared/ui';
 import { SectionHeading, ComponentDoc } from './-components/doc-utils';
 import { Users, DollarSign, Activity, CheckCircle2, Mail, Rocket } from 'lucide-react';
 

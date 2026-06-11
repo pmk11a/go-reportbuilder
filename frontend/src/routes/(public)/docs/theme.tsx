@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useTheme } from '@/store/themeStore';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Code } from '@/components/ui';
+import { useTheme } from '@/shared/stores/themeStore';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Code } from '@/shared/ui';
 
 export const Route = createFileRoute('/(public)/docs/theme')({
   component: ThemeSection,
@@ -60,7 +60,7 @@ function ThemeSection() {
           
           <h4 className="font-semibold mt-4">Penggunaan dalam Kode</h4>
           <p className="text-sm">Gunakan hook <Code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">useTheme()</Code> untuk mendapatkan state tema saat ini.</p>
-          <Code className="block p-4 bg-slate-900 text-slate-100 whitespace-pre overflow-auto">{`import { useTheme } from '@/store/themeStore';
+          <Code className="block p-4 bg-slate-900 text-slate-100 whitespace-pre overflow-auto">{`import { useTheme } from '@/shared/stores/themeStore';
 
 const { theme, toggleTheme, isDark } = useTheme();`}</Code>
           

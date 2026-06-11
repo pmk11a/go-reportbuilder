@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { MenuDataTable } from '@/components/admin/menu/MenuDataTable'
+import { MenuDataTable } from '@/domains/menu/components/menu/MenuDataTable'
 
 export const Route = createFileRoute('/admin/_layout/berkas/menu')({
   component: MenuRoute,

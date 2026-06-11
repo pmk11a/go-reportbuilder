@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { Divider, Code } from '@/components/ui';
+import { Divider, Code } from '@/shared/ui';
 
 export function SectionHeading({ title, description }: { title: string; description: string }) {
   return (

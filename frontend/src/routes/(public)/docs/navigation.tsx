@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Tabs, Breadcrumb, Steps, Pagination, DataPagination } from '@/components/ui';
+import { Tabs, Breadcrumb, Steps, Pagination, DataPagination } from '@/shared/ui';
 import { SectionHeading, ComponentDoc } from './-components/doc-utils';
 
 export const Route = createFileRoute('/(public)/docs/navigation')({

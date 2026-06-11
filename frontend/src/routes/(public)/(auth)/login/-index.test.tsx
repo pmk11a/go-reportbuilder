@@ -2,7 +2,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi, describe, it, expect } from 'vitest'
 import { LoginPage } from './index'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/domains/auth/hooks/use-auth'
 
 // Mock dependencies
 vi.mock('@tanstack/react-router', () => ({
@@ -12,7 +12,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
-vi.mock('@/hooks/use-auth', () => ({
+vi.mock('@/domains/auth/hooks/use-auth', () => ({
   useAuth: vi.fn(),
 }))
 
@@ -27,7 +27,7 @@ vi.mock('react-i18next', () => ({
   },
 }))
 
-vi.mock('@/store/authStore', () => {
+vi.mock('@/shared/stores/authStore', () => {
   const useAuthStore = vi.fn().mockImplementation((selector) => {
     if (typeof selector === 'function') {
       return selector({ isInitialized: true, user: null });

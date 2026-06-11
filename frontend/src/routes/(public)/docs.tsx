@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router';
-import { useTheme } from '@/store/themeStore';
-import { Button, ScrollArea } from '@/components/ui';
+import { useTheme } from '@/shared/stores/themeStore';
+import { Button, ScrollArea } from '@/shared/ui';
 import { Search, Palette, Box, Layers, CheckSquare, MessageSquare, Navigation, Database } from 'lucide-react';
 import { useState } from 'react';
 

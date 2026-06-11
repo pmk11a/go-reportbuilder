@@ -6,8 +6,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui'
-import { Each } from '@/components/ui/layout/Render'
+} from '@/shared/ui'
+import { Each } from '@/shared/ui/layout/Render'
 import { ShieldCheck } from 'lucide-react'
 
 export const Route = createFileRoute('/admin/_layout/reports/')({
