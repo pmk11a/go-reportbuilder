@@ -2,30 +2,27 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
-import enCommon from '../../locales/en/common.json';
-import idCommon from '../../locales/id/common.json';
-import enPeriode from '../../locales/en/periode.json';
-import idPeriode from '../../locales/id/periode.json';
-import enMenu from '../../locales/en/menu.json';
-import idMenu from '../../locales/id/menu.json';
-import enDashboard from '../../locales/en/dashboard.json';
-import idDashboard from '../../locales/id/dashboard.json';
-import enLogs from '../../locales/en/logs.json';
-import idLogs from '../../locales/id/logs.json';
-import enCompany from '../../locales/en/company.json';
-import idCompany from '../../locales/id/company.json';
-import enNumbering from '../../locales/en/numbering.json';
-import idNumbering from '../../locales/id/numbering.json';
-import enUsers from '../../locales/en/users.json';
-import idUsers from '../../locales/id/users.json';
-import enReports from '../../locales/en/reports.json';
-import idReports from '../../locales/id/reports.json';
-import enAccounting from '../../locales/en/accounting.json';
-import idAccounting from '../../locales/id/accounting.json';
+import enPeriode from '../../domains/settings/locales/en/periode.json';
+import idPeriode from '../../domains/settings/locales/id/periode.json';
+import enMenu from '../../domains/menu/locales/en/menu.json';
+import idMenu from '../../domains/menu/locales/id/menu.json';
+import enDashboard from '../../domains/dashboard/locales/en/dashboard.json';
+import idDashboard from '../../domains/dashboard/locales/id/dashboard.json';
+import enLogs from '../../domains/activity/locales/en/logs.json';
+import idLogs from '../../domains/activity/locales/id/logs.json';
+import enCompany from '../../domains/settings/locales/en/company.json';
+import idCompany from '../../domains/settings/locales/id/company.json';
+import enNumbering from '../../domains/settings/locales/en/numbering.json';
+import idNumbering from '../../domains/settings/locales/id/numbering.json';
+import enUsers from '../../domains/users/locales/en/users.json';
+import idUsers from '../../domains/users/locales/id/users.json';
+import enReports from '../../domains/reports/locales/en/reports.json';
+import idReports from '../../domains/reports/locales/id/reports.json';
+import enAccounting from '../../domains/accounting/locales/en/accounting.json';
+import idAccounting from '../../domains/accounting/locales/id/accounting.json';
 
 const resources = {
   en: {
-    common: enCommon,
     periode: enPeriode,
     menu: enMenu,
     dashboard: enDashboard,
@@ -37,7 +34,6 @@ const resources = {
     accounting: enAccounting,
   },
   id: {
-    common: idCommon,
     periode: idPeriode,
     menu: idMenu,
     dashboard: idDashboard,
@@ -55,7 +51,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    defaultNS: 'common',
+    defaultNS: 'menu',
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes values
