@@ -4,11 +4,11 @@ import { useModalStore } from '@/shared/stores/modalStore';
 // Dynamic registry of all modals.
 // Keys should match the modal IDs (e.g. 'setupPeriode', 'gantiPassword')
 const MODAL_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
-    setupPeriode: React.lazy(() => 
-        import('@/components/modals/SetupPeriodeModal').then(module => ({ default: module.SetupPeriodeModal }))
+    setupPeriode: React.lazy(() =>
+        import('@/shared/components/modals/SetupPeriodeModal').then(module => ({ default: module.SetupPeriodeModal }))
     ),
-    changePassword: React.lazy(() => 
-        import('@/components/modals/ChangePasswordModal').then(module => ({ default: module.ChangePasswordModal }))
+    changePassword: React.lazy(() =>
+        import('@/shared/components/modals/ChangePasswordModal').then(module => ({ default: module.ChangePasswordModal }))
     ),
 };
 

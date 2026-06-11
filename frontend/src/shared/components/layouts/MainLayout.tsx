@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
 import { Outlet } from "@tanstack/react-router";
-import { AppBackground } from "@/components/layouts/AppBackground";
+import { AppBackground } from "@/shared/components/layouts/AppBackground";
 import { MainHeader } from "./MainHeader";
-import MenuListCard from "@/components/dashboard/MenuListCard";
-import { ModalProvider } from "@/components/providers/ModalProvider";
+import MenuListCard from "@/domains/dashboard/components/dashboard/MenuListCard";
+import { ModalProvider } from "@/shared/components/providers/ModalProvider";
 import { useMenuStore } from "@/domains/menu/stores/menuStore";
 
 export function MainLayout() {
