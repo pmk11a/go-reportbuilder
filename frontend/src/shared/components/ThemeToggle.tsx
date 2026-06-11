@@ -1,4 +1,4 @@
-import { useThemeStore } from "@/store/themeStore";
+import { useThemeStore } from "@/shared/stores/themeStore";
 import { useEffect, useState } from "react";
 
 interface ThemeToggleProps {

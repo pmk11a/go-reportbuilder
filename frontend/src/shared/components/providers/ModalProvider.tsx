@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { useModalStore } from '@/store/modalStore';
+import { useModalStore } from '@/shared/stores/modalStore';
 
 // Dynamic registry of all modals.
 // Keys should match the modal IDs (e.g. 'setupPeriode', 'gantiPassword')

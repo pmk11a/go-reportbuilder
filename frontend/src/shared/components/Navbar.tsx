@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { ThemeToggle } from './ThemeToggle'
-import { useThemeStore } from '@/store/themeStore'
-import { useAuthStore } from '@/store/authStore'
+import { useThemeStore } from '@/shared/stores/themeStore'
+import { useAuthStore } from '@/shared/stores/authStore'
 import { LogOut, User } from 'lucide-react'
 
 export function Navbar() {

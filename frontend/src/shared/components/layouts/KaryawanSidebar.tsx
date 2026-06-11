@@ -1,5 +1,5 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { 
+import {
   Home,
   User,
   Clock,
@@ -9,7 +9,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { useThemeStore } from '@/store/themeStore'
+import { useThemeStore } from '@/shared/stores/themeStore'
 
 interface SidebarProps {
   open: boolean

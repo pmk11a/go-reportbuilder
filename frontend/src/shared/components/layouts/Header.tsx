@@ -1,6 +1,6 @@
 import { Bell, Search, User, LogOut, Moon, Sun, Settings, HelpCircle } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-import { useThemeStore } from '@/store/themeStore'
+import { useAuthStore } from '@/shared/stores/authStore'
+import { useThemeStore } from '@/shared/stores/themeStore'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 

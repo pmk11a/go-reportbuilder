@@ -1,11 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { authService } from '@/services/authService'
+import { authService } from '@/domains/auth/services/authService'
 import { APIError } from '@/shared/api/errors'
-
-
-import type { IUser } from '@/types/user';
-import type { IAuthState } from '@/types/auth'
+import type { IUser } from '@/domains/users/user'
+import type { IAuthState } from '@/domains/auth/auth'
 
 export interface AuthStore extends IAuthState {
   isInitialized: boolean

@@ -1,16 +1,16 @@
 import { Link, useLocation } from '@tanstack/react-router'
-import { 
-  LayoutDashboard, 
-  Users, 
-  FileText, 
-  BarChart3, 
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  BarChart3,
   Settings,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Menu
 } from 'lucide-react'
-import { useThemeStore } from '@/store/themeStore'
+import { useThemeStore } from '@/shared/stores/themeStore'
 
 interface SidebarProps {
   open: boolean

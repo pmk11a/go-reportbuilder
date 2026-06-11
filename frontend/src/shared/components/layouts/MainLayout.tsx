@@ -4,7 +4,7 @@ import { AppBackground } from "@/components/layouts/AppBackground";
 import { MainHeader } from "./MainHeader";
 import MenuListCard from "@/components/dashboard/MenuListCard";
 import { ModalProvider } from "@/components/providers/ModalProvider";
-import { useMenuStore } from "@/store/menuStore";
+import { useMenuStore } from "@/domains/menu/stores/menuStore";
 
 export function MainLayout() {
     const { fetchMenus, initialized } = useMenuStore();

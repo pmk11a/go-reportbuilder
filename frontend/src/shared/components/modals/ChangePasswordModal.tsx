@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/overlay/dialog";
-import { useModalStore } from "@/store/modalStore";
+import { useModalStore } from "@/shared/stores/modalStore";
 import { useToast } from "@/shared/hooks/use-toast";
-import { authService } from "@/services/authService";
-import { useThemeStore } from "@/store/themeStore";
+import { authService } from "@/domains/auth/services/authService";
+import { useThemeStore } from "@/shared/stores/themeStore";
 import { AlertCircle, KeyRound, X } from "lucide-react";
 import { PasswordInput } from "@/shared/ui/form/password-input";
 import { Button } from "@/shared/ui/overlay/button";

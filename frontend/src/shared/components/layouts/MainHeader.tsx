@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { useNavigate, useMatches } from "@tanstack/react-router"
-import { useAuthStore } from "@/store/authStore"
-import { useThemeStore } from "@/store/themeStore"
-import { useMenuStore } from "@/store/menuStore"
+import { useAuthStore } from "@/shared/stores/authStore"
+import { useThemeStore } from "@/shared/stores/themeStore"
+import { useMenuStore } from "@/domains/menu/stores/menuStore"
 import { LanguageToggle } from "@/components/LanguageToggle"
 import { ThemeToggle } from "@/components/ThemeToggle"
-import { authService } from "@/services/authService"
+import { authService } from "@/domains/auth/services/authService"
 import { Settings, KeyRound, LogOut, CheckCircle2 } from "lucide-react"
-import { useModalStore } from "@/store/modalStore"
+import { useModalStore } from "@/shared/stores/modalStore"
 import { useTranslation } from "react-i18next"
 
 export function MainHeader() {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SearchableSelect } from '@/shared/ui/form/searchable-select';
-import { sharedFilterService } from '@/services/sharedFilterService';
+import { sharedFilterService } from '@/shared/services/sharedFilterService';
 
 interface Props {
   value?: string;
