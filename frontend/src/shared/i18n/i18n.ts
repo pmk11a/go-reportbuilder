@@ -8,6 +8,19 @@ import enRegister from '../../domains/auth/locales/en/register.json';
 import idRegister from '../../domains/auth/locales/id/register.json';
 import enSessions from '../../domains/auth/locales/en/sessions.json';
 import idSessions from '../../domains/auth/locales/id/sessions.json';
+
+// Merge auth locales into a single namespace with sub-keys
+const enAuth = {
+  login: enLogin,
+  register: enRegister,
+  session: enSessions,
+};
+
+const idAuth = {
+  login: idLogin,
+  register: idRegister,
+  session: idSessions,
+};
 import enPeriode from '../../domains/settings/locales/en/periode.json';
 import idPeriode from '../../domains/settings/locales/id/periode.json';
 import enMenu from '../../domains/menu/locales/en/menu.json';
@@ -29,11 +42,7 @@ import idAccounting from '../../domains/accounting/locales/id/accounting.json';
 
 const resources = {
   en: {
-    auth: {
-      login: enLogin,
-      register: enRegister,
-      session: enSessions,
-    },
+    auth: enAuth,
     periode: enPeriode,
     menu: enMenu,
     dashboard: enDashboard,
@@ -45,11 +54,7 @@ const resources = {
     accounting: enAccounting,
   },
   id: {
-    auth: {
-      login: idLogin,
-      register: idRegister,
-      session: idSessions,
-    },
+    auth: idAuth,
     periode: idPeriode,
     menu: idMenu,
     dashboard: idDashboard,
@@ -68,6 +73,7 @@ i18n
   .init({
     resources,
     defaultNS: 'menu',
+    ns: Object.keys(resources.en),
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes values
