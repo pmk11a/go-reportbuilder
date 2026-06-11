@@ -6,16 +6,16 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/domains/auth/hooks/use-auth";
 import { useAuthStore } from "@/shared/stores/authStore";
 import { useToast } from '@/shared/hooks/use-toast';
-import { loginSchema, type ILoginInput } from "@/schemas/auth";
+import { loginSchema, type ILoginInput } from "@/domains/auth/auth";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/shared/ui/form";
 import { Input } from "@/shared/ui/form/input";
 import { Button } from "@/shared/ui/overlay/button";
 import { Alert, AlertDescription } from "@/shared/ui";
 import "./login.css";
-import { getHomePath, getRedirectPath } from "@/shared/utils/auth";
+import { getHomePath, getRedirectPath } from "@/shared/auth/auth";
 import { useTranslation } from "react-i18next";
-import { LanguageToggle } from "@/components/LanguageToggle";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/shared/components/LanguageToggle";
+import { ThemeToggle } from "@/shared/components/ThemeToggle";
 
 type LoginSearch = {
     redirect?: string;
