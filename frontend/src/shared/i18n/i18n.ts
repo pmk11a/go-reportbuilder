@@ -2,6 +2,12 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
+import enLogin from '../../domains/auth/locales/en/login.json';
+import idLogin from '../../domains/auth/locales/id/login.json';
+import enRegister from '../../domains/auth/locales/en/register.json';
+import idRegister from '../../domains/auth/locales/id/register.json';
+import enSessions from '../../domains/auth/locales/en/sessions.json';
+import idSessions from '../../domains/auth/locales/id/sessions.json';
 import enPeriode from '../../domains/settings/locales/en/periode.json';
 import idPeriode from '../../domains/settings/locales/id/periode.json';
 import enMenu from '../../domains/menu/locales/en/menu.json';
@@ -23,6 +29,11 @@ import idAccounting from '../../domains/accounting/locales/id/accounting.json';
 
 const resources = {
   en: {
+    auth: {
+      login: enLogin,
+      register: enRegister,
+      session: enSessions,
+    },
     periode: enPeriode,
     menu: enMenu,
     dashboard: enDashboard,
@@ -34,6 +45,11 @@ const resources = {
     accounting: enAccounting,
   },
   id: {
+    auth: {
+      login: idLogin,
+      register: idRegister,
+      session: idSessions,
+    },
     periode: idPeriode,
     menu: idMenu,
     dashboard: idDashboard,

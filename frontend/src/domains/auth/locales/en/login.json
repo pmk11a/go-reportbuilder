@@ -1,0 +1,11 @@
+{
+  "title": "Login",
+  "username": "Username",
+  "username_placeholder": "Enter your username",
+  "password": "Password",
+  "password_placeholder": "Enter your password",
+  "sign_in": "Sign In",
+  "no_account": "Don't have an account?",
+  "create_one": "Create one",
+  "login_failed": "Login failed. Please check your username and password."
+}
