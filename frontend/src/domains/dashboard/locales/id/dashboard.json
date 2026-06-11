@@ -37,5 +37,11 @@
     "employee_no": "No. Pegawai",
     "birth_date": "Tgl Lahir",
     "retirement_date": "Tgl Pensiun"
+  },
+  "menu_list": {
+    "menu": "MENU",
+    "search_menu": "Cari menu...",
+    "no_menu": "Tidak ada menu tersedia",
+    "expand_menu": "Perluas menu"
   }
 }

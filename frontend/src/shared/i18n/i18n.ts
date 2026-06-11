@@ -28,8 +28,8 @@ const resources = {
     menu: {
       ...enMenu,
       auth: enAuth,
-      periode: enPeriode,
       dashboard: enDashboard,
+      periode: enPeriode,
       logs: enLogs,
       company: enCompany,
       numbering: enNumbering,
@@ -37,13 +37,22 @@ const resources = {
       reports: enReports,
       accounting: enAccounting,
     },
+    auth: enAuth,
+    dashboard: enDashboard,
+    periode: enPeriode,
+    logs: enLogs,
+    company: enCompany,
+    numbering: enNumbering,
+    users: enUsers,
+    reports: enReports,
+    accounting: enAccounting,
   },
   id: {
     menu: {
       ...idMenu,
       auth: idAuth,
-      periode: idPeriode,
       dashboard: idDashboard,
+      periode: idPeriode,
       logs: idLogs,
       company: idCompany,
       numbering: idNumbering,
@@ -51,6 +60,15 @@ const resources = {
       reports: idReports,
       accounting: idAccounting,
     },
+    auth: idAuth,
+    dashboard: idDashboard,
+    periode: idPeriode,
+    logs: idLogs,
+    company: idCompany,
+    numbering: idNumbering,
+    users: idUsers,
+    reports: idReports,
+    accounting: idAccounting,
   },
 };
 
@@ -60,6 +78,7 @@ i18n
   .init({
     resources,
     defaultNS: 'menu',
+    ns: Object.keys(resources.en),
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes values

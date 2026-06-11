@@ -97,7 +97,7 @@ const MenuItem = memo(({ item, onClick, isChild = false, isActive = false, isDar
 MenuItem.displayName = "MenuItem";
 
 const MenuListCard = () => {
-    const { t } = useTranslation();
+    const { t } = useTranslation('dashboard');
     const navigate = useNavigate();
     const isDark = useThemeStore((state) => state.isDark);
     const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);

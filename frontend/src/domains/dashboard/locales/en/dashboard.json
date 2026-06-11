@@ -37,5 +37,11 @@
     "employee_no": "Employee No.",
     "birth_date": "Birth Date",
     "retirement_date": "Retirement Date"
+  },
+  "menu_list": {
+    "menu": "MENU",
+    "search_menu": "Search menu...",
+    "no_menu": "No menu available",
+    "expand_menu": "Expand menu"
   }
 }
