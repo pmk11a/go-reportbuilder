@@ -2,25 +2,8 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
-import enLogin from '../../domains/auth/locales/en/login.json';
-import idLogin from '../../domains/auth/locales/id/login.json';
-import enRegister from '../../domains/auth/locales/en/register.json';
-import idRegister from '../../domains/auth/locales/id/register.json';
-import enSessions from '../../domains/auth/locales/en/sessions.json';
-import idSessions from '../../domains/auth/locales/id/sessions.json';
-
-// Merge auth locales into a single namespace with sub-keys
-const enAuth = {
-  login: enLogin,
-  register: enRegister,
-  session: enSessions,
-};
-
-const idAuth = {
-  login: idLogin,
-  register: idRegister,
-  session: idSessions,
-};
+import enAuth from '../../domains/auth/locales/en/auth.json';
+import idAuth from '../../domains/auth/locales/id/auth.json';
 import enPeriode from '../../domains/settings/locales/en/periode.json';
 import idPeriode from '../../domains/settings/locales/id/periode.json';
 import enMenu from '../../domains/menu/locales/en/menu.json';
@@ -73,7 +56,6 @@ i18n
   .init({
     resources,
     defaultNS: 'menu',
-    ns: Object.keys(resources.en),
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false, // React already escapes values
