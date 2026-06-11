@@ -209,7 +209,7 @@ export const useUsers = () => {
 
   return {
     useUsersList,
-    useUserById,
+    useUser,
     useCreateUser,
     useUpdateUser,
     useDeleteUser,
