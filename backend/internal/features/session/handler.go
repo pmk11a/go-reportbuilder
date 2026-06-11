@@ -1,21 +1,24 @@
 package session
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
+	"github.com/masza1/dapen-backend/internal/features/identity/user"
 	"github.com/masza1/dapen-backend/internal/infrastructure/response"
 )
 
 // SSessionHandler handles HTTP requests for session management endpoints.
 // All endpoints are admin-only (protected by RoleMiddleware("admin")).
 type SSessionHandler struct {
-	service ISessionService
+	service    ISessionService
+	userRepo   user.IUserRepository
 }
 
-// NewSessionHandler constructs a SSessionHandler with the given service.
-func NewSessionHandler(svc ISessionService) *SSessionHandler {
-	return &SSessionHandler{service: svc}
+// NewSessionHandler constructs a SSessionHandler with the given service and user repository.
+func NewSessionHandler(svc ISessionService, userRepo user.IUserRepository) *SSessionHandler {
+	return &SSessionHandler{
+		service:  svc,
+		userRepo: userRepo,
+	}
 }
 
 // ListUserSessions godoc
@@ -23,20 +26,23 @@ func NewSessionHandler(svc ISessionService) *SSessionHandler {
 // @Description Fetch all active sessions for a specific user. Admin-only endpoint.
 // @Tags Session Management
 // @Security BearerAuth
-// @Param id path uint true "User ID"
+// @Param id path string true "User ID or Legacy User ID"
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
 // @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/admin/users/{id}/sessions [get]
 func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 	userIDStr := c.Param("id")
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+
+	// Resolve legacy user_id (like "SA") to numeric user ID
+	userID, err := h.userRepo.GetUserIDByLegacyUserID(c.Request.Context(), userIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid user ID format")
+		response.NotFound(c, "EID_NOT_FOUND")
 		return
 	}
 
@@ -44,7 +50,7 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 	// This allows the frontend to highlight the row belonging to the current session.
 	currentSessionID, _ := c.Cookie("session_id")
 
-	sessions, currentSessionID, err := h.service.ListUserSessions(c.Request.Context(), uint(userID), currentSessionID)
+	sessions, currentSessionID, err := h.service.ListUserSessions(c.Request.Context(), userID, currentSessionID)
 	if err != nil {
 		response.InternalError(c, "Failed to fetch sessions: "+err.Error())
 		return
@@ -61,7 +67,7 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 // @Description Revoke a specific session by sessionId. The user will be logged out from that device/session.
 // @Tags Session Management
 // @Security BearerAuth
-// @Param id path uint true "User ID"
+// @Param id path string true "User ID or Legacy User ID"
 // @Param sessionId path string true "Session ID"
 // @Accept json
 // @Produce json
@@ -74,9 +80,11 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 // @Router /api/admin/users/{id}/sessions/{sessionId} [delete]
 func (h *SSessionHandler) RevokeSession(c *gin.Context) {
 	userIDStr := c.Param("id")
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+
+	// Resolve legacy user_id (like "SA") to numeric user ID
+	userID, err := h.userRepo.GetUserIDByLegacyUserID(c.Request.Context(), userIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid user ID format")
+		response.NotFound(c, "EID_NOT_FOUND")
 		return
 	}
 
@@ -100,7 +108,7 @@ func (h *SSessionHandler) RevokeSession(c *gin.Context) {
 	}
 
 	// Revoke the session (includes audit logging)
-	if err := h.service.RevokeUserSession(c.Request.Context(), uint(adminID), uint(userID), sessionID); err != nil {
+	if err := h.service.RevokeUserSession(c.Request.Context(), uint(adminID), userID, sessionID); err != nil {
 		response.InternalError(c, "Failed to revoke session: "+err.Error())
 		return
 	}
@@ -115,20 +123,23 @@ func (h *SSessionHandler) RevokeSession(c *gin.Context) {
 // @Description Revoke all active sessions for a user. The user will be logged out from all devices.
 // @Tags Session Management
 // @Security BearerAuth
-// @Param id path uint true "User ID"
+// @Param id path string true "User ID or Legacy User ID"
 // @Accept json
 // @Produce json
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
 // @Failure 403 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Router /api/admin/users/{id}/sessions [delete]
 func (h *SSessionHandler) RevokeAllSessions(c *gin.Context) {
 	userIDStr := c.Param("id")
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+
+	// Resolve legacy user_id (like "SA") to numeric user ID
+	userID, err := h.userRepo.GetUserIDByLegacyUserID(c.Request.Context(), userIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid user ID format")
+		response.NotFound(c, "EID_NOT_FOUND")
 		return
 	}
 
@@ -146,7 +157,7 @@ func (h *SSessionHandler) RevokeAllSessions(c *gin.Context) {
 	}
 
 	// Revoke all sessions (includes audit logging)
-	if err := h.service.RevokeAllUserSessions(c.Request.Context(), uint(adminID), uint(userID)); err != nil {
+	if err := h.service.RevokeAllUserSessions(c.Request.Context(), uint(adminID), userID); err != nil {
 		response.InternalError(c, "Failed to revoke sessions: "+err.Error())
 		return
 	}

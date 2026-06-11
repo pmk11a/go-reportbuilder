@@ -52,7 +52,7 @@ export const useThemeStore = create<ThemeState>()(
         get().setTheme( currentTheme );
       },
     } ),
-    { name: 'theme-storage' }
+    { name: 'theme-storage', skipHydration: true }
   )
 );
 

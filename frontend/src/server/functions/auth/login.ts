@@ -1,13 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
-import { csrfMiddleware } from '../../middleware/csrf'
-import { rateLimitMiddleware } from '../../middleware/rate-limit'
+import { setCookie } from '@tanstack/start-server-core'
 import { createSession, type SessionData } from '../../session'
 import { makeBackendRequest } from '../../backend'
+import { parseEnvTime } from '../../utils'
 
-const SESSION_TTL = parseInt(process.env.SESSION_TTL_SECONDS || '604800', 10)
+const SESSION_TTL = parseEnvTime('SESSION_TTL_SECONDS', 604800)
+const IS_PROD = process.env.NODE_ENV === 'production'
 
 export const loginFn = createServerFn({ method: 'POST' })
-  .middleware([rateLimitMiddleware, csrfMiddleware])
   .validator((data: { username: string; password: string }) => data)
   .handler(async ({ data }) => {
     const result = await makeBackendRequest('/api/auth/login', {
@@ -34,9 +34,13 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
     const sessionId = await createSession(sessionData)
 
-    return {
-      user,
-      sessionId,
+    setCookie('session_id', sessionId, {
+      httpOnly: true,
+      secure: IS_PROD,
+      sameSite: 'lax',
+      path: '/',
       maxAge: SESSION_TTL,
-    }
+    })
+
+    return { user }
   })

@@ -1,21 +1,14 @@
-import { fetchHelper } from '@/lib/api'
+import { getPeriodeFn, setPeriodeFn } from '@/server/functions/berkas'
 import type { IAPIResponse, IPeriodeData } from '@/types/api'
 
 export const berkasService = {
-  /**
-   * Mendapatkan periode aktif untuk user saat ini
-   */
   async getPeriode(): Promise<IAPIResponse<IPeriodeData>> {
-    return await fetchHelper<IAPIResponse<IPeriodeData>>('/berkas/get-periode')
+    const result = await getPeriodeFn()
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Mengupdate periode aktif
-   */
   async setPeriode(bulan: string, tahun: string): Promise<IAPIResponse<any>> {
-    return await fetchHelper<IAPIResponse<any>>('/berkas/set-periode', {
-      method: 'PUT',
-      body: JSON.stringify({ BULAN: bulan, TAHUN: tahun })
-    })
-  }
+    const result = await setPeriodeFn({ data: { body: { BULAN: bulan, TAHUN: tahun } } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
+  },
 }

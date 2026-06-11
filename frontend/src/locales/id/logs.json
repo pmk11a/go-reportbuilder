@@ -36,5 +36,30 @@
       "module": "Modul",
       "actions": "Aksi"
     }
+  },
+  "userActivityLog": {
+    "title": "Log Aktivitas",
+    "description": "Log aktivitas untuk {{name}}",
+    "search": "Cari",
+    "startDate": "Tanggal Mulai",
+    "endDate": "Tanggal Akhir",
+    "noLogs": "Tidak ada log aktivitas",
+    "error": "Gagal memuat log aktivitas",
+    "pageInfo": "Halaman {{current}} dari {{total}} ({{count}} item)",
+    "viewDetail": "Lihat detail",
+    "detailTitle": "Detail Log Aktivitas",
+    "detailDescription": "Informasi lengkap aktivitas yang dipilih.",
+    "detailTime": "Waktu",
+    "detailUser": "Pelaku",
+    "noDescription": "Tidak ada keterangan.",
+    "closeDetail": "Tutup",
+    "headers": {
+      "datetime": "Tanggal",
+      "activity": "Aktivitas",
+      "source": "Sumber",
+      "ref": "No Bukti",
+      "description": "Keterangan",
+      "actions": "Aksi"
+    }
   }
 }

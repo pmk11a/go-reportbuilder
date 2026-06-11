@@ -35,6 +35,7 @@ import {
 import { UserFormDialog } from "@/components/admin/users/UserFormDialog";
 import { UserPermissionsDialog } from "@/components/admin/users/UserPermissionsDialog";
 import { UserSessionsModal } from "@/components/admin/users/UserSessionsModal";
+import { UserActivityLogModal } from "@/components/admin/users/UserActivityLogModal";
 import { Each, Show } from "@/components/ui/layout/Render";
 import type { IDbflpass } from "@/types/user";
 
@@ -59,6 +60,8 @@ function UserManagementPage() {
   const [permissionUser, setPermissionUser] = useState<IDbflpass | null>(null);
   const [sessionsOpen, setSessionsOpen] = useState(false);
   const [sessionUser, setSessionUser] = useState<IDbflpass | null>(null);
+  const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const [activityLogUser, setActivityLogUser] = useState<IDbflpass | null>(null);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [deleteUserName, setDeleteUserName] = useState<string>("");
 
@@ -312,6 +315,10 @@ function UserManagementPage() {
                                       size="icon"
                                       className="h-8 w-8 text-cyan-600 hover:text-cyan-700"
                                       title={t("buttons.logs", "Logs")}
+                                      onClick={() => {
+                                        setActivityLogUser(user);
+                                        setActivityLogOpen(true);
+                                      }}
                                     >
                                       <History className="h-4 w-4" />
                                     </Button>
@@ -400,6 +407,13 @@ function UserManagementPage() {
 
       {/* User Sessions Modal */}
       <UserSessionsModal open={sessionsOpen} onOpenChange={setSessionsOpen} user={sessionUser} />
+
+      {/* User Activity Log Modal */}
+      <UserActivityLogModal
+        open={activityLogOpen}
+        onOpenChange={setActivityLogOpen}
+        user={activityLogUser}
+      />
 
       {/* Delete Confirmation */}
       <DeleteConfirmationDialog

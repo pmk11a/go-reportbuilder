@@ -14,7 +14,8 @@ type IActivityLogService interface {
 	// in-process GORM plugin cache.
 	SaveConfig(req *SActivityLogConfigReq) error
 	// GetLogs returns a paginated slice of log rows + the total count.
-	GetLogs(limit int, offset int) ([]SActivityLogRes, int64, error)
+	// Optional filters: pemakai (user), startDate, endDate.
+	GetLogs(limit int, offset int, pemakai string, startDate string, endDate string) ([]SActivityLogRes, int64, error)
 	// GetTables returns all user table names (UI helper for the config form).
 	GetTables() ([]string, error)
 	// GetTableColumns returns the column names for a given table.
@@ -84,8 +85,8 @@ func (s *activityLogService) SaveConfig(req *SActivityLogConfigReq) error {
 	return nil
 }
 
-func (s *activityLogService) GetLogs(limit int, offset int) ([]SActivityLogRes, int64, error) {
-	logs, count, err := s.repo.GetLogs(limit, offset)
+func (s *activityLogService) GetLogs(limit int, offset int, pemakai string, startDate string, endDate string) ([]SActivityLogRes, int64, error) {
+	logs, count, err := s.repo.GetLogs(limit, offset, pemakai, startDate, endDate)
 	if err != nil {
 		return nil, 0, err
 	}

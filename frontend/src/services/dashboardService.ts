@@ -1,20 +1,16 @@
-import { fetchHelper } from '@/lib/api'
-import type { IAPIResponse } from '@/types/api';;
-import type { IDashboardStats } from '@/types/dashboard';
-import type { IPensiunanWithoutFiles } from '@/types/pensiunan';
+import { getDashboardStatsFn, getPensiunanWithoutFilesFn } from '@/server/functions/dashboard'
+import type { IAPIResponse } from '@/types/api'
+import type { IDashboardStats } from '@/types/dashboard'
+import type { IPensiunanWithoutFiles } from '@/types/pensiunan'
 
 export const dashboardService = {
-  /**
-   * Fetches dashboard statistics
-   */
   async getStats(): Promise<IAPIResponse<IDashboardStats>> {
-    return await fetchHelper<IAPIResponse<IDashboardStats>>( '/dashboard/stats' )
+    const result = await getDashboardStatsFn()
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Fetches retired employees without files
-   */
   async getPensiunanWithoutFiles(page = 1, limit = 10): Promise<IAPIResponse<{ total: number; data: IPensiunanWithoutFiles[]; pagination: any }>> {
-    return await fetchHelper<IAPIResponse<{ total: number; data: IPensiunanWithoutFiles[]; pagination: any }>>( `/dashboard/pensiunan-without-files?page=${page}&limit=${limit}` )
-  }
+    const result = await getPensiunanWithoutFilesFn({ data: { query: `?page=${page}&limit=${limit}` } })
+    return { success: true, status: 200, message: 'Success', data: result.data, meta: result.meta } as any
+  },
 }

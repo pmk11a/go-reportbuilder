@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/masza1/dapen-backend/internal/features/identity/user"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -16,6 +17,81 @@ import (
 // MockSessionRepository mocks ISessionRepository
 type MockSessionRepository struct {
 	mock.Mock
+}
+
+// MockUserRepository mocks user.IUserRepository
+type MockUserRepository struct {
+	mock.Mock
+}
+
+func (m *MockUserRepository) GetByUsername(username string) (*user.SUser, error) {
+	args := m.Called(username)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*user.SUser), args.Error(1)
+}
+
+func (m *MockUserRepository) GetByID(id uint) (*user.SUser, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*user.SUser), args.Error(1)
+}
+
+func (m *MockUserRepository) Create(user *user.SUser) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) Update(user *user.SUser) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) Delete(id uint) error {
+	args := m.Called(id)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) GetUserIDByLegacyUserID(ctx context.Context, legacyUserID string) (uint, error) {
+	args := m.Called(ctx, legacyUserID)
+	if args.Error(1) != nil {
+		return 0, args.Error(1)
+	}
+	return args.Get(0).(uint), args.Error(1)
+}
+
+func (m *MockUserRepository) GetPaginatedDBFLPASS(page, pageSize int, search string, status string) ([]user.SDBFLPASS, int64, error) {
+	args := m.Called(page, pageSize, search, status)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]user.SDBFLPASS), args.Get(1).(int64), args.Error(2)
+}
+
+func (m *MockUserRepository) GetByUserIDDBFLPASS(userID string) (*user.SDBFLPASS, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*user.SDBFLPASS), args.Error(1)
+}
+
+func (m *MockUserRepository) CreateDBFLPASS(user *user.SDBFLPASS) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) UpdateDBFLPASS(user *user.SDBFLPASS) error {
+	args := m.Called(user)
+	return args.Error(0)
+}
+
+func (m *MockUserRepository) DeleteDBFLPASS(userID string) error {
+	args := m.Called(userID)
+	return args.Error(0)
 }
 
 func (m *MockSessionRepository) GetUserSessions(ctx context.Context, userID uint) ([]SSessionInfo, error) {
@@ -55,7 +131,8 @@ func (m *MockSessionRepository) ClearRevocationFlag(ctx context.Context, session
 
 func TestListUserSessions_Success(t *testing.T) {
 	// Setup
-	mockRepo := new(MockSessionRepository)
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
 	now := time.Now()
 	sessions := []SSessionInfo{
@@ -79,20 +156,21 @@ func TestListUserSessions_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetUserSessions", mock.Anything, uint(1)).Return(sessions, nil)
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "SA").Return(uint(1), nil)
+	mockSessionRepo.On("GetUserSessions", mock.Anything, uint(1)).Return(sessions, nil)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
 
 	// Create request with session_id cookie
-	req := httptest.NewRequest("GET", "/api/admin/users/1/sessions", nil)
+	req := httptest.NewRequest("GET", "/api/admin/users/SA/sessions", nil)
 	req.AddCookie(&http.Cookie{Name: "session_id", Value: "session-1"})
 	w := httptest.NewRecorder()
 
 	// Setup Gin context
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	c.Params = gin.Params{{Key: "id", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "SA"}}
 	c.Set("user_id", 999.0) // Mock admin user
 
 	// Execute
@@ -113,22 +191,27 @@ func TestListUserSessions_Success(t *testing.T) {
 	assert.Equal(t, "session-1", dataMap["current_session_id"])
 }
 
-func TestListUserSessions_InvalidUserID(t *testing.T) {
-	mockRepo := new(MockSessionRepository)
+func TestListUserSessions_UserNotFound(t *testing.T) {
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	// Simulate user not found
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "NONEXIST").
+		Return(uint(0), context.DeadlineExceeded)
 
-	req := httptest.NewRequest("GET", "/api/admin/users/invalid/sessions", nil)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
+
+	req := httptest.NewRequest("GET", "/api/admin/users/NONEXIST/sessions", nil)
 	w := httptest.NewRecorder()
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	c.Params = gin.Params{{Key: "id", Value: "invalid"}}
+	c.Params = gin.Params{{Key: "id", Value: "NONEXIST"}}
 
 	handler.ListUserSessions(c)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	var resp map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &resp)
@@ -136,7 +219,8 @@ func TestListUserSessions_InvalidUserID(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_Success(t *testing.T) {
-	mockRepo := new(MockSessionRepository)
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
 	now := time.Now()
 	session := &SSessionInfo{
@@ -149,19 +233,20 @@ func TestRevokeSessionHandler_Success(t *testing.T) {
 		Status:    "active",
 	}
 
-	mockRepo.On("GetSession", mock.Anything, "session-1").Return(session, nil)
-	mockRepo.On("RevokeSession", mock.Anything, "session-1").Return(nil)
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "SA").Return(uint(1), nil)
+	mockSessionRepo.On("GetSession", mock.Anything, "session-1").Return(session, nil)
+	mockSessionRepo.On("RevokeSession", mock.Anything, "session-1").Return(nil)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
 
-	req := httptest.NewRequest("DELETE", "/api/admin/users/1/sessions/session-1", nil)
+	req := httptest.NewRequest("DELETE", "/api/admin/users/SA/sessions/session-1", nil)
 	w := httptest.NewRecorder()
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "id", Value: "1"},
+		{Key: "id", Value: "SA"},
 		{Key: "sessionId", Value: "session-1"},
 	}
 	c.Set("user_id", 999.0) // Admin user
@@ -175,24 +260,26 @@ func TestRevokeSessionHandler_Success(t *testing.T) {
 	assert.True(t, resp["success"].(bool))
 	assert.Equal(t, "Session revoked successfully", resp["message"])
 
-	mockRepo.AssertCalled(t, "RevokeSession", mock.Anything, "session-1")
+	mockSessionRepo.AssertCalled(t, "RevokeSession", mock.Anything, "session-1")
 }
 
 func TestRevokeSessionHandler_SessionNotFound(t *testing.T) {
-	mockRepo := new(MockSessionRepository)
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
-	mockRepo.On("GetSession", mock.Anything, "nonexistent").Return(nil, nil)
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "SA").Return(uint(1), nil)
+	mockSessionRepo.On("GetSession", mock.Anything, "nonexistent").Return(nil, nil)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
 
-	req := httptest.NewRequest("DELETE", "/api/admin/users/1/sessions/nonexistent", nil)
+	req := httptest.NewRequest("DELETE", "/api/admin/users/SA/sessions/nonexistent", nil)
 	w := httptest.NewRecorder()
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "id", Value: "1"},
+		{Key: "id", Value: "SA"},
 		{Key: "sessionId", Value: "nonexistent"},
 	}
 	c.Set("user_id", 999.0)
@@ -207,7 +294,8 @@ func TestRevokeSessionHandler_SessionNotFound(t *testing.T) {
 }
 
 func TestRevokeSessionHandler_SessionBelongsToOtherUser(t *testing.T) {
-	mockRepo := new(MockSessionRepository)
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
 	now := time.Now()
 	session := &SSessionInfo{
@@ -220,18 +308,19 @@ func TestRevokeSessionHandler_SessionBelongsToOtherUser(t *testing.T) {
 		Status:    "active",
 	}
 
-	mockRepo.On("GetSession", mock.Anything, "session-1").Return(session, nil)
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "SA").Return(uint(1), nil)
+	mockSessionRepo.On("GetSession", mock.Anything, "session-1").Return(session, nil)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
 
-	req := httptest.NewRequest("DELETE", "/api/admin/users/1/sessions/session-1", nil)
+	req := httptest.NewRequest("DELETE", "/api/admin/users/SA/sessions/session-1", nil)
 	w := httptest.NewRecorder()
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "id", Value: "1"},
+		{Key: "id", Value: "SA"},
 		{Key: "sessionId", Value: "session-1"},
 	}
 	c.Set("user_id", 999.0)
@@ -246,7 +335,8 @@ func TestRevokeSessionHandler_SessionBelongsToOtherUser(t *testing.T) {
 }
 
 func TestRevokeAllSessions_Success(t *testing.T) {
-	mockRepo := new(MockSessionRepository)
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
 	now := time.Now()
 	sessions := []SSessionInfo{
@@ -270,19 +360,20 @@ func TestRevokeAllSessions_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetUserSessions", mock.Anything, uint(1)).Return(sessions, nil)
-	mockRepo.On("RevokeSession", mock.Anything, "session-1").Return(nil)
-	mockRepo.On("RevokeSession", mock.Anything, "session-2").Return(nil)
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "SA").Return(uint(1), nil)
+	mockSessionRepo.On("GetUserSessions", mock.Anything, uint(1)).Return(sessions, nil)
+	mockSessionRepo.On("RevokeSession", mock.Anything, "session-1").Return(nil)
+	mockSessionRepo.On("RevokeSession", mock.Anything, "session-2").Return(nil)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
 
-	req := httptest.NewRequest("DELETE", "/api/admin/users/1/sessions", nil)
+	req := httptest.NewRequest("DELETE", "/api/admin/users/SA/sessions", nil)
 	w := httptest.NewRecorder()
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
-	c.Params = gin.Params{{Key: "id", Value: "1"}}
+	c.Params = gin.Params{{Key: "id", Value: "SA"}}
 	c.Set("user_id", 999.0)
 
 	handler.RevokeAllSessions(c)
@@ -294,23 +385,26 @@ func TestRevokeAllSessions_Success(t *testing.T) {
 	assert.True(t, resp["success"].(bool))
 	assert.Equal(t, "All sessions revoked successfully", resp["message"])
 
-	mockRepo.AssertCalled(t, "RevokeSession", mock.Anything, "session-1")
-	mockRepo.AssertCalled(t, "RevokeSession", mock.Anything, "session-2")
+	mockSessionRepo.AssertCalled(t, "RevokeSession", mock.Anything, "session-1")
+	mockSessionRepo.AssertCalled(t, "RevokeSession", mock.Anything, "session-2")
 }
 
 func TestRevokeSessionHandler_NoUserIDInContext(t *testing.T) {
-	mockRepo := new(MockSessionRepository)
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
 
-	svc := NewSessionService(mockRepo, nil)
-	handler := NewSessionHandler(svc)
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "SA").Return(uint(1), nil)
 
-	req := httptest.NewRequest("DELETE", "/api/admin/users/1/sessions/session-1", nil)
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
+
+	req := httptest.NewRequest("DELETE", "/api/admin/users/SA/sessions/session-1", nil)
 	w := httptest.NewRecorder()
 
 	c, _ := gin.CreateTestContext(w)
 	c.Request = req
 	c.Params = gin.Params{
-		{Key: "id", Value: "1"},
+		{Key: "id", Value: "SA"},
 		{Key: "sessionId", Value: "session-1"},
 	}
 	// Don't set user_id in context

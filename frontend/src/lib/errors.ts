@@ -1,4 +1,34 @@
-import { APIError } from '@/lib/api'
+import { formatAPIError } from '@/utils/errorMapper'
+
+export class APIError extends Error {
+  public rawMsg: string;
+
+  constructor(
+    public status: number,
+    public data: any,
+    public code?: string
+  ) {
+    super();
+    Object.setPrototypeOf(this, APIError.prototype);
+
+    const rawMsg = data?.message || data?.data?.error || data?.error || '';
+    this.name = 'APIError';
+    this.rawMsg = rawMsg;
+    this.code = data?.error || data?.data?.error || `HTTP_${status}`;
+
+    Object.defineProperty(this, 'message', {
+      get: () => formatAPIError(this.status, this.rawMsg),
+      enumerable: true,
+      configurable: true
+    });
+  }
+
+  isUnauthorized(): boolean { return this.status === 401 }
+  isForbidden(): boolean { return this.status === 403 }
+  isNotFound(): boolean { return this.status === 404 }
+  isValidationError(): boolean { return this.status === 400 }
+  isServerError(): boolean { return this.status >= 500 }
+}
 
 export class ValidationError extends Error {
   constructor(

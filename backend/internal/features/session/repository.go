@@ -83,13 +83,14 @@ func (r *SSessionRepository) GetUserSessions(ctx context.Context, userID uint) (
 }
 
 // GetSession fetches full SessionInfo from Redis key bff:session:{sessionId}.
-// SessionData in Redis is expected to be JSON with at minimum:
+// SessionData in Redis is stored by BFF (frontend/src/server/session.ts) with format:
 // {
-//   "user_id": 123,
-//   "login_time": "2026-06-06T10:30:00Z",
-//   "expires_at": "2026-06-13T10:30:00Z",
-//   "login_ip": "192.168.1.100",
-//   "browser": "Chrome/macOS"
+//   "userId": "1",              // camelCase, string or number
+//   "accessToken": "...",
+//   "refreshToken": "...",
+//   "expiresAt": 1781082818856,  // int64 Unix milliseconds
+//   "login_ip": "",              // empty string, not captured
+//   "user": {...}               // optional user object
 // }
 func (r *SSessionRepository) GetSession(ctx context.Context, sessionID string) (*SSessionInfo, error) {
 	sessionKey := fmt.Sprintf("bff:session:%s", sessionID)
@@ -107,26 +108,35 @@ func (r *SSessionRepository) GetSession(ctx context.Context, sessionID string) (
 		return nil, fmt.Errorf("unmarshalling session data for %s: %w", sessionID, err)
 	}
 
-	// Extract and parse fields. Note: timestamps may arrive as strings (RFC3339) or unix timestamps.
+	// Extract and parse fields. Note: expiresAt arrives as Unix milliseconds (float64).
 	var session SSessionInfo
 	session.SessionID = sessionID
 
-	if userID, ok := sessionData["user_id"]; ok {
-		if uid, ok := userID.(float64); ok {
-			session.UserID = uint(uid)
+	// userId: camelCase in Redis (not snake_case)
+	if userID, ok := sessionData["userId"]; ok {
+		switch v := userID.(type) {
+		case float64:
+			session.UserID = uint(v)
+		case string:
+			var uid uint
+			fmt.Sscanf(v, "%d", &uid)
+			session.UserID = uid
 		}
 	}
 
+	// login_time is NOT stored in Redis session data.
+	// Fallback to current time (login_time not captured at session creation).
 	if loginTimeStr, ok := sessionData["login_time"].(string); ok {
 		if t, err := time.Parse(time.RFC3339, loginTimeStr); err == nil {
 			session.LoginTime = t
 		}
+	} else {
+		session.LoginTime = time.Now()
 	}
 
-	if expiresAtStr, ok := sessionData["expires_at"].(string); ok {
-		if t, err := time.Parse(time.RFC3339, expiresAtStr); err == nil {
-			session.ExpiresAt = t
-		}
+	// expiresAt: stored as int64 Unix milliseconds in Redis.
+	if expiresAtNum, ok := sessionData["expiresAt"].(float64); ok {
+		session.ExpiresAt = time.UnixMilli(int64(expiresAtNum))
 	}
 
 	if loginIP, ok := sessionData["login_ip"].(string); ok {

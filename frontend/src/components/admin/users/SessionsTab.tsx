@@ -158,23 +158,23 @@ export function SessionsTab({ userId }: ISessionsTabProps) {
           </div>
         }
       >
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="rounded-lg border border-primary-300 dark:border-white/5 overflow-hidden">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+            <TableHeader className="bg-primary-600 dark:bg-white/5 border-b-2 border-primary-700 dark:border-white/10 [&_tr]:hover:bg-transparent">
               <TableRow>
-                <TableHead>{t('sessions.session', 'Session')}</TableHead>
-                <TableHead>{t('sessions.status', 'Status')}</TableHead>
-                <TableHead>{t('sessions.loginTime', 'Login Time')}</TableHead>
-                <TableHead>{t('sessions.expiresAt', 'Expires')}</TableHead>
-                <TableHead>{t('sessions.ipAddress', 'IP Address')}</TableHead>
-                <TableHead>{t('sessions.browser', 'Browser')}</TableHead>
-                <TableHead className="text-right">{t('common.actions', 'Actions')}</TableHead>
+                <TableHead className="text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('sessions.session', 'Session')}</TableHead>
+                <TableHead className="text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('sessions.status', 'Status')}</TableHead>
+                <TableHead className="text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('sessions.loginTime', 'Login Time')}</TableHead>
+                <TableHead className="text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('sessions.expiresAt', 'Expires')}</TableHead>
+                <TableHead className="text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('sessions.ipAddress', 'IP Address')}</TableHead>
+                <TableHead className="text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('sessions.browser', 'Browser')}</TableHead>
+                <TableHead className="text-right text-white dark:text-primary-400 uppercase text-xs tracking-wider">{t('common.actions', 'Actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <Each of={sessions || []}>
                 {(session: ISessionInfo) => (
-                  <TableRow key={session.session_id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30">
+                  <TableRow key={session.session_id} className="border-b border-primary-300 dark:border-white/5 hover:bg-primary-50/50 dark:hover:bg-white/5 transition-colors">
                     {/* Session indicator */}
                     <TableCell>
                       <Show
@@ -201,22 +201,22 @@ export function SessionsTab({ userId }: ISessionsTabProps) {
                     </TableCell>
 
                     {/* Login Time */}
-                    <TableCell className="text-sm">
+                    <TableCell className="text-slate-500 dark:text-slate-400">
                       {format(new Date(session.login_time), 'dd MMM yyyy, HH:mm:ss', { locale: dateLocale })}
                     </TableCell>
 
                     {/* Expires At */}
-                    <TableCell className="text-sm">
+                    <TableCell className="text-slate-500 dark:text-slate-400">
                       {format(new Date(session.expires_at), 'dd MMM yyyy, HH:mm:ss', { locale: dateLocale })}
                     </TableCell>
 
                     {/* IP Address (masked) */}
-                    <TableCell className="text-sm font-mono text-slate-600 dark:text-slate-300">
+                    <TableCell className="font-mono text-slate-500 dark:text-slate-400">
                       {maskIP(session.login_ip)}
                     </TableCell>
 
                     {/* Browser */}
-                    <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                    <TableCell className="text-slate-500 dark:text-slate-400">
                       {session.browser || '-'}
                     </TableCell>
 

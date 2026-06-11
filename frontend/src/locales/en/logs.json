@@ -36,5 +36,30 @@
       "module": "Module",
       "actions": "Actions"
     }
+  },
+  "userActivityLog": {
+    "title": "Activity Log",
+    "description": "Activity log for {{name}}",
+    "search": "Search",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "noLogs": "No activity logs",
+    "error": "Failed to load activity logs",
+    "pageInfo": "Page {{current}} of {{total}} ({{count}} items)",
+    "viewDetail": "View detail",
+    "detailTitle": "Activity Log Detail",
+    "detailDescription": "Complete information for the selected activity.",
+    "detailTime": "Time",
+    "detailUser": "Actor",
+    "noDescription": "No description available.",
+    "closeDetail": "Close",
+    "headers": {
+      "datetime": "Date",
+      "activity": "Activity",
+      "source": "Source",
+      "ref": "Reference",
+      "description": "Description",
+      "actions": "Actions"
+    }
   }
 }

@@ -1,28 +1,43 @@
-import { fetchHelper } from '@/lib/api';
-import { IAPIResponse, IPaginatedResponse } from '@/types/api';;;
-import { IActivityLogConfig, IActivityLogRes } from '@/types/activity-log';
+import { getActivityLogsFn, getActivityLogConfigsFn, getActivityLogConfigDetailFn, getActivityLogsByUserFn } from '@/server/functions/admin/activity-logs'
+import { getDatabaseTablesFn, getDatabaseColumnsFn } from '@/server/functions/admin/database'
+import { proxyFn } from '@/server/functions/proxy'
+import { IAPIResponse, IPaginatedResponse } from '@/types/api'
+import { IActivityLogConfig, IActivityLogRes } from '@/types/activity-log'
 
 export const activityLogService = {
   getTables: async (): Promise<IAPIResponse<string[]>> => {
-    return await fetchHelper<IAPIResponse<string[]>>('/admin/database/tables/index');
+    const result = await getDatabaseTablesFn()
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   getTableColumns: async (tableName: string): Promise<IAPIResponse<string[]>> => {
-    return await fetchHelper<IAPIResponse<string[]>>(`/admin/database/tables/columns?tableName=${tableName}`);
+    const result = await getDatabaseColumnsFn({ data: { table: tableName } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   getConfigByTableName: async (tableName: string): Promise<IAPIResponse<IActivityLogConfig>> => {
-    return await fetchHelper<IAPIResponse<IActivityLogConfig>>(`/admin/activity-logs/configs/detail?tableName=${tableName}`);
+    const result = await getActivityLogConfigDetailFn({ data: { id: tableName } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   saveConfig: async (config: IActivityLogConfig): Promise<IAPIResponse> => {
-    return await fetchHelper<IAPIResponse>('/admin/activity-logs/configs', {
-      method: 'POST',
-      body: JSON.stringify(config),
-    });
+    const result = await proxyFn({
+      data: {
+        endpoint: '/api/admin/activity-logs/configs',
+        method: 'POST',
+        body: config,
+      },
+    })
+    return { success: true, status: 200, message: 'Success', data: result.data } as any
   },
 
   getActivityLogs: async (page: number, limit: number): Promise<IPaginatedResponse<IActivityLogRes>> => {
-    return await fetchHelper<IPaginatedResponse<IActivityLogRes>>(`/admin/activity-logs/index?page=${page}&limit=${limit}`);
+    const result = await getActivityLogsFn({ data: { query: `?page=${page}&limit=${limit}` } })
+    return { success: true, status: 200, message: 'Success', data: result.data, meta: result.meta } as any
   },
-};
+
+  getActivityLogsByUser: async (userId: string, page: number, limit: number, query?: string, startDate?: string, endDate?: string): Promise<IPaginatedResponse<IActivityLogRes>> => {
+    const result = await getActivityLogsByUserFn({ data: { userId, page, limit, query, startDate, endDate } })
+    return { success: true, status: 200, message: 'Success', data: result.data, meta: result.meta } as any
+  },
+}

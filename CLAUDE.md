@@ -4,7 +4,7 @@
 
 - **Backend:** Domain-Based + DDD-Lite + Layered (handler → service → repository → entity per domain)
 - **Frontend:** Strict Separation of Concerns (Types → Services → Hooks → Components)
-- **Pattern:** BFF (Backend for Frontend) via `frontend/src/api-handlers/`; JWT held in HttpOnly cookies
+- **Pattern:** Server Functions (TanStack Start) via `frontend/src/server/functions/`; JWT held in Redis sessions, session ID in HttpOnly cookies
 
 ---
 
@@ -38,6 +38,14 @@ Do direct work only for: quick reads, 1-2 line edits, simple shell commands, age
 
 ---
 
+## RULE #2: Auto Self-Improvement (MANDATORY)
+
+> Full specification: `RULES.md` §7 (global, berlaku semua project Mamorasoft)
+
+After every bug fix, error resolution, or pattern discovery — **automatically evaluate** whether skills/agents need updating. Propose changes; user confirms before write.
+
+---
+
 ## Core Rules
 
 1. **ENGLISH MANDATORY** — All code, comments, and `.md` files in English. No Indonesian in code or docs.
@@ -47,7 +55,7 @@ Do direct work only for: quick reads, 1-2 line edits, simple shell commands, age
 5. **Prefer edit over create** — Modify existing files when possible.
 6. **No unsolicited docs** — Only create documentation when explicitly asked.
 7. **Never commit secrets** — No API keys, passwords, or sensitive data.
-8. **Use existing patterns** — Follow Domain-Based architecture and BFF conventions.
+8. **Use existing patterns** — Follow Domain-Based architecture and TanStack Start server function conventions.
 9. **One feature per task** — Create a separate task file in `tasks/` per distinct feature before starting. Do not combine unrelated features.
 10. **Verify compilation** — Go code MUST compile with zero errors before handoff.
 11. **Mandatory runtime verification** — React app MUST run without errors on all pages with all data scenarios. `npm run type-check` must pass.
@@ -64,7 +72,7 @@ Do direct work only for: quick reads, 1-2 line edits, simple shell commands, age
 
 **Backend:** Go 1.20+ · Gin · GORM · SQL Server (legacy) · MongoDB · Redis · JWT · Swaggo/Swagger
 
-**Frontend:** React 18+ · Vite 5 · TypeScript 5 · TanStack Router · TanStack Query · Zustand · Tailwind v4 · react-i18next
+**Frontend:** React 19 · TanStack Start (SSR + Server Functions) · TanStack Router · TanStack Query · Zustand · Tailwind v4 · react-i18next
 
 ---
 
@@ -83,16 +91,17 @@ dapen-golang-next/
 ├── frontend/
 │   ├── CLAUDE.md        # Frontend quick reference
 │   └── src/
-│       ├── api-handlers/ # BFF routes (server-side)
-│       ├── bff/          # BFF infra (dispatcher, session, redis, csrf)
+│       ├── server/       # Server-side (functions, middleware, session, redis)
+│       ├── lib/          # Client utilities (fetchInterceptor, query-client)
 │       ├── components/   # UI atoms + admin-specific components
 │       ├── hooks/        # TanStack Query hooks
 │       ├── locales/      # i18n (en + id)
 │       ├── routes/       # TanStack Router (file-based)
-│       ├── services/     # API integration layer
-│       ├── store/        # Zustand global state
+│       ├── services/     # Service layer (calls server functions)
+│       ├── store/        # Zustand global state (skipHydration for persist)
 │       ├── types/        # Centralized TypeScript types
-│       └── utils/        # Pure helpers (errorMapper, etc.)
+│       ├── utils/        # Pure helpers (errorMapper, etc.)
+│       └── ...            # api-handlers/ and bff/ deleted (Phase 6)
 ├── backend/
 │   ├── CLAUDE.md        # Backend quick reference
 │   ├── cmd/             # Entry point (main.go)
@@ -200,11 +209,19 @@ See `tasks/CLAUDE.md` for full task lifecycle documentation.
 - All API responses via `internal/shared/response/` helpers — never `c.JSON(...)` directly
 - Response envelope: `{ "success": true, "status": 200, "message": "...", "data": {...} }`
 
-### Frontend
+### Frontend (TanStack Start)
+- **Server functions** in `src/server/functions/` — `createServerFn` from `@tanstack/react-start`
+- Cookie management: `setCookie`/`getCookie`/`deleteCookie` from `@tanstack/start-server-core`
+- Server functions compile to ESM — always static `import`, never `require()`
+- Backend calls: `makeBackendRequest()` from `src/server/backend.ts`
+- Env vars: `getEnv()` / `parseEnvTime()` from `src/server/utils.ts`
+- SSR hydration: Zustand persist uses `skipHydration: true`, rehydrate in `useEffect`
+- Client-only pattern: `useState(false)` + `useEffect(() => setMounted(true))` for browser state
 - All types in `src/types/` (prefix: `I` interface, `T` type, `P` props)
 - No `axios`/`fetch` in components — use `src/services/` via TanStack Query hooks
 - All errors through `src/utils/errorMapper.ts`
 - All user-facing strings via `useTranslation()` — update `locales/en` AND `locales/id` together
+- Response decode (dev logging): `fromCrossJSON` from `seroval` — no custom decoder needed
 
 ---
 

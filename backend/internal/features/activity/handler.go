@@ -88,11 +88,14 @@ func (h *SActivityLogHandler) SaveConfig(c *gin.Context) {
 
 // GetLogs godoc
 // @Summary Get Activity Logs
-// @Description Fetch a paginated list of activity logs
+// @Description Fetch a paginated list of activity logs with optional filters
 // @Tags Activity Log
 // @Produce json
 // @Param page query int false "Page Number" default(1)
 // @Param limit query int false "Limit per page" default(10)
+// @Param pemakai query string false "Filter by user (pemakai)"
+// @Param start_date query string false "Filter by start date (YYYY-MM-DD)"
+// @Param end_date query string false "Filter by end date (YYYY-MM-DD)"
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Security BearerAuth
@@ -100,6 +103,9 @@ func (h *SActivityLogHandler) SaveConfig(c *gin.Context) {
 func (h *SActivityLogHandler) GetLogs(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
+	pemakai := c.Query("pemakai")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
 
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -113,7 +119,7 @@ func (h *SActivityLogHandler) GetLogs(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
-	logs, count, err := h.service.GetLogs(limit, offset)
+	logs, count, err := h.service.GetLogs(limit, offset, pemakai, startDate, endDate)
 	if err != nil {
 		response.InternalError(c, "Failed to retrieve logs")
 		return

@@ -1,5 +1,7 @@
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080'
-const BACKEND_TIMEOUT = parseInt(process.env.BFF_BACKEND_TIMEOUT || '10000', 10)
+import { getEnv, parseEnvTime } from './utils'
+
+const BACKEND_URL = getEnv('BACKEND_URL', 'http://127.0.0.1:8080')
+const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 10000)
 const IS_DEV = process.env.NODE_ENV !== 'production'
 
 export interface BackendResponse<T = any> {
@@ -10,6 +12,38 @@ export interface BackendResponse<T = any> {
   meta?: any
 }
 
+const serverLogger = {
+  logRequest(method: string, path: string, body?: any) {
+    if (!IS_DEV) return
+    const ts = new Date().toISOString().slice(11, 23)
+    console.log(`\n→ [${ts}] ${method} ${path}`)
+    if (body) {
+      try {
+        const parsed = typeof body === 'string' ? JSON.parse(body) : body
+        console.log(`  Body:`, parsed)
+      } catch {
+        console.log(`  Body:`, body)
+      }
+    }
+  },
+  logResponse(method: string, path: string, status: number, data: any, duration: number) {
+    if (!IS_DEV) return
+    const ts = new Date().toISOString().slice(11, 23)
+    const ok = status < 400
+    console.log(`← [${ts}] ${method} ${path} ${status} (${duration}ms)${ok ? '' : ' ← ERROR'}`)
+    if (data !== null && data !== undefined) {
+      const truncated = typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data).slice(0, 500)
+      console.log(`  Data: ${truncated}${JSON.stringify(data).length > 500 ? ' ...' : ''}`)
+    }
+  },
+  logError(method: string, path: string, error: any, duration: number) {
+    if (!IS_DEV) return
+    const ts = new Date().toISOString().slice(11, 23)
+    console.error(`✗ [${ts}] ${method} ${path} (${duration}ms)`)
+    console.error(`  Error:`, error?.message || error)
+  },
+}
+
 export async function makeBackendRequest<T = any>(
   endpoint: string,
   options: RequestInit = {},
@@ -17,6 +51,8 @@ export async function makeBackendRequest<T = any>(
 ): Promise<BackendResponse<T>> {
   const url = `${BACKEND_URL}${endpoint}`
   const method = (options.method || 'GET').toUpperCase()
+
+  serverLogger.logRequest(method, endpoint, options.body)
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -29,35 +65,49 @@ export async function makeBackendRequest<T = any>(
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT)
+  const startTime = Date.now()
 
   try {
-    const response = await fetch(url, { ...options, headers, signal: controller.signal })
+    const response = await fetch(url, {
+      method,
+      body: options.body,
+      headers,
+      signal: controller.signal,
+    })
     clearTimeout(timeoutId)
+    const duration = Date.now() - startTime
 
     const contentType = response.headers.get('content-type') || ''
     let backendResponse: any = null
+    let rawText: string = ''
 
     if (contentType.includes('application/json')) {
       backendResponse = await response.json().catch(() => null)
+    } else {
+      rawText = await response.text().catch(() => '')
     }
 
-    if (IS_DEV) {
-      console.log(`[Server] ${method} ${endpoint} → ${response.status}`)
-    }
+    serverLogger.logResponse(method, endpoint, response.status, backendResponse || rawText, duration)
 
     const success = response.ok && (backendResponse?.success !== false)
     const data = (backendResponse?.success !== undefined) ? backendResponse.data : backendResponse
 
+    let message = backendResponse?.message || (response.ok ? 'Success' : 'Backend Error')
+
     return {
       status: response.status,
       success,
-      message: backendResponse?.message || (response.ok ? 'Success' : 'Backend Error'),
+      message,
       data,
       meta: backendResponse?.meta || backendResponse?.pagination,
     }
   } catch (error: any) {
     clearTimeout(timeoutId)
+    const duration = Date.now() - startTime
     const isTimeout = error.name === 'AbortError'
+
+    serverLogger.logError(method, endpoint, error, duration)
+
     return {
       status: isTimeout ? 504 : 500,
       success: false,
@@ -77,6 +127,8 @@ export async function makeBackendRequestRaw(
   const url = `${BACKEND_URL}${endpoint}`
   const method = (options.method || 'GET').toUpperCase()
 
+  serverLogger.logRequest(method, endpoint, null)
+
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
   }
@@ -87,19 +139,22 @@ export async function makeBackendRequestRaw(
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT)
+  const startTime = Date.now()
 
   try {
     const response = await fetch(url, { ...options, headers, signal: controller.signal })
     clearTimeout(timeoutId)
+    const duration = Date.now() - startTime
 
-    if (IS_DEV) {
-      console.log(`[Server] ${method} ${endpoint} (raw) → ${response.status}`)
-    }
-
+    serverLogger.logResponse(method, endpoint, response.status, '<binary>', duration)
     return response
   } catch (error: any) {
     clearTimeout(timeoutId)
+    const duration = Date.now() - startTime
     const isTimeout = error.name === 'AbortError'
+
+    serverLogger.logError(method, endpoint, error, duration)
+
     return new Response(
       JSON.stringify({
         success: false,

@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { AlertTriangle, Home, RefreshCcw, SearchX } from "lucide-react";
+import { AlertTriangle, Check, Copy, Home, RefreshCcw, SearchX } from "lucide-react";
 import { useThemeStore } from "@/store/themeStore";
 
 interface PErrorPageProps {
@@ -71,6 +71,49 @@ export function GlobalErrorComponent({
     reset
 }: PErrorPageProps) {
     const isDark = useThemeStore((state) => state.isDark);
+    const router = useRouter();
+    const [isCopied, setIsCopied] = useState(false);
+    const errorMessage = error?.message || "Unknown error occurred";
+    const currentRoute = router.state.location.href;
+    const errorStack = error?.stack || "Stack trace tidak tersedia.";
+    const errorLocation = errorStack
+        .split("\n")
+        .slice(1)
+        .map((line) => line.trim())
+        .find(Boolean) || "File/component tidak tersedia.";
+    const diagnosticText = [
+        `Route: ${currentRoute}`,
+        `Location: ${errorLocation}`,
+        `Error: ${errorMessage}`,
+        "",
+        errorStack,
+    ].join("\n");
+
+    const handleCopyError = async () => {
+        const copyWithTextarea = () => {
+            const textarea = document.createElement("textarea");
+            textarea.value = diagnosticText;
+            textarea.style.position = "fixed";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand("copy");
+            textarea.remove();
+        };
+
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(diagnosticText);
+            } else {
+                copyWithTextarea();
+            }
+        } catch {
+            copyWithTextarea();
+        }
+
+        setIsCopied(true);
+        window.setTimeout(() => setIsCopied(false), 2000);
+    };
     
     return (
         <div className={`flex flex-col items-center justify-center p-4 sm:p-8 ${isLayout ? "h-[75vh]" : "min-h-screen bg-background text-foreground"}`}>
@@ -90,8 +133,42 @@ export function GlobalErrorComponent({
                 </p>
                 
                 {error && (
-                    <div className={`mb-10 p-4 rounded-xl text-left w-full overflow-auto text-sm font-mono border ${isDark ? "bg-black/50 text-red-400 border-red-900/30" : "bg-red-50/50 text-red-600 border-red-100"} shadow-inner`}>
-                        {error.message || "Unknown error occurred"}
+                    <div className={`relative mb-10 p-4 pr-12 rounded-xl text-left w-full overflow-auto text-sm border ${isDark ? "bg-black/50 text-red-400 border-red-900/30" : "bg-red-50/50 text-red-600 border-red-100"} shadow-inner`}>
+                        <button
+                            type="button"
+                            onClick={handleCopyError}
+                            className={`absolute right-2 top-2 rounded-lg p-2 transition-colors ${
+                                isDark
+                                    ? "text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    : "text-slate-500 hover:bg-white hover:text-slate-900"
+                            }`}
+                            title={isCopied ? "Berhasil disalin" : "Salin pesan error"}
+                            aria-label={isCopied ? "Berhasil disalin" : "Salin pesan error"}
+                        >
+                            {isCopied ? <Check size={16} /> : <Copy size={16} />}
+                        </button>
+                        <dl className="space-y-3 font-mono">
+                            <div>
+                                <dt className="text-xs font-bold uppercase opacity-70">Current Route</dt>
+                                <dd className="break-all">{currentRoute}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs font-bold uppercase opacity-70">File / Component</dt>
+                                <dd className="break-all">{errorLocation}</dd>
+                            </div>
+                            <div>
+                                <dt className="text-xs font-bold uppercase opacity-70">Error</dt>
+                                <dd className="break-words">{errorMessage}</dd>
+                            </div>
+                        </dl>
+                        <details className="mt-4 border-t border-current/20 pt-3">
+                            <summary className="cursor-pointer font-sans text-xs font-bold uppercase">
+                                Stack Trace
+                            </summary>
+                            <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap break-words text-xs">
+                                {errorStack}
+                            </pre>
+                        </details>
                     </div>
                 )}
                 

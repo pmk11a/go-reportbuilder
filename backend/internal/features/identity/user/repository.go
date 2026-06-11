@@ -1,9 +1,10 @@
 package user
 
 import (
+	"context"
 	"strings"
 
-		"gorm.io/gorm"
+	"gorm.io/gorm"
 )
 
 type IUserRepository interface {
@@ -13,6 +14,9 @@ type IUserRepository interface {
 	Create(user *SUser) error
 	Update(user *SUser) error
 	Delete(id uint) error
+	// GetUserIDByLegacyUserID resolves a legacy string user_id (like "SA") to the numeric SUser.ID.
+	// This bridges session endpoints that accept user IDs as path parameters.
+	GetUserIDByLegacyUserID(ctx context.Context, legacyUserID string) (uint, error)
 
 	// Legacy DBFLPASS table (Admin Panel User Management)
 	GetPaginatedDBFLPASS(page, pageSize int, search string, status string) ([]SDBFLPASS, int64, error)
@@ -53,6 +57,15 @@ func (r *userRepository) GetByID(id uint) (*SUser, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) GetUserIDByLegacyUserID(ctx context.Context, legacyUserID string) (uint, error) {
+	var user SUser
+	err := r.db.WithContext(ctx).Where("user_id = ?", legacyUserID).First(&user).Error
+	if err != nil {
+		return 0, err
+	}
+	return user.ID, nil
 }
 
 func (r *userRepository) Create(user *SUser) error {

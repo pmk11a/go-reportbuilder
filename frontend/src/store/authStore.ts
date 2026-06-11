@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { authService } from '@/services/authService'
-import { APIError } from '@/lib/api'
+import { APIError } from '@/lib/errors'
 
 
 import type { IUser } from '@/types/user';
@@ -99,6 +99,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: ( state ) => ( {
         user: state.user,
       } ),
+      skipHydration: true,
     }
   )
 )

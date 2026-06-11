@@ -1,12 +1,18 @@
 import { createServerFn } from '@tanstack/react-start'
-import { csrfMiddleware } from '../../middleware/csrf'
-import { sessionMiddleware } from '../../middleware/session'
+import { getCookie, deleteCookie } from '@tanstack/start-server-core'
 import { destroySession } from '../../session'
 
 export const logoutFn = createServerFn({ method: 'POST' })
-  .middleware([csrfMiddleware, sessionMiddleware])
-  .handler(async ({ context }) => {
-    const { sessionId } = context as { sessionId: string }
-    await destroySession(sessionId)
+  .handler(async () => {
+    const sessionId = getCookie('session_id')
+    if (sessionId) {
+      await destroySession(sessionId)
+    }
+
+    deleteCookie('session_id', {
+      httpOnly: true,
+      path: '/',
+    })
+
     return { success: true }
   })

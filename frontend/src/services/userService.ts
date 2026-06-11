@@ -1,4 +1,12 @@
-import { fetchHelper } from '@/lib/api'
+import {
+  getUsersFn,
+  getUserDetailFn,
+  createUserFn,
+  updateUserFn,
+  deleteUserFn,
+  getUserPermissionsFn,
+  updateUserPermissionsFn,
+} from '@/server/functions/admin/users'
 import type { IAPIResponse } from '@/types/api'
 import type {
   IUser,
@@ -10,104 +18,64 @@ import type {
   IUserCoaAccess,
 } from '@/types/user'
 
+function buildQuery(params?: Record<string, any>): string | undefined {
+  if (!params) return undefined
+  const sp = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== null && v !== undefined) sp.append(k, String(v))
+  })
+  const s = sp.toString()
+  return s ? `?${s}` : undefined
+}
+
 export const userService = {
-  /**
-   * Fetches a paginated list of legacy DBFLPASS users
-   */
   async list(params?: IUserListParams): Promise<IAPIResponse<any>> {
-    return await fetchHelper<IAPIResponse<any>>('/admin/users', { params })
+    const result = await getUsersFn({ data: { query: buildQuery(params) } })
+    return { success: true, status: 200, message: 'Success', data: result.data, meta: result.meta } as any
   },
 
-  /**
-   * Fetches a single user by ID
-   */
   async getById(id: string | number): Promise<IAPIResponse<IUser>> {
-    return await fetchHelper<IAPIResponse<IUser>>(`/admin/users/detail?id=${id}`)
+    const result = await getUserDetailFn({ data: { id: String(id) } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Creates a new user in the legacy DBFLPASS table
-   */
   async create(data: ICreateUserPayload): Promise<IAPIResponse<IUser>> {
-    return await fetchHelper<IAPIResponse<IUser>>('/admin/users', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
+    const result = await createUserFn({ data: { body: data } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Updates an existing user in the legacy DBFLPASS table
-   */
   async update(id: string | number, data: IUpdateUserPayload): Promise<IAPIResponse<IUser>> {
-    return await fetchHelper<IAPIResponse<IUser>>(`/admin/users/detail?id=${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
+    const result = await updateUserFn({ data: { id: String(id), body: data } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Deletes a user from the legacy DBFLPASS table
-   */
   async delete(id: string | number): Promise<IAPIResponse<void>> {
-    return await fetchHelper<IAPIResponse<void>>(`/admin/users/detail?id=${id}`, {
-      method: 'DELETE',
-    })
+    await deleteUserFn({ data: { id: String(id) } })
+    return { success: true, status: 200, message: 'Success', data: null as any }
   },
 
-  /**
-   * Fetches the combined legacy permission payload (menu + report + coa) for a
-   * specific user. Kept for backward compatibility — newer call sites should
-   * use the per-tab getters below so that switching tabs in the edit dialog
-   * does not refetch unrelated data.
-   */
   async getPermissions(id: string | number): Promise<IAPIResponse<IUserPermissionsData>> {
-    return await fetchHelper<IAPIResponse<IUserPermissionsData>>(`/admin/users/permissions?id=${id}`)
+    const result = await getUserPermissionsFn({ data: { id: String(id) } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Fetches ONLY the menu-permission tab for a user.
-   * Backend: GET /api/admin/users/{id}/permissions/menu
-   * BFF:     GET /api/admin/users/permissions/menu?id={id}
-   */
   async getUserMenuPermissions(id: string | number): Promise<IAPIResponse<IUserPermission[]>> {
-    return await fetchHelper<IAPIResponse<IUserPermission[]>>(
-      `/admin/users/permissions/menu?id=${id}`
-    )
+    const result = await getUserPermissionsFn({ data: { id: String(id), type: 'menu' } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Fetches ONLY the report-permission tab for a user.
-   * Backend: GET /api/admin/users/{id}/permissions/report
-   * BFF:     GET /api/admin/users/permissions/report?id={id}
-   */
   async getUserReportPermissions(id: string | number): Promise<IAPIResponse<IUserPermission[]>> {
-    return await fetchHelper<IAPIResponse<IUserPermission[]>>(
-      `/admin/users/permissions/report?id=${id}`
-    )
+    const result = await getUserPermissionsFn({ data: { id: String(id), type: 'report' } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Fetches ONLY the COA access tab for a user.
-   * Backend: GET /api/admin/users/{id}/permissions/coa
-   * BFF:     GET /api/admin/users/permissions/coa?id={id}
-   */
   async getUserCoaAccess(id: string | number): Promise<IAPIResponse<IUserCoaAccess[]>> {
-    return await fetchHelper<IAPIResponse<IUserCoaAccess[]>>(
-      `/admin/users/permissions/coa?id={id}`.replace('{id}', String(id))
-    )
+    const result = await getUserPermissionsFn({ data: { id: String(id), type: 'coa' } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /**
-   * Updates legacy menu, report, and COA permissions for a specific user in
-   * one transaction (unchanged contract).
-   */
-  async updatePermissions(
-    id: string | number,
-    data: IUserPermissionsData
-  ): Promise<IAPIResponse<void>> {
-    return await fetchHelper<IAPIResponse<void>>(`/admin/users/permissions?id=${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
+  async updatePermissions(id: string | number, data: IUserPermissionsData): Promise<IAPIResponse<void>> {
+    await updateUserPermissionsFn({ data: { id: String(id), body: data } })
+    return { success: true, status: 200, message: 'Success', data: null as any }
   },
 }

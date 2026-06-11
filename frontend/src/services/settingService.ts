@@ -1,27 +1,30 @@
-import { fetchHelper } from '@/lib/api';
-import type { ISettingsCompany, ISettingsNumbering } from '@/types/settings';
-import type { IAPIResponse } from '@/types/api';
+import {
+  getCompanySettingsFn,
+  updateCompanySettingsFn,
+  getNumberSettingsFn,
+  updateNumberSettingsFn,
+} from '@/server/functions/admin/settings'
+import type { ISettingsCompany, ISettingsNumbering } from '@/types/settings'
+import type { IAPIResponse } from '@/types/api'
 
 export const settingService = {
   getCompany: async (): Promise<IAPIResponse<ISettingsCompany>> => {
-    return await fetchHelper<IAPIResponse<ISettingsCompany>>('/admin/settings/company');
+    const result = await getCompanySettingsFn()
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   updateCompany: async (data: ISettingsCompany): Promise<IAPIResponse<ISettingsCompany>> => {
-    return await fetchHelper<IAPIResponse<ISettingsCompany>>('/admin/settings/company', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    const result = await updateCompanySettingsFn({ data: { body: data } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   getNumbering: async (): Promise<IAPIResponse<ISettingsNumbering>> => {
-    return await fetchHelper<IAPIResponse<ISettingsNumbering>>('/admin/settings/numbers');
+    const result = await getNumberSettingsFn()
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   updateNumbering: async (data: ISettingsNumbering): Promise<IAPIResponse<ISettingsNumbering>> => {
-    return await fetchHelper<IAPIResponse<ISettingsNumbering>>('/admin/settings/numbers', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    const result = await updateNumberSettingsFn({ data: { body: data } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
-};
+}

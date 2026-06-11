@@ -37,9 +37,14 @@ When asked to scaffold or create a new feature, migration, or large refactor end
 3. Register routes in `<domain>/<sub>/routes.go` (apply middleware: auth, role guards, rate limit).
 4. After this phase, tell user to run: `cd backend && go build ./... && swag init`
 
-## Phase 4 — Frontend Integration
+## Phase 4 — Frontend Integration (Server Functions)
 1. Define TypeScript interfaces in `frontend/src/types/` (prefix `I` for interfaces, `T` for types). No `any`.
-2. Create server functions in `frontend/src/server/functions/` using `createServerFn` (TanStack Start pattern).
+2. Create server functions in `frontend/src/server/functions/{domain}/{action}.ts`:
+   - Use `createServerFn` from `@tanstack/react-start` with `.validator()` and `.handler()` chain.
+   - Cookie access: `setCookie`, `getCookie`, `deleteCookie` from `@tanstack/start-server-core`.
+   - Session/auth: chain `sessionMiddleware` from `src/server/middleware/session.ts`.
+   - Backend calls: use `makeBackendRequest()` from `src/server/backend.ts`.
+   - **CRITICAL:** Server functions compile to ESM — use static `import` only, NEVER `require()`.
 3. Wrap in TanStack Query hooks in `frontend/src/hooks/`.
 4. After this phase, tell user to run: `cd frontend && npm run type-check`
 

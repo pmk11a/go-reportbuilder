@@ -26,6 +26,9 @@ export function useUserSessions(userId?: string | number) {
       if (!userId) return { sessions: [], currentSessionId: '' }
       try {
         const response = await sessionService.getUserSessions(userId)
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to fetch sessions')
+        }
         if (!response || !response.data) {
           throw new Error('Invalid response format')
         }

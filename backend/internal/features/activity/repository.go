@@ -16,7 +16,8 @@ type IActivityLogRepository interface {
 	// SaveConfig upserts a config + replaces its child Fields in a transaction.
 	SaveConfig(config *SActivityLogConfig) error
 	// GetLogs returns a page of activity log rows ordered by date desc.
-	GetLogs(limit int, offset int) ([]SDBLogFile, int64, error)
+	// Optional filters: pemakai (user), startDate, endDate.
+	GetLogs(limit int, offset int, pemakai string, startDate string, endDate string) ([]SDBLogFile, int64, error)
 	// GetTables returns all user table names from SQL Server INFORMATION_SCHEMA.
 	GetTables() ([]string, error)
 	// GetTableColumns returns the column names for the given table.
@@ -78,16 +79,28 @@ func (r *sqlServerActivityLogRepository) SaveConfig(config *SActivityLogConfig) 
 	})
 }
 
-func (r *sqlServerActivityLogRepository) GetLogs(limit int, offset int) ([]SDBLogFile, int64, error) {
+func (r *sqlServerActivityLogRepository) GetLogs(limit int, offset int, pemakai string, startDate string, endDate string) ([]SDBLogFile, int64, error) {
 	var logs []SDBLogFile
 	var count int64
 
-	err := r.db.Model(&SDBLogFile{}).Count(&count).Error
+	query := r.db.Model(&SDBLogFile{})
+
+	if pemakai != "" {
+		query = query.Where("pemakai = ?", pemakai)
+	}
+	if startDate != "" {
+		query = query.Where("tanggal >= ?", startDate)
+	}
+	if endDate != "" {
+		query = query.Where("tanggal <= ?", endDate)
+	}
+
+	err := query.Count(&count).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = r.db.Order("tanggal desc").Limit(limit).Offset(offset).Find(&logs).Error
+	err = query.Order("tanggal desc").Limit(limit).Offset(offset).Find(&logs).Error
 	return logs, count, err
 }
 

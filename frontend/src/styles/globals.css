@@ -147,6 +147,8 @@ html.dark,
         --destructive-foreground: 0 0% 100%;
         --muted: var(--color-slate-100);
         --muted-foreground: var(--color-slate-500);
+        --background: var(--color-slate-50);
+        --background-foreground: var(--color-slate-900);
         --border: var(--color-slate-200);
         --input: var(--color-slate-200);
         --ring: var(--color-primary-500);
@@ -163,6 +165,8 @@ html.dark,
         --destructive-foreground: 0 0% 100%;
         --muted: var(--color-slate-800);
         --muted-foreground: var(--color-slate-400);
+        --background: var(--color-slate-900);
+        --background-foreground: var(--color-slate-50);
         --border: var(--color-slate-800);
         --input: var(--color-slate-800);
         --ring: var(--color-primary-400);
@@ -180,6 +184,9 @@ html.dark,
     
     .bg-muted { background-color: var(--muted); }
     .text-muted-foreground { color: var(--muted-foreground); }
+
+    .bg-background { background-color: var(--background); }
+    .text-background-foreground { color: var(--background-foreground); }
     
     .bg-destructive { background-color: var(--destructive); }
     .text-destructive { color: var(--destructive); }

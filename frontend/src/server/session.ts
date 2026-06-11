@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto'
 import { getRedisClient } from './redis'
+import { getEnv, parseEnvTime } from './utils'
 
 const SESSION_PREFIX = 'bff:session:'
 const LOCK_PREFIX = 'lock:refresh:'
-const SESSION_TTL_SECONDS = parseInt(process.env.SESSION_TTL_SECONDS || '604800', 10)
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080'
-const BACKEND_TIMEOUT = parseInt(process.env.BFF_BACKEND_TIMEOUT || '10000', 10)
+const SESSION_TTL_SECONDS = parseEnvTime('SESSION_TTL_SECONDS', 604800)
+const BACKEND_URL = getEnv('BACKEND_URL', 'http://127.0.0.1:8080')
+const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 10000)
 
 export interface SessionData {
   userId: string
@@ -19,6 +20,10 @@ export async function createSession(data: SessionData): Promise<string> {
   const redis = getRedisClient()
   const sessionId = randomUUID()
   await redis.set(`${SESSION_PREFIX}${sessionId}`, JSON.stringify(data), 'EX', SESSION_TTL_SECONDS)
+  // Add session to user's session set for backend queries (SMEMBERS bff:user_sessions:{userId})
+  await redis.sadd(`bff:user_sessions:${data.userId}`, sessionId)
+  await redis.expire(`bff:user_sessions:${data.userId}`, SESSION_TTL_SECONDS)
+  console.log(`[BFF Session] Created session ${sessionId} for user ${data.userId}`)
   return sessionId
 }
 
@@ -39,11 +44,19 @@ export async function updateSession(sessionId: string, data: SessionData): Promi
   const ttl = await redis.ttl(key)
   const remainingTtl = ttl > 0 ? ttl : SESSION_TTL_SECONDS
   await redis.set(key, JSON.stringify(data), 'EX', remainingTtl)
+  // Refresh the user's session set expiry to match the session's TTL
+  await redis.expire(`bff:user_sessions:${data.userId}`, remainingTtl)
 }
 
 export async function destroySession(sessionId: string): Promise<void> {
   const redis = getRedisClient()
+  const session = await getSession(sessionId)
   await redis.del(`${SESSION_PREFIX}${sessionId}`)
+  if (session) {
+    // Remove session from user's session set
+    await redis.srem(`bff:user_sessions:${session.userId}`, sessionId)
+  }
+  console.log(`[BFF Session] Destroyed session ${sessionId}`)
 }
 
 export async function getValidAccessToken(sessionId: string): Promise<string | null> {
@@ -81,6 +94,7 @@ export async function getValidAccessToken(sessionId: string): Promise<string | n
             signal: controller.signal,
           })
         } catch {
+          console.error('[BFF Session] Token refresh request failed/timed out')
           await destroySession(sessionId)
           return null
         } finally {
@@ -88,6 +102,7 @@ export async function getValidAccessToken(sessionId: string): Promise<string | n
         }
 
         if (!response.ok) {
+          console.error('[BFF Session] Token refresh failed, destroying session')
           await destroySession(sessionId)
           return null
         }
@@ -103,6 +118,7 @@ export async function getValidAccessToken(sessionId: string): Promise<string | n
           user: tokenData.user || freshSession.user,
         }
         await updateSession(sessionId, updated)
+        console.log(`[BFF Session] Token refreshed for user ${freshSession.userId}`)
         return updated.accessToken
       } finally {
         await redis.del(lockKey)
@@ -116,5 +132,6 @@ export async function getValidAccessToken(sessionId: string): Promise<string | n
     }
   }
 
+  console.error('[BFF Session] Timeout waiting for token refresh')
   return null
 }

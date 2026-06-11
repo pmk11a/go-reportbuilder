@@ -11,7 +11,7 @@ import { useModalStore } from "@/store/modalStore"
 import { useTranslation } from "react-i18next"
 
 export function MainHeader() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(["common", "accounting"])
   const isDark = useThemeStore((state) => state.isDark)
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
@@ -20,8 +20,15 @@ export function MainHeader() {
 
   const pathname = matches[matches.length - 1]?.pathname || '/'
 
+  // Normalize pathname for comparison: strip layout prefix
+  const normalizedPath = pathname.replace(/^\/admin\/_layout/, '/admin').replace(/^\/karyawan\/_layout/, '/karyawan')
+
+  // Capitalize each word helper
+  const capWords = (str: string) => str.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+
   const { title, subtitle } = useMemo(() => {
-    if (pathname === '/admin' || pathname === '/admin/dashboard' || pathname === '/') {
+    // Dashboard: match any admin root path
+    if (normalizedPath === '/admin' || normalizedPath === '/admin/dashboard' || pathname === '/') {
       return {
         title: t('header.welcome_user', 'Welcome, {{name}}', { name: user?.full_name || "Guest" }),
         subtitle: t('header.dashboard_subtitle', 'Your dashboard summary.')
@@ -30,7 +37,9 @@ export function MainHeader() {
 
     const findMenuTitle = (menuList: any[]): string | null => {
       for (const m of menuList) {
-        if (m.route === pathname) return m.title
+        // Normalize menu route path for comparison
+        const mRoute = m.route.replace(/^\/admin\/_layout/, '/admin').replace(/^\/karyawan\/_layout/, '/karyawan')
+        if (mRoute === normalizedPath) return m.title
         if (m.items && m.items.length > 0) {
           const found = findMenuTitle(m.items)
           if (found) return found
@@ -47,15 +56,21 @@ export function MainHeader() {
       }
     }
 
+    // Fallback: clean path segments
     const pathSegments = pathname.split('/').filter(Boolean)
     const lastSegment = pathSegments[pathSegments.length - 1] || ''
-    const fallbackTitle = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1)
+
+    // If path has multiple segments, show the meaningful portion (strip layout-like prefixes)
+    const cleanSegments = pathSegments.filter(s => s !== 'admin' && s !== '_layout' && s !== 'karyawan' && s !== '')
+    const fallbackTitle = cleanSegments.length > 1
+      ? capWords(cleanSegments[cleanSegments.length - 2])
+      : capWords(lastSegment)
 
     return {
       title: fallbackTitle ? t('header.page_title', 'Page {{name}}', { name: fallbackTitle }) : t('header.default_title', 'DAPEN Dashboard'),
       subtitle: t('header.default_subtitle', 'Detail page of the system.')
     }
-  }, [pathname, user, menus, t])
+  }, [pathname, normalizedPath, user, menus, t])
 
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)

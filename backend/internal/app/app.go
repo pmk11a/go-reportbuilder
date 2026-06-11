@@ -57,7 +57,7 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	// 3.5 Initialize Session domain (depends on Redis for session storage).
 	sessionRepo := session.NewSessionRepository(database.RedisClient)
 	sessionService := session.NewSessionService(sessionRepo, dbConn)
-	sessionHandler := session.NewSessionHandler(sessionService)
+	sessionHandler := session.NewSessionHandler(sessionService, userRepo)
 
 	// 4. Initialize Dashboard domain (handler-only, no separate service).
 	dashboardHandler := dashboard.NewDashboardHandler(dbConn)

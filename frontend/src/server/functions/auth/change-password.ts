@@ -1,11 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
-import { csrfMiddleware } from '../../middleware/csrf'
 import { sessionMiddleware } from '../../middleware/session'
 import { makeBackendRequest } from '../../backend'
 import type { SessionData } from '../../session'
 
 export const changePasswordFn = createServerFn({ method: 'POST' })
-  .middleware([csrfMiddleware, sessionMiddleware])
+  .middleware([sessionMiddleware])
   .validator((data: { current_password: string; new_password: string; confirm_password: string }) => data)
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string; session: SessionData }

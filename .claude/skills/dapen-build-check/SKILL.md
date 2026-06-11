@@ -74,5 +74,5 @@ npm run lint                         # if a lint script exists
 
 ## Notes
 - **Always** batch-collect first (RULE #16). Never run `go build`, see one error, fix, re-run, see the next, fix, re-run.
-- For per-layer feature context, also read the relevant `AI.md` in `backend/internal/<layer>/` or `frontend/src/<area>/`.
+- For per-layer feature context, also read the relevant `CLAUDE.md` in `backend/internal/<layer>/` or `frontend/src/<area>/`.
 - Coverage threshold of 80% applies to **tested packages** (`coverage_tested`), not all packages — the script averages only packages that have non-zero coverage. New code you add is expected to bring the tested average up.

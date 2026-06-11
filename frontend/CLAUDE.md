@@ -8,9 +8,9 @@
 
 ## TanStack Start Migration (TASK-016)
 
-**Phase 1 COMPLETE** — Build infrastructure migrated from Vite SPA to TanStack Start SSR.
+**Phase 1-4 COMPLETE** — Build infrastructure, middleware, and server functions migrated.
 
-Changes:
+### What Changed
 - `vite.config.ts` uses `tanstackStart()` from `@tanstack/react-start/plugin/vite`
 - `src/router.tsx` — router factory (replaces inline creation in old main.tsx)
 - `src/start.ts` — TanStack Start instance (`createStart()`)
@@ -18,14 +18,71 @@ Changes:
 - `index.html` and `src/main.tsx` deleted (plugin provides default entries)
 - `react-helmet-async` removed — routes use `head()` option instead
 - `QueryClientProvider` moved into `__root.tsx`
+- Server functions replace BFF API routes (see Server Functions section below)
 
-**Remaining (Phase 2-6):**
-- Phase 2: Middleware (session/csrf/auth → `createMiddleware()`)
-- Phase 3-4: Server functions replace `src/api-handlers/`
-- Phase 5: Route loaders for SSR data prefetching
-- Phase 6: Cleanup old BFF, E2E tests
+**Remaining (Phase 5-6):**
+- Phase 5: Route loaders for SSR data prefetching (optional/deferred)
+- Phase 6: Cleanup old `src/bff/` and `src/api-handlers/`, E2E tests
 
-**Until Phase 3+ complete, the BFF pattern below still exists in codebase (unused at runtime).**
+**Old BFF files (`src/api-handlers/`, `src/bff/`) still exist but are unused at runtime.**
+
+---
+
+## Server Functions (CRITICAL — New Architecture)
+
+Server functions replace the old BFF API routes. They run server-side and are called via RPC from the browser.
+
+### File Structure
+```
+src/server/
+├── utils.ts              # getEnv(), parseEnvTime() — shared server utilities
+├── backend.ts            # makeBackendRequest() — fetch wrapper with timeout/logging
+├── session.ts            # Redis session CRUD, token refresh with RTR lock
+├── redis.ts              # Redis client singleton (ioredis)
+├── functions/
+│   ├── auth/
+│   │   ├── index.ts      # barrel export
+│   │   ├── login.ts      # loginFn — createServerFn
+│   │   ├── logout.ts     # logoutFn
+│   │   └── me.ts         # meFn — session check
+│   ├── accounting/       # domain-specific server functions
+│   ├── admin/            # admin server functions
+│   └── shared/           # cross-domain server functions
+└── middleware/
+    ├── session.ts        # sessionMiddleware — getCookie + Redis lookup
+    ├── csrf.ts           # CSRF middleware
+    └── auth.ts           # auth guard middleware
+```
+
+### Key APIs
+| API | Package | Usage |
+|-----|---------|-------|
+| `createServerFn` | `@tanstack/react-start` | Create server function with `.validator()` + `.handler()` |
+| `createMiddleware` | `@tanstack/react-start` | Create reusable middleware chain |
+| `setCookie` / `getCookie` / `deleteCookie` | `@tanstack/start-server-core` | HttpOnly cookie management (wraps H3 via AsyncLocalStorage) |
+| `createCsrfMiddleware` | `@tanstack/react-start` | CSRF protection via same-origin validation (Sec-Fetch-Site, Origin, Referer headers) — registered in `src/start.ts` as `requestMiddleware` |
+| `fromCrossJSON` | `seroval` | Decode server function responses (used in fetch interceptor) |
+| `getEnv` / `parseEnvTime` | `src/server/utils.ts` | Env var access with math expression support |
+| `makeBackendRequest` | `src/server/backend.ts` | Fetch wrapper for Go backend calls |
+
+### Server Function Rules
+1. **ESM only** — compiled with `?tss-serverfn-split`, `require()` is NOT available. Always use static `import`.
+2. **Static imports at top** — never dynamic `import()` or `require()` inside handler.
+3. **Cookie access** — use `setCookie`/`getCookie`/`deleteCookie` from `@tanstack/start-server-core`.
+4. **Environment variables** — use `getEnv()` and `parseEnvTime()` from `src/server/utils.ts`. `.env.local` supports math expressions like `10 * 1000` — `parseInt()` silently fails on these (returns `10` instead of `10000`).
+5. **Backend calls** — always through `makeBackendRequest()`, never raw `fetch` to backend.
+6. **Middleware chaining** — use `.middleware([sessionMiddleware])` for auth-required functions.
+
+### SSR Hydration Rules
+1. Zustand persist stores MUST use `skipHydration: true` — call `store.persist.rehydrate()` in `useEffect` after mount.
+2. Components depending on browser state use client-only pattern: `useState(false)` + `useEffect(() => setMounted(true))`.
+3. `suppressHydrationWarning` on `<html>` and `<body>` tags in `__root.tsx`.
+4. `beforeLoad` can call server functions directly for auth checks (e.g., `meFn()` in `admin/_layout.tsx`).
+
+### Dev Logging
+- `src/lib/fetchInterceptor.ts` — intercepts `/_serverFn/` requests in browser console
+- Decodes server function URL (base64url JSON `{file, export}`) — no TanStack utility for this, custom decoder
+- Decodes response body using `fromCrossJSON` from `seroval` — same decoder TanStack Start uses internally
 
 ---
 
@@ -43,23 +100,35 @@ All network I/O lives in `src/services/`, consumed via custom hooks in `src/hook
 
 ```
 frontend/src/
-├── api-handlers/    # BFF routes (server-side, Vite plugin dispatch)
-│   └── admin/       # admin-scoped BFF (users, menu, perkiraan, reports...)
-├── bff/             # BFF infra (dispatcher, session, redis, rate-limit, csrf)
-├── components/      # UI components
-│   ├── ui/          # Atomic design primitives (Shadcn-style, NO Glassmorphism)
-│   └── admin/       # Admin-specific components grouped by feature
+├── server/              # Server-side code (runs in Node.js, NOT browser)
+│   ├── utils.ts         # getEnv(), parseEnvTime()
+│   ├── backend.ts       # makeBackendRequest() — Go backend fetch wrapper
+│   ├── session.ts       # Redis session CRUD + RTR token refresh
+│   ├── redis.ts         # Redis client singleton
+│   ├── functions/       # Server functions (createServerFn)
+│   │   ├── auth/        # login, logout, me, change-password
+│   │   ├── accounting/  # kasbank, perkiraan, etc.
+│   │   ├── admin/       # sessions, users
+│   │   └── shared/      # cross-domain (menu, dashboard, etc.)
+│   └── middleware/       # session, csrf, auth middleware
+├── lib/                 # Client-side utilities
+│   ├── fetchInterceptor.ts  # Dev console logger (seroval decode)
+│   └── serverFnLogger.ts    # Server-side function logger
+├── components/          # UI components
+│   ├── ui/              # Atomic design primitives (Shadcn-style, NO Glassmorphism)
+│   └── admin/           # Admin-specific components grouped by feature
 │       ├── menu/
 │       ├── users/
 │       ├── perkiraan/
 │       └── reports/
-├── hooks/           # TanStack Query integration hooks
-├── locales/         # i18n translations (en + id)
-├── routes/          # TanStack Router (file-based)
-├── services/        # HTTP connection logic to BFF/backend
-├── store/           # Zustand global state
-├── types/           # CENTRALIZED TypeScript types
-└── utils/           # Pure helpers (errorMapper, etc.)
+├── hooks/               # TanStack Query integration hooks
+├── locales/             # i18n translations (en + id)
+├── routes/              # TanStack Router (file-based)
+├── services/            # Service layer (calls server functions, NOT raw fetch)
+├── store/               # Zustand global state (skipHydration: true for persist)
+├── types/               # CENTRALIZED TypeScript types
+├── utils/               # Pure helpers (errorMapper, etc.)
+└── ...                  # api-handlers/ and bff/ deleted (Phase 6 cleanup)
 ```
 
 ---
@@ -102,13 +171,10 @@ function getData() {}                                      // ❌
 
 ---
 
-## BFF Pattern
+## BFF Pattern (DELETED — replaced by Server Functions)
 
-- `src/api-handlers/` contains server-side Vite plugin routes
-- JWT stored in HttpOnly cookies — never exposed to browser JS
-- All BFF handlers use `BffResponseBuilder`
-- CSRF protection + Redis rate limiting in `src/bff/`
-- `src/bff/dispatcher.ts` branches on `Content-Type` for binary streams (xlsx/pdf → `Buffer`)
+Old `src/api-handlers/` and `src/bff/` directories deleted in Phase 6 cleanup.
+All functionality now in `src/server/` (functions, middleware, session, redis).
 
 ---
 
@@ -189,8 +255,8 @@ npx @tanstack/router-cli generate        # Sync routeTree.gen.ts after new route
 ### Types
 `src/types/user.ts` — `IUserPermission`, `IUserCoaAccess`, `IUserPermissionsData`
 
-### BFF Endpoints
-`src/api-handlers/admin/users/permissions/{menu,report,coa}.ts`
+### Server Functions
+`src/server/functions/admin/users/permissions/{menu,report,coa}.ts`
 
 ### Service
 `src/services/userService.ts` — `getUserMenuPermissions`, `getUserReportPermissions`, `getUserCoaAccess`, `updatePermissions`
@@ -213,7 +279,7 @@ npx @tanstack/router-cli generate        # Sync routeTree.gen.ts after new route
 - Components: `src/components/admin/reports/permission-report/`
 - Hooks: `src/hooks/usePermissionReport.ts`
 - Service: `src/services/permissionReportService.ts` (getMatrix, downloadExcel, downloadPDF)
-- BFF: `src/api-handlers/admin/reports/permission-report.ts`
+- Server Functions: `src/server/functions/admin/reports/permission-report.ts`
 
 ---
 

@@ -42,7 +42,7 @@ export const Route = createFileRoute("/(public)/(auth)/login/")({
     component: LoginPage,
 });
 
-export function LoginPage() {
+function LoginPage() {
     const { t } = useTranslation();
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -225,4 +225,3 @@ export function LoginPage() {
     );
 }
 
-export default LoginPage;

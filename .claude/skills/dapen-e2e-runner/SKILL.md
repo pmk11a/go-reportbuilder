@@ -65,10 +65,12 @@ Then either:
 
 - **Translations / i18n**: DAPEN uses `react-i18next` with `id` and `en` locales. Tests must select by `aria-label` or role, **never** by hardcoded text — the same selector must work in both languages.
 - **Loading States**: The app uses `<Skeleton />` (for layouts) and rotating `<Loader2 />` (inside submit buttons). Tests must wait for these to disappear (or use `waitFor` on the actual content) **before** interacting.
-- **BFF / HttpOnly cookies**: The BFF (`src/api-handlers/`) holds JWT in HttpOnly cookies server-side. Tests run in a real browser, so this is transparent — but be aware that `localStorage` / `document.cookie` will not see the token.
-- **CSRF**: BFF issues a CSRF token. Tests that POST via the BFF need to fetch the token first; tests that hit the backend directly bypass it.
+- **SSR Hydration**: The app runs on TanStack Start with SSR. On first load, the server renders HTML, then React hydrates on client. Components with browser-only state (localStorage, theme) use a client-only wrapper (`useState(false)` + `useEffect(() => setMounted(true))`) that shows a skeleton during SSR. E2E tests should wait for the skeleton to disappear before interacting.
+- **Server Functions / HttpOnly cookies**: Auth tokens are stored in Redis sessions. The session ID is in an HttpOnly cookie (`session_id`) managed by server functions in `src/server/functions/`. Tests run in a real browser, so cookies are transparent — but `document.cookie` will NOT see the session ID (HttpOnly).
+- **CSRF**: TanStack Start has built-in CSRF middleware (`createCsrfMiddleware`). Server function calls from the browser include CSRF headers automatically via TanStack Start's RPC protocol.
 - **TanStack Router generated tree**: `frontend/src/routeTree.gen.ts` is auto-generated. After adding/removing files in `src/routes/`, run `npx @tanstack/router-cli generate` BEFORE running E2E.
-- **Mocking network in tests**: Do not use `page.route()` to mock the BFF or backend. The project explicitly requires real API integration (rule #8 / rule #11 in root `AI.md`).
+- **Mocking network in tests**: Do not use `page.route()` to mock the BFF or backend. The project explicitly requires real API integration (rule #8 / rule #11 in root `CLAUDE.md`).
+- **Server Function Responses**: TanStack Start serializes RPC responses with `seroval`. The browser fetch interceptor (`src/lib/fetchInterceptor.ts`) decodes them using `fromCrossJSON` from `seroval` for dev logging.
 
 ## Report
 

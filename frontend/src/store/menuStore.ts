@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { fetchHelper } from "@/lib/api";
-import { IAPIResponse } from '@/types/api';;;
+import { getSidebarMenuFn } from '@/server/functions/menus/sidebar'
 
 export interface MenuItemType {
     type: "item" | "group";
@@ -29,11 +28,11 @@ export const useMenuStore = create<MenuStore>((set, get) => ({
         if (get().initialized || get().isLoading) return;
         set({ isLoading: true, error: null });
         try {
-            const response = await fetchHelper<IAPIResponse<{ menu_items: MenuItemType[] }>>('/menus/sidebar');
-            if (response.success && response.data?.menu_items) {
-                set({ menus: response.data.menu_items, initialized: true });
+            const result = await getSidebarMenuFn()
+            if (result?.menu_items) {
+                set({ menus: result.menu_items, initialized: true });
             } else {
-                set({ error: response.message || 'Failed to load menu list' });
+                set({ error: 'Failed to load menu list' });
             }
         } catch (err: any) {
             set({ error: err.message || 'Failed to fetch menu list' });
