@@ -64,6 +64,83 @@ func InternalError(c *gin.Context, message string) {
 	Error(c, http.StatusInternalServerError, message)
 }
 
+// SErrorMap adalah struktur error_map standar Mamorasoft (4 field) yang WAJIB
+// disertakan pada semua response error non-validasi. Bahasa: code English,
+// error_name/reason/action Bahasa Indonesia.
+//
+// Contoh payload:
+//
+//	{
+//	  "error_map": {
+//	    "code": "EID_NOT_FOUND",
+//	    "error_name": "User Tidak Ditemukan",
+//	    "reason": "User dengan ID tersebut tidak ada dalam sistem.",
+//	    "action": "Periksa kembali ID user atau muat ulang daftar user."
+//	  }
+//	}
+type SErrorMap struct {
+	Code      string `json:"code"`       // Identifier UPPER_SNAKE_CASE (English)
+	ErrorName string `json:"error_name"` // Judul singkat untuk UI (Indonesia)
+	Reason    string `json:"reason"`     // Penjelasan mengapa error terjadi (Indonesia)
+	Action    string `json:"action"`     // Langkah konkret yang bisa dilakukan user (Indonesia)
+}
+
+// SErrorResponse memperluas SResponse dengan field error_map. Dipakai untuk
+// semua error non-validasi sehingga frontend bisa menampilkan reason + action
+// yang ramah pengguna (lihat RULES.md §3).
+type SErrorResponse struct {
+	Success  bool        `json:"success"`
+	Status   int         `json:"status"`
+	Message  string      `json:"message,omitempty"`
+	Data     interface{} `json:"data,omitempty"`
+	ErrorMap *SErrorMap  `json:"error_map,omitempty"`
+}
+
+// ErrorWithMap mengirim response error generic dengan 4-field error_map.
+// message adalah ringkasan singkat (English) yang aman untuk logging, sedangkan
+// ErrorMap memberikan reason + action yang user-facing (Indonesia).
+func ErrorWithMap(c *gin.Context, status int, message string, em SErrorMap) {
+	c.JSON(status, SErrorResponse{
+		Success:  false,
+		Status:   status,
+		Message:  message,
+		ErrorMap: &em,
+	})
+}
+
+// BadRequestWithMap mengirim 400 + error_map untuk kesalahan input non-validasi
+// (mis. resource state conflict yang tidak bisa ditangkap validator).
+func BadRequestWithMap(c *gin.Context, message string, em SErrorMap) {
+	ErrorWithMap(c, http.StatusBadRequest, message, em)
+}
+
+// UnauthorizedWithMap mengirim 401 + error_map untuk kesalahan autentikasi.
+func UnauthorizedWithMap(c *gin.Context, message string, em SErrorMap) {
+	ErrorWithMap(c, http.StatusUnauthorized, message, em)
+}
+
+// ForbiddenWithMap mengirim 403 + error_map untuk permission denial.
+func ForbiddenWithMap(c *gin.Context, message string, em SErrorMap) {
+	ErrorWithMap(c, http.StatusForbidden, message, em)
+}
+
+// NotFoundWithMap mengirim 404 + error_map. Contoh umum: user/resource dengan
+// ID legacy (DBFLPASS.USERID) atau numeric ID tidak ditemukan.
+func NotFoundWithMap(c *gin.Context, message string, em SErrorMap) {
+	ErrorWithMap(c, http.StatusNotFound, message, em)
+}
+
+// ConflictWithMap mengirim 409 + error_map untuk duplicate entry / state conflict.
+func ConflictWithMap(c *gin.Context, message string, em SErrorMap) {
+	ErrorWithMap(c, http.StatusConflict, message, em)
+}
+
+// InternalErrorWithMap mengirim 500 + error_map untuk kesalahan server.
+// reason + action diisi generic; pesan spesifik ditulis ke log (bukan ke user).
+func InternalErrorWithMap(c *gin.Context, message string, em SErrorMap) {
+	ErrorWithMap(c, http.StatusInternalServerError, message, em)
+}
+
 // SPaginationMeta represents pagination metadata
 type SPaginationMeta struct {
 	CurrentPage int   `json:"current_page"`

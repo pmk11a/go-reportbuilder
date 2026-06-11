@@ -267,8 +267,8 @@ function permissionRowPropsAreEqual(
 }
 
 /**
- * PermissionRow is the memoised row component used by UserPermissionsDialog
- * for both Menu and Report tabs. The custom comparator (see
+ * PermissionRow is the memoised row component used by UserPermissionsTab
+ * for both Menu and Report groups. The custom comparator (see
  * permissionRowPropsAreEqual) lets sibling rows that weren't part of a
  * cascade skip the re-render entirely, which removes the 1s+ lag reported
  * when toggling a parent ACCESS / granular checkbox.

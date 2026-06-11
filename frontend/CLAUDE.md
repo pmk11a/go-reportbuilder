@@ -182,6 +182,70 @@ All functionality now in `src/server/` (functions, middleware, session, redis).
 
 All API errors funnel through `src/utils/errorMapper.ts` (3-part format: What / Why / Next Steps). Components receive formatted error objects — never raw API errors.
 
+### Server Function Error Handling (MANDATORY pattern)
+
+Every service that wraps a server function **MUST** return the raw `BackendResponse` shape (`{success, status, message, data, error}`) and let the hook decide what to do. Hooks MUST check `response.success` **first** before reading `data`. This was the root cause of the TASK-017 bug (silently swallowed `400 Invalid user ID format` showed as "No active sessions").
+
+**Anti-pattern** (NEVER DO — caused TASK-017):
+
+```typescript
+// services/sessionService.ts — BUG
+async getUserSessions(userId: string | number): Promise<IAPIResponse<ISessionListResponse>> {
+  const result = await getUserSessionsFn({ data: { userId: String(userId) } })
+  return { success: true, status: 200, message: 'Success', data: result } as any
+  //                          ^^^^^^^^ LIES — result might be { success: false, message: "Invalid user ID format" }
+}
+```
+
+**Correct pattern** (MUST DO):
+
+```typescript
+// services/sessionService.ts — CORRECT
+async getUserSessions(userId: string | number): Promise<IAPIResponse<ISessionListResponse>> {
+  const result = await getUserSessionsFn({ data: { userId: String(userId) } })
+  return result as IAPIResponse<ISessionListResponse>
+  // BackendResponse is structurally compatible with IAPIResponse
+}
+```
+
+```typescript
+// hooks/useSessionManagement.ts — CORRECT
+const response = await sessionService.getUserSessions(userId)
+if (!response.success) {                       // <-- check FIRST
+  throw new Error(response.message || 'Failed to fetch sessions')
+}
+if (!response || !response.data) {             // <-- then check data
+  throw new Error('Invalid response format')
+}
+const data = response.data as ISessionListResponse
+return { sessions: data.sessions || [], ... }
+```
+
+### Why this pattern matters
+
+- **The 4-field `error_map` from Go middleware** flows through `makeBackendRequest` → server function → `IAPIResponse` unchanged. If the service hardcodes `success: true`, the hook never sees the error.
+- **TanStack Start server functions throw, not return**, on network/serialization failures — those go to the catch block. Application-level errors (`{success:false}` from Go) are normal returns, NOT throws. Both paths must converge in the same toast in the UI.
+- **The toast lives in the hook's `onError`**, not in the service. The service is dumb; the hook decides UX.
+
+### Reference implementation
+- `src/hooks/useSessionManagement.ts` `useUserSessions()` — canonical example (TASK-017 fix).
+- `src/hooks/usePermissionManagement.ts` — same pattern, applies to any list/query hook.
+
+---
+
+## Session Storage Contract (Redis) — read before touching sessions
+
+Two key formats, **both required** for session monitoring to work. See `backend/CLAUDE.md` "Session Storage Contract" for the full table; summary of frontend's responsibility:
+
+| Key | Type | Frontend function | Required ops |
+|---|---|---|---|
+| `bff:session:{sessionId}` | string | `createSession()`, `updateSession()` (refresh path) | SET + EXPIRE |
+| `bff:user_sessions:{userId}` | set | `createSession()`, `destroySession()`, `updateSession()` | SADD + EXPIRE / SREM |
+
+`createSession` must `SADD sessionId` AND `EXPIRE` the user-sessions key in the same call. `destroySession` must `getSession` first to learn the userId before SREM. `updateSession` must refresh EXPIRE on the user-sessions key alongside the session key.
+
+Forgetting any of these caused real bugs in TASK-012 / TASK-017. Add a unit test in `src/server/session.test.ts` (Vitest + ioredis-mock) when modifying these functions.
+
 ---
 
 ## i18n

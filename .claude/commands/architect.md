@@ -31,9 +31,10 @@ Spawn the `dapen-backend` subagent with:
 - The task ID and spec.
 - Pointer to `.gemini/ARCHITECTURE.md` and `backend/AI.md`.
 - The relevant per-feature `AI.md` (or note to create one with `.templates/FEATURE_AI_TEMPLATE.md`).
-- Explicit instruction to follow the **6-phase scaffolding workflow** (`dapen-scaffolding` skill), phases 1–3, and to run `./scripts/check-all.sh --backend-only` before reporting done.
+- Explicit instruction to follow the **6-phase scaffolding workflow** (`dapen-scaffolding` skill), phases 1–3.
+- Explicit reminder that the subagent MUST NOT execute any build/test/quality-gate command itself (RULES.md §2) — the subagent should produce a list of manual commands for the user to run.
 
-Wait for the subagent to report "done" with evidence: files created, tests added, `go build ./...` exit 0, `coverage_tested` ≥80%.
+Wait for the subagent to report "done" with evidence: files created, tests added. The user is responsible for running the commands and sharing results.
 
 ## Step 2 — Frontend phase (delegate to `@dapen-frontend`)
 Spawn the `dapen-frontend` subagent with:
@@ -41,23 +42,23 @@ Spawn the `dapen-frontend` subagent with:
 - Pointer to the same task file.
 - Instruction to follow phases 4–5 of the scaffolding workflow.
 - Explicit instruction to add i18n strings to BOTH `locales/en/*.json` and `locales/id/*.json`, use `<Each>/<Show>` from `Render.tsx`, and **NO Glassmorphism**.
-- Instruction to run `./scripts/check-all.sh --frontend-only` before reporting done.
+- Explicit reminder that the subagent MUST NOT execute any build/test/quality-gate command itself (RULES.md §2).
 
-Wait for: files created, i18n keys added, `npm run type-check` exit 0, `.test.tsx` written.
+Wait for: files created, i18n keys added, `.test.tsx` written. The user is responsible for running type-check, tests, and quality gate.
 
 ## Step 3 — QA phase (delegate to `@dapen-qa`)
 Spawn the `dapen-qa` subagent with:
 - The task file's `## User Stories` + `## Acceptance Criteria`.
-- Instruction to write / run unit tests, backend E2E in `backend/tests/e2e/`, and Playwright E2E in `frontend/e2e/`.
-- Instruction to update each acceptance criterion to `✅ PASS` / `❌ FAIL` / `⬜ PENDING` based on actual test results.
+- Instruction to write unit tests, backend E2E in `backend/tests/e2e/`, and Playwright E2E in `frontend/e2e/`.
+- Explicit reminder that the subagent MUST NOT execute any test/build command itself (RULES.md §2) — only write test files.
+- Instruction to mark each acceptance criterion as `✅ PASS` / `❌ FAIL` / `⬜ PENDING` based on results the user shares back.
 
-## Step 4 — Feedback loop
-Run the full sweep:
+## Step 4 — Feedback loop (orchestrator reviews only)
+The user runs the full sweep and shares the output:
 ```bash
 ./scripts/check-all.sh
 ```
-- If exit 0 → proceed to Step 5.
-- If exit non-zero → read `tmp/latest/*_errors.log` and `check_report.md`; group errors by file; route each group to the owning subagent (`@dapen-backend` for `backend/**`, `@dapen-frontend` for `frontend/**`, `@dapen-qa` for test files). Iterate until exit 0. Cap iterations at 5 — if still failing after 5 rounds, surface to the user with a diagnosis and ask whether to continue, split the task, or close as `🔄 SUCCEEDED_BY`.
+The orchestrator then reads `tmp/latest/*_errors.log` and `check_report.md` (these are user-supplied artifacts — the orchestrator does NOT execute `check-all.sh` itself), groups errors by file, and routes each group to the owning subagent (`@dapen-backend` for `backend/**`, `@dapen-frontend` for `frontend/**`, `@dapen-qa` for test files). Iterate until the user reports exit 0. Cap iterations at 5 — if still failing after 5 rounds, surface to the user with a diagnosis and ask whether to continue, split the task, or close as `🔄 SUCCEEDED_BY`.
 
 ## Step 5 — Close out
 1. Verify all acceptance criteria are checked off with emojis.
@@ -73,7 +74,8 @@ Run the full sweep:
 ## Rules
 - **Never** implement code in the orchestrator. You are the architect, not the builder.
 - **Always** delegate to subagents via the `Agent` / `Task` tool with `subagent_type` set to the relevant one (in Claude Code, subagents are invoked by name in the prompt; the harness will dispatch to the matching definition in `.claude/agents/`).
-- **Always** batch-check via `./scripts/check-all.sh`, never individual fix-loops.
+- **Never** execute `./scripts/check-all.sh` (or any build/test/type-check) yourself — per RULES.md §2 the user runs the quality gate and shares the artifacts. The orchestrator only reads `tmp/latest/*` artifacts supplied by the user.
+- **Always** batch-check via the user-shared `tmp/latest/*` output, never individual fix-loops.
 - **Always** update the per-feature `AI.md` in the same cycle as the code change.
 
 ## Large Task Closure

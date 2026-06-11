@@ -11,9 +11,9 @@ import { formatAPIError } from '@/utils/errorMapper'
 
 /**
  * Shared cache settings for the per-tab permission queries.
- * 10 min staleTime + 15 min gcTime means switching between tabs in the
- * UserPermissionsDialog never re-fetches as long as the user opened the
- * dialog within the staleness window.
+ * 10 min staleTime + 15 min gcTime means switching between groups in the
+ * UserPermissionsTab never re-fetches as long as the user opened the
+ * tab within the staleness window.
  */
 export const USER_PERMISSION_STALE_TIME = 10 * 60 * 1000 // 10 minutes
 export const USER_PERMISSION_GC_TIME = 15 * 60 * 1000 // 15 minutes
@@ -65,9 +65,10 @@ export const useUsers = () => {
         const response = await userService.update(id, data)
         return response.data
       },
-      onSuccess: () => {
+      onSuccess: (_data, variables) => {
         toast({ title: 'Success', description: 'User updated successfully', variant: 'success' })
         queryClient.invalidateQueries({ queryKey: ['users'] })
+        queryClient.invalidateQueries({ queryKey: ['user', String(variables.id)] })
       },
       onError: (error: any) => {
         const errorMsg = error.response
@@ -92,6 +93,22 @@ export const useUsers = () => {
           : error.message
         toast({ title: 'Error', description: errorMsg || 'Failed to delete user', variant: 'destructive' })
       },
+    })
+
+  /**
+   * Single-user fetch (used by UserFormPage in edit mode + UserDetailPage).
+   * Cache key: ['user', eid] — separate from list cache so detail invalidation
+   * does not refetch the whole table.
+   */
+  const useUser = (eid: string, options: { enabled?: boolean } = {}) =>
+    useQuery({
+      queryKey: ['user', eid],
+      queryFn: async () => {
+        const res = await userService.getById(eid)
+        return res.data
+      },
+      enabled: !!eid && (options.enabled ?? true),
+      staleTime: 30 * 1000,
     })
 
   /**
@@ -192,6 +209,7 @@ export const useUsers = () => {
 
   return {
     useUsersList,
+    useUserById,
     useCreateUser,
     useUpdateUser,
     useDeleteUser,

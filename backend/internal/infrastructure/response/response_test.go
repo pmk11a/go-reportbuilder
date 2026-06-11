@@ -79,6 +79,52 @@ func TestErrorHelpers(t *testing.T) {
 	}
 }
 
+func TestErrorWithMapHelpers(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	sampleMap := SErrorMap{
+		Code:      "EID_NOT_FOUND",
+		ErrorName: "User Tidak Ditemukan",
+		Reason:    "User dengan ID tersebut tidak ada dalam sistem.",
+		Action:    "Periksa kembali ID user atau muat ulang daftar user.",
+	}
+
+	tests := []struct {
+		name       string
+		method     func(c *gin.Context, msg string, em SErrorMap)
+		wantStatus int
+	}{
+		{"BadRequest", BadRequestWithMap, http.StatusBadRequest},
+		{"Unauthorized", UnauthorizedWithMap, http.StatusUnauthorized},
+		{"Forbidden", ForbiddenWithMap, http.StatusForbidden},
+		{"NotFound", NotFoundWithMap, http.StatusNotFound},
+		{"Conflict", ConflictWithMap, http.StatusConflict},
+		{"InternalError", InternalErrorWithMap, http.StatusInternalServerError},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			tt.method(c, "User not found", sampleMap)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			var res SErrorResponse
+			err := json.Unmarshal(w.Body.Bytes(), &res)
+			assert.NoError(t, err)
+			assert.False(t, res.Success)
+			assert.Equal(t, "User not found", res.Message)
+			assert.NotNil(t, res.ErrorMap)
+			assert.Equal(t, "EID_NOT_FOUND", res.ErrorMap.Code)
+			assert.Equal(t, "User Tidak Ditemukan", res.ErrorMap.ErrorName)
+			assert.Equal(t, "User dengan ID tersebut tidak ada dalam sistem.", res.ErrorMap.Reason)
+			assert.Equal(t, "Periksa kembali ID user atau muat ulang daftar user.", res.ErrorMap.Action)
+		})
+	}
+}
+
 func TestNewPaginatedResponse(t *testing.T) {
 	t.Run("Normal calculation", func(t *testing.T) {
 		data := []string{"a", "b"}

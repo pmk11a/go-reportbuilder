@@ -46,16 +46,16 @@ Examples that warrant self-improvement:
 ## Workflow
 
 1. Read `tasks/TASK-XXX-*.md` and `CLAUDE.md` + `backend/CLAUDE.md`.
-2. Baseline: ask user to run `./scripts/check-all.sh --backend-only` and share errors before starting.
+2. Baseline: ask the user to run `./scripts/check-all.sh --backend-only` and share the errors before starting.
 3. Implement in order: `entity.go` → `repository.go` → `service.go` → `handler.go` → `routes.go` + `_test.go`.
 4. Add Swaggo/Swagger annotations on every handler.
 5. Write unit tests (`_test.go` adjacent to source) with `testify` + `go-sqlmock`. Target ≥80% coverage.
-6. When done, tell user to run:
+6. When done, list the manual commands for the user to run (do NOT execute any of these yourself per RULES.md §2):
    ```bash
-   go build ./...
-   go test ./... -v
-   ./scripts/check-all.sh --backend-only
-   swag init   # if routes changed
+   go build ./...                        # compile check
+   go test ./... -v                      # unit tests
+   ./scripts/check-all.sh --backend-only # full quality gate
+   swag init                             # only if routes changed
    ```
 7. Update the task file's acceptance criteria and `backend/CLAUDE.md` if architecture changed.
 

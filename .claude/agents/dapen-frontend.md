@@ -79,16 +79,17 @@ Examples that warrant self-improvement:
 ## Workflow
 
 1. Read `tasks/TASK-XXX-*.md` and `CLAUDE.md` + `frontend/CLAUDE.md`.
-2. Baseline: ask user to run `./scripts/check-all.sh --frontend-only` and share errors before starting.
+2. Baseline: ask the user to run `./scripts/check-all.sh --frontend-only` and share the errors before starting.
 3. Implement in order: `types/` → `server/functions/` → `services/` → `hooks/` → `components/` → `routes/` → `locales/`.
 4. Use `<Each />` and `<Show />` from `Render.tsx` — never raw `.map()`, `&&`, or ternary in JSX.
 5. Update `locales/en` AND `locales/id` together for every new string.
-6. When done, tell user to run:
+6. When done, list the manual commands for the user to run (do NOT execute any of these yourself per RULES.md §2):
    ```bash
-   npm run type-check
-   npm test -- --run
-   npx playwright test
-   ./scripts/check-all.sh --frontend-only
+   npm run type-check                         # TypeScript check
+   npm test -- --run                          # Vitest unit tests
+   npx playwright test                        # E2E tests
+   npx @tanstack/router-cli generate          # only if routes added/changed
+   ./scripts/check-all.sh --frontend-only     # full quality gate
    ```
 7. Update task file's acceptance criteria and `frontend/CLAUDE.md` if patterns changed.
 

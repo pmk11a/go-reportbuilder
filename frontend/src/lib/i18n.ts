@@ -20,6 +20,8 @@ import enUsers from '../locales/en/users.json';
 import idUsers from '../locales/id/users.json';
 import enReports from '../locales/en/reports.json';
 import idReports from '../locales/id/reports.json';
+import enAccounting from '../locales/en/accounting.json';
+import idAccounting from '../locales/id/accounting.json';
 
 const resources = {
   en: {
@@ -32,6 +34,7 @@ const resources = {
     numbering: enNumbering,
     users: enUsers,
     reports: enReports,
+    accounting: enAccounting,
   },
   id: {
     common: idCommon,
@@ -43,6 +46,7 @@ const resources = {
     numbering: idNumbering,
     users: idUsers,
     reports: idReports,
+    accounting: idAccounting,
   },
 };
 

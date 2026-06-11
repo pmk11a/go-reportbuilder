@@ -28,7 +28,7 @@ export function KasBankDetailTable({ details, isLoading, isLocked, onEdit, onDel
   }
 
   return (
-    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
       <Table>
         <TableHeader>
           <TableRow>
@@ -61,10 +61,10 @@ export function KasBankDetailTable({ details, isLoading, isLocked, onEdit, onDel
                 <TableCell>{detail.lawan || '-'}</TableCell>
                 <TableCell>{detail.keterangan || '-'}</TableCell>
                 <TableCell className="text-right font-mono">
-                  {detail.debet > 0 ? detail.debet.toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '-'}
+                  {Number(detail.debet ?? 0) > 0 ? Number(detail.debet).toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '-'}
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {detail.kredit > 0 ? detail.kredit.toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '-'}
+                  {Number(detail.kredit ?? 0) > 0 ? Number(detail.kredit).toLocaleString('id-ID', { minimumFractionDigits: 2 }) : '-'}
                 </TableCell>
                 <Show when={!isLocked}>
                   <TableCell className="text-center">

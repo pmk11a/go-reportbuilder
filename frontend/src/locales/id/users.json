@@ -23,7 +23,8 @@
     "logs": "Log Aktivitas",
     "delete": "Hapus",
     "enable": "Aktifkan",
-    "disable": "Nonaktifkan"
+    "disable": "Nonaktifkan",
+    "detail": "Lihat Detail"
   },
   "messages": {
     "empty": "Tidak ada data user yang ditemukan.",

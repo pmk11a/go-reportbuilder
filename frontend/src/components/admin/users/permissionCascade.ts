@@ -1,6 +1,6 @@
-// Shared cascade logic for the user permissions dialog (Menu and Report
-// tabs). Extracted from UserPermissionsDialog so the helper can be unit-
-// tested in isolation and reused from the memoized row component.
+// Shared cascade logic for the user permissions tab (Menu and Report
+// groups). Extracted so the helper can be unit-tested in isolation and
+// reused from the memoized row component.
 
 import type { IUserPermission } from '@/types/user'
 

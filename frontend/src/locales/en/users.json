@@ -23,7 +23,19 @@
     "logs": "Activity Logs",
     "delete": "Delete",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "add": "Add User",
+    "detail": "View Detail"
+  },
+  "page_title": {
+    "create": "Add New User",
+    "edit": "Edit User"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "permissions": "Permissions",
+    "sessions": "Sessions",
+    "activity": "Activity"
   },
   "messages": {
     "empty": "No users found.",
@@ -56,7 +68,8 @@
     "password_min": "Password must be at least 6 characters"
   },
   "sessions": {
-    "title": "Active Sessions"
+    "title": "Active Sessions",
+    "description": "View and manage active sessions for this user."
   },
   "permissions": {
     "title": "User Permissions",
@@ -71,6 +84,8 @@
     "no_menus": "No menu permissions configured for this user.",
     "no_reports": "No report permissions configured for this user.",
     "no_coa": "No COA data available.",
+    "save_success": "User permissions updated successfully",
+    "save_failed": "Failed to update permissions",
     "fields": {
       "menu": "MENU",
       "report": "REPORT",

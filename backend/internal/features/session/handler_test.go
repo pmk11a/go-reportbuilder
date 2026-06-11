@@ -214,8 +214,89 @@ func TestListUserSessions_UserNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.False(t, resp["success"].(bool))
+
+	// Assert 4-field error_map per RULES.md §3
+	em, ok := resp["error_map"].(map[string]interface{})
+	assert.True(t, ok, "error_map field must be present on 404 responses")
+	assert.Equal(t, "EID_NOT_FOUND", em["code"])
+	assert.Equal(t, "User Tidak Ditemukan", em["error_name"])
+	assert.NotEmpty(t, em["reason"])
+	assert.NotEmpty(t, em["action"])
+}
+
+func TestRevokeSession_UserNotFound_Returns404WithErrorMap(t *testing.T) {
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	// Resolver returns error -> handler emits 404 + error_map
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "NONEXIST").
+		Return(uint(0), context.DeadlineExceeded)
+
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
+
+	req := httptest.NewRequest("DELETE", "/api/admin/users/NONEXIST/sessions/session-1", nil)
+	w := httptest.NewRecorder()
+
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	c.Params = gin.Params{
+		{Key: "id", Value: "NONEXIST"},
+		{Key: "sessionId", Value: "session-1"},
+	}
+	c.Set("user_id", 999.0)
+
+	handler.RevokeSession(c)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var resp map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.False(t, resp["success"].(bool))
+
+	em, ok := resp["error_map"].(map[string]interface{})
+	assert.True(t, ok, "error_map field must be present on 404 responses")
+	assert.Equal(t, "EID_NOT_FOUND", em["code"])
+	assert.Equal(t, "User Tidak Ditemukan", em["error_name"])
+	assert.NotEmpty(t, em["reason"])
+	assert.NotEmpty(t, em["action"])
+}
+
+func TestRevokeAllSessions_UserNotFound_Returns404WithErrorMap(t *testing.T) {
+	mockSessionRepo := new(MockSessionRepository)
+	mockUserRepo := new(MockUserRepository)
+
+	// Resolver returns error -> handler emits 404 + error_map
+	mockUserRepo.On("GetUserIDByLegacyUserID", mock.Anything, "NONEXIST").
+		Return(uint(0), context.DeadlineExceeded)
+
+	svc := NewSessionService(mockSessionRepo, nil)
+	handler := NewSessionHandler(svc, mockUserRepo)
+
+	req := httptest.NewRequest("DELETE", "/api/admin/users/NONEXIST/sessions", nil)
+	w := httptest.NewRecorder()
+
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	c.Params = gin.Params{{Key: "id", Value: "NONEXIST"}}
+	c.Set("user_id", 999.0)
+
+	handler.RevokeAllSessions(c)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var resp map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.False(t, resp["success"].(bool))
+
+	em, ok := resp["error_map"].(map[string]interface{})
+	assert.True(t, ok, "error_map field must be present on 404 responses")
+	assert.Equal(t, "EID_NOT_FOUND", em["code"])
+	assert.Equal(t, "User Tidak Ditemukan", em["error_name"])
+	assert.NotEmpty(t, em["reason"])
+	assert.NotEmpty(t, em["action"])
 }
 
 func TestRevokeSessionHandler_Success(t *testing.T) {

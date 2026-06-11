@@ -19,7 +19,7 @@ interface SidebarProps {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Overview', href: '/admin/dashboard' },
-  { icon: Users, label: 'IUser Management', href: '/admin/users' },
+  { icon: Users, label: 'User Management', href: '/admin/_layout/master-data/users' },
   { icon: FileText, label: 'Document Center', href: '/admin/documents' },
   { icon: BarChart3, label: 'Analytics', href: '/admin/reports' },
   { icon: ShieldCheck, label: 'Security', href: '/admin/security' },

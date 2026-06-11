@@ -1,18 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUsers } from '@/hooks/useUsers'
+import { useToast } from '@/hooks/use-toast'
 import type { IUserPermission, IUserCoaAccess } from '@/types/user'
+import { applyCascadeForField, type TGranularField } from '../permissionCascade'
+import { PermissionRow } from '../PermissionRow'
 import {
-  applyCascadeForField,
-  type TGranularField,
-} from './permissionCascade'
-import { PermissionRow } from './PermissionRow'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
   Button,
   Table,
   TableHeader,
@@ -23,23 +16,27 @@ import {
   Checkbox,
   Skeleton,
   Tabs,
+  Spinner,
 } from '@/components/ui'
 import { Each, Show } from '@/components/ui/layout/Render'
 
-interface IUserPermissionsDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  user: { user_id?: string; id?: string; full_name?: string } | null
+interface IUserPermissionsTabProps {
+  userId: string
+  isStandalone?: boolean
+  onSaveSuccess?: () => void
+  onCancel?: () => void
 }
 
 type TPermissionTab = 'menu' | 'report' | 'coa'
 
-export function UserPermissionsDialog({
-  open,
-  onOpenChange,
-  user,
-}: IUserPermissionsDialogProps) {
+export function UserPermissionsTab({
+  userId,
+  isStandalone = false,
+  onSaveSuccess,
+  onCancel,
+}: IUserPermissionsTabProps) {
   const { t } = useTranslation(['users', 'common'])
+  const { toast } = useToast()
   const {
     useUserMenuPermissions,
     useUserReportPermissions,
@@ -47,27 +44,12 @@ export function UserPermissionsDialog({
     useUpdateUserPermissions,
   } = useUsers()
 
-  const userId = user?.user_id || user?.id || ''
   const [activeTab, setActiveTab] = useState<TPermissionTab>('menu')
 
-  // ─── Per-tab queries: ALL3 queries are enabled when dialog is open.
-  // The 10-min staleTime keeps the cache hot — switching tabs uses cached
-  // data with no network round-trip. This fixes the "empty data on tab switch"
-  // bug where only the active tab's query was enabled.
-  const {
-    data: menuData,
-    isLoading: isMenuLoading,
-  } = useUserMenuPermissions(userId, { enabled: open })
-
-  const {
-    data: reportData,
-    isLoading: isReportLoading,
-  } = useUserReportPermissions(userId, { enabled: open })
-
-  const {
-    data: coaData,
-    isLoading: isCoaLoading,
-  } = useUserCoaAccess(userId, { enabled: open })
+  // Per-tab queries: ALL3 queries are always enabled
+  const { data: menuData, isLoading: isMenuLoading } = useUserMenuPermissions(userId, { enabled: true })
+  const { data: reportData, isLoading: isReportLoading } = useUserReportPermissions(userId, { enabled: true })
+  const { data: coaData, isLoading: isCoaLoading } = useUserCoaAccess(userId, { enabled: true })
 
   const updateMutation = useUpdateUserPermissions()
 
@@ -75,17 +57,10 @@ export function UserPermissionsDialog({
   const [reportList, setReportList] = useState<IUserPermission[]>([])
   const [coaList, setCoaList] = useState<IUserCoaAccess[]>([])
 
-  // isPending tracks ONLY the mutation — the save to server.
-  // We disable the save button and all checkboxes only during the network
-  // request, NOT during local state transitions (cascade toggles). The
-  // useTransition below marks cascade updates as non-urgent so React can
-  // interleave rendering without blocking the UI.
   const isPending = updateMutation.isPending
   const isAnyLoading = isMenuLoading || isReportLoading || isCoaLoading
 
-  // ─── Labels object: built once per dialog render, passed to every PermissionRow.
-  // This replaces the per-row useTranslation call that caused 100+ context
-  // subscriptions overhead.
+  // Labels for permission fields
   const labels = {
     access: t('permissions.fields.access'),
     create: t('permissions.fields.create'),
@@ -100,37 +75,20 @@ export function UserPermissionsDialog({
     level_5: t('permissions.fields.level_5'),
   }
 
-  // Hydrate local edit state when each tab's query resolves OR when the
-  // dialog reopens (handles the case where the query returns cached data
-  // with the same reference — we still want to hydrate from cache).
+  // Hydrate local edit state when each tab's query resolves
   useEffect(() => {
-    if (open && menuData) setMenuList(menuData)
-  }, [open, menuData])
+    if (menuData) setMenuList(menuData)
+  }, [menuData])
 
   useEffect(() => {
-    if (open && reportData) setReportList(reportData)
-  }, [open, reportData])
+    if (reportData) setReportList(reportData)
+  }, [reportData])
 
   useEffect(() => {
-    if (open && coaData) setCoaList(coaData)
-  }, [open, coaData])
+    if (coaData) setCoaList(coaData)
+  }, [coaData])
 
-  // Reset all local edit state when dialog closes.
-  useEffect(() => {
-    if (!open) {
-      setMenuList([])
-      setReportList([])
-      setCoaList([])
-      setActiveTab('menu')
-    }
-  }, [open])
-
-  /**
-   * handleAccessToggle writes `has_access` on the toggled row AND on every
-   * descendant row in the same tab. Routed through `applyCascadeForField` so
-   * the cascade logic stays in one place. The update is synchronous — the
-   * cascade helper runs in <1ms even for 200+ rows, so no useTransition needed.
-   */
+  // Cascade toggle handlers
   const handleAccessToggle = useCallback(
     (type: 'menu' | 'report', index: number, value: boolean) => {
       const numericVal: 0 | 1 = value ? 1 : 0
@@ -141,12 +99,6 @@ export function UserPermissionsDialog({
     [menuList, reportList],
   )
 
-  /**
-   * handleGranularPermissionToggle writes the named column on the toggled row.
-   * If that row is a parent (L0=0 AND L1=0), the change cascades down to every
-   * descendant for that single column only — the sibling columns on the
-   * descendants are left untouched. Non-parent rows never cascade.
-   */
   const handleGranularPermissionToggle = useCallback(
     (type: 'menu' | 'report', index: number, field: TGranularField, value: boolean) => {
       const numericVal: 0 | 1 = value ? 1 : 0
@@ -172,19 +124,32 @@ export function UserPermissionsDialog({
   }
 
   const handleSave = () => {
-    if (!userId) return
     updateMutation.mutate(
       {
         id: userId,
         data: { menu: menuList, report: reportList, coa: coaList },
       },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          toast({
+            title: t('common.success', 'Success'),
+            description: t('permissions.save_success', 'User permissions updated successfully'),
+            variant: 'success',
+          })
+          if (onSaveSuccess) onSaveSuccess()
+        },
+        onError: (error: any) => {
+          toast({
+            title: t('common.error', 'Error'),
+            description: error?.message || t('permissions.save_failed', 'Failed to update permissions'),
+            variant: 'destructive',
+          })
+        },
       }
     )
   }
 
-  // ─── Skeleton loader for table rows ───
+  // Skeleton loader for table rows
   const renderSkeletonRows = (cols: number, rows = 6) => (
     <Each of={Array.from({ length: rows })}>
       {(_, i) => (
@@ -201,19 +166,7 @@ export function UserPermissionsDialog({
     </Each>
   )
 
-  /**
-   * Renders the Menu / Report permission table. The Menu tab uses 8 columns
-   * (1 name + 1 ACCESS + 5 granular + 5 approval) with an APPROVALS sub-
-   * header; the Report tab uses 4 columns (1 name + 1 ACCESS + 2 granular).
-   *
-   * Rows render in the natural order they arrive in `data` — no grouping
-   * wrapper. Parent rows (L0=0 / L1=0) are visually distinguished by a red
-   * left border on the MENU cell (see `PermissionRow`).
-   *
-   * Handlers are passed directly (not via buildRowHandlers) so that
-   * PermissionRow's React.memo comparator sees stable references across
-   * renders. The `type` prop tells each row which tab it's in.
-   */
+  // Permission table renderer
   const renderPermissionTable = (
     type: 'menu' | 'report',
     data: IUserPermission[],
@@ -236,32 +189,16 @@ export function UserPermissionsDialog({
                   {t('permissions.fields.access')}
                 </TableHead>
                 <Show when={isMenu}>
-                  <TableHead className="w-14 text-center" rowSpan={2}>
-                    {t('permissions.fields.create')}
-                  </TableHead>
-                  <TableHead className="w-14 text-center" rowSpan={2}>
-                    {t('permissions.fields.update')}
-                  </TableHead>
-                  <TableHead className="w-14 text-center" rowSpan={2}>
-                    {t('permissions.fields.delete')}
-                  </TableHead>
-                  <TableHead className="w-14 text-center" rowSpan={2}>
-                    {t('permissions.fields.print')}
-                  </TableHead>
-                  <TableHead className="w-14 text-center" rowSpan={2}>
-                    {t('permissions.fields.export')}
-                  </TableHead>
-                  <TableHead className="text-center" colSpan={5}>
-                    {t('permissions.fields.approvals')}
-                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>{t('permissions.fields.create')}</TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>{t('permissions.fields.update')}</TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>{t('permissions.fields.delete')}</TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>{t('permissions.fields.print')}</TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={2}>{t('permissions.fields.export')}</TableHead>
+                  <TableHead className="text-center" colSpan={5}>{t('permissions.fields.approvals')}</TableHead>
                 </Show>
                 <Show when={!isMenu}>
-                  <TableHead className="w-14 text-center" rowSpan={1}>
-                    {t('permissions.fields.print')}
-                  </TableHead>
-                  <TableHead className="w-14 text-center" rowSpan={1}>
-                    {t('permissions.fields.export')}
-                  </TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={1}>{t('permissions.fields.print')}</TableHead>
+                  <TableHead className="w-14 text-center" rowSpan={1}>{t('permissions.fields.export')}</TableHead>
                 </Show>
               </TableRow>
               <Show when={isMenu}>
@@ -309,7 +246,7 @@ export function UserPermissionsDialog({
     )
   }
 
-  // ─── COA access table — 2 columns: PERKIRAAN/COA (code + description) and ACCESS ───
+  // COA table renderer
   const renderCoaTable = (data: IUserCoaAccess[], isLoading: boolean) => {
     return (
       <div className="overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl" style={{ maxHeight: '55vh' }}>
@@ -327,12 +264,8 @@ export function UserPermissionsDialog({
                   {(item: IUserCoaAccess, index: number) => (
                     <TableRow key={item.perkiraan} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
                       <TableCell>
-                        <div className="font-mono text-sm text-slate-700 dark:text-slate-300">
-                          {item.perkiraan}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          {item.keterangan}
-                        </div>
+                        <div className="font-mono text-sm text-slate-700 dark:text-slate-300">{item.perkiraan}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.keterangan}</div>
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
@@ -383,23 +316,18 @@ export function UserPermissionsDialog({
   ]
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[1100px] w-full max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <DialogTitle className="text-lg font-semibold">
-            {t('permissions.title')}
-            <Show when={!!userId}>
-              <span className="ml-2 text-primary-600 dark:text-primary-400 font-mono">
-                — {user?.full_name || userId}
-              </span>
-            </Show>
-          </DialogTitle>
-          <DialogDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {t('permissions.description')}
-          </DialogDescription>
-        </DialogHeader>
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+            {t('permissions.title', 'User Permissions')}
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {t('permissions.description', 'Configure menu, report, and COA access controls for this user.')}
+          </p>
+        </div>
 
-        <div className="flex-1 overflow-hidden px-6 py-4">
+        <div className="p-6">
           <Tabs
             tabs={tabsConfig}
             defaultValue="menu"
@@ -407,25 +335,23 @@ export function UserPermissionsDialog({
           />
         </div>
 
-        <div className="flex gap-3 justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            {t('permissions.cancel')}
-          </Button>
+        {/* Action Buttons */}
+        <div className="flex gap-3 justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+          <Show when={isStandalone && onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+              {t('common.cancel', 'Cancel')}
+            </Button>
+          </Show>
           <Button
             type="button"
             onClick={handleSave}
             disabled={isPending || isAnyLoading}
             loading={isPending}
           >
-            {t('permissions.save_changes')}
+            {t('permissions.save_changes', 'Save Changes')}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }

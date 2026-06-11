@@ -3,6 +3,7 @@ import { getRedisClient } from './redis'
 import { getEnv, parseEnvTime } from './utils'
 
 const SESSION_PREFIX = 'bff:session:'
+const USER_SESSIONS_PREFIX = 'bff:user_sessions:'
 const LOCK_PREFIX = 'lock:refresh:'
 const SESSION_TTL_SECONDS = parseEnvTime('SESSION_TTL_SECONDS', 604800)
 const BACKEND_URL = getEnv('BACKEND_URL', 'http://127.0.0.1:8080')
@@ -21,8 +22,8 @@ export async function createSession(data: SessionData): Promise<string> {
   const sessionId = randomUUID()
   await redis.set(`${SESSION_PREFIX}${sessionId}`, JSON.stringify(data), 'EX', SESSION_TTL_SECONDS)
   // Add session to user's session set for backend queries (SMEMBERS bff:user_sessions:{userId})
-  await redis.sadd(`bff:user_sessions:${data.userId}`, sessionId)
-  await redis.expire(`bff:user_sessions:${data.userId}`, SESSION_TTL_SECONDS)
+  await redis.sadd(`${USER_SESSIONS_PREFIX}${data.userId}`, sessionId)
+  await redis.expire(`${USER_SESSIONS_PREFIX}${data.userId}`, SESSION_TTL_SECONDS)
   console.log(`[BFF Session] Created session ${sessionId} for user ${data.userId}`)
   return sessionId
 }
@@ -45,7 +46,7 @@ export async function updateSession(sessionId: string, data: SessionData): Promi
   const remainingTtl = ttl > 0 ? ttl : SESSION_TTL_SECONDS
   await redis.set(key, JSON.stringify(data), 'EX', remainingTtl)
   // Refresh the user's session set expiry to match the session's TTL
-  await redis.expire(`bff:user_sessions:${data.userId}`, remainingTtl)
+  await redis.expire(`${USER_SESSIONS_PREFIX}${data.userId}`, remainingTtl)
 }
 
 export async function destroySession(sessionId: string): Promise<void> {
@@ -54,7 +55,7 @@ export async function destroySession(sessionId: string): Promise<void> {
   await redis.del(`${SESSION_PREFIX}${sessionId}`)
   if (session) {
     // Remove session from user's session set
-    await redis.srem(`bff:user_sessions:${session.userId}`, sessionId)
+    await redis.srem(`${USER_SESSIONS_PREFIX}${session.userId}`, sessionId)
   }
   console.log(`[BFF Session] Destroyed session ${sessionId}`)
 }

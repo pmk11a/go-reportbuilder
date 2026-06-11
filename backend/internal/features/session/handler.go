@@ -42,7 +42,12 @@ func (h *SSessionHandler) ListUserSessions(c *gin.Context) {
 	// Resolve legacy user_id (like "SA") to numeric user ID
 	userID, err := h.userRepo.GetUserIDByLegacyUserID(c.Request.Context(), userIDStr)
 	if err != nil {
-		response.NotFound(c, "EID_NOT_FOUND")
+		response.NotFoundWithMap(c, "User not found", response.SErrorMap{
+			Code:      "EID_NOT_FOUND",
+			ErrorName: "User Tidak Ditemukan",
+			Reason:    "User dengan ID \"" + userIDStr + "\" tidak ditemukan pada tabel users.",
+			Action:    "Periksa kembali ID user, muat ulang daftar user, atau pilih user lain dari daftar.",
+		})
 		return
 	}
 
@@ -84,7 +89,12 @@ func (h *SSessionHandler) RevokeSession(c *gin.Context) {
 	// Resolve legacy user_id (like "SA") to numeric user ID
 	userID, err := h.userRepo.GetUserIDByLegacyUserID(c.Request.Context(), userIDStr)
 	if err != nil {
-		response.NotFound(c, "EID_NOT_FOUND")
+		response.NotFoundWithMap(c, "User not found", response.SErrorMap{
+			Code:      "EID_NOT_FOUND",
+			ErrorName: "User Tidak Ditemukan",
+			Reason:    "User dengan ID \"" + userIDStr + "\" tidak ditemukan pada tabel users.",
+			Action:    "Periksa kembali ID user, muat ulang daftar user, atau pilih user lain dari daftar.",
+		})
 		return
 	}
 
@@ -139,7 +149,12 @@ func (h *SSessionHandler) RevokeAllSessions(c *gin.Context) {
 	// Resolve legacy user_id (like "SA") to numeric user ID
 	userID, err := h.userRepo.GetUserIDByLegacyUserID(c.Request.Context(), userIDStr)
 	if err != nil {
-		response.NotFound(c, "EID_NOT_FOUND")
+		response.NotFoundWithMap(c, "User not found", response.SErrorMap{
+			Code:      "EID_NOT_FOUND",
+			ErrorName: "User Tidak Ditemukan",
+			Reason:    "User dengan ID \"" + userIDStr + "\" tidak ditemukan pada tabel users.",
+			Action:    "Periksa kembali ID user, muat ulang daftar user, atau pilih user lain dari daftar.",
+		})
 		return
 	}
 

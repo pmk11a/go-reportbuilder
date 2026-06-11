@@ -63,7 +63,7 @@ After every bug fix, error resolution, or pattern discovery — **automatically 
 13. **Complete resolution only** — Never stop at "good enough".
 14. **Progressive quality gates** — Verify quality continuously, not just at completion.
 15. **Update feature CLAUDE.md** — When changing ANY feature code, update its contextual `CLAUDE.md` in the SAME commit.
-16. **BATCH ERROR COLLECTION (MANDATORY)** — NEVER run individual checks one-by-one and fix in a loop. ALWAYS run `./scripts/check-all.sh` first to collect ALL errors into `tmp/` in one pass, then fix in batch.
+16. **BATCH ERROR COLLECTION (MANDATORY)** — When the user needs a quality-gate run, NEVER run individual checks one-by-one and fix in a loop. The user runs `./scripts/check-all.sh` and shares the output; agents read the batched artifacts in `tmp/latest/*` and group errors by file before fixing. **Agents and skills MUST NOT execute `check-all.sh` (or any build/test/type-check/lint/codegen) themselves** — see global RULES.md §2.
 17. **DATA RENDERING (MANDATORY)** — All UI components MUST use `<Each />` and `<Show />` from `frontend/src/components/ui/layout/Render.tsx`. Do NOT use raw `.map()`, `&&`, or `? :` ternaries in TSX return blocks.
 
 ---
@@ -82,9 +82,8 @@ After every bug fix, error resolution, or pattern discovery — **automatically 
 dapen-golang-next/
 ├── .claude/
 │   ├── agents/          # Subagent manifests (dapen-backend, dapen-frontend, dapen-qa)
-│   ├── skills/          # Skill definitions (build-check, e2e-runner, scaffolding)
-│   ├── commands/        # Slash commands (architect, verify)
-│   ├── hooks/           # auto-check.sh
+│   ├── skills/          # Skill definitions (scaffolding)
+│   ├── commands/        # Slash commands (architect)
 │   └── settings.json
 ├── tasks/               # Task tracking (TASK-XXX-*.md)
 │   └── CLAUDE.md        # Task lifecycle & templates
@@ -130,15 +129,17 @@ dapen-golang-next/
 
 ---
 
-## Quality Verification
+## Quality Verification (USER-RUN ONLY)
+
+> Per global RULES.md §2, **agents and skills MUST NOT execute any of these commands** — including `check-all.sh`, `go build`, `go test`, `npm run type-check`, `npm test`, `npx playwright test`, `swag init`, `npx @tanstack/router-cli generate`, `npm run dev`, `go run`. The user runs the quality gate and shares the output.
 
 ```bash
-# MANDATORY: Run this FIRST before any individual check or fix
+# User runs (the agent must NOT run these):
 ./scripts/check-all.sh               # All checks (backend + frontend)
 ./scripts/check-all.sh --backend-only
 ./scripts/check-all.sh --frontend-only
 
-# After run, read all errors at once:
+# Agent reads the batched output the user shared:
 cat tmp/latest/*_errors.log
 cat tmp/latest/check_report.md
 ```
@@ -227,5 +228,4 @@ See `tasks/CLAUDE.md` for full task lifecycle documentation.
 
 ## Slash Commands
 
-- `/architect TASK-XXX` — Orchestrate full feature (backend → frontend → QA feedback loop)
-- `/verify` — Run comprehensive quality verification
+- `/architect TASK-XXX` — Orchestrate full feature (backend → frontend → QA). The orchestrator only **reviews** artifacts the user ran; it never executes `check-all.sh` itself.

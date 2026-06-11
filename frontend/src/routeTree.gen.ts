@@ -23,7 +23,6 @@ import { Route as publicDocsFormRouteImport } from './routes/(public)/docs/form'
 import { Route as publicDocsFeedbackRouteImport } from './routes/(public)/docs/feedback'
 import { Route as publicDocsDataRouteImport } from './routes/(public)/docs/data'
 import { Route as KaryawanLayoutDashboardIndexRouteImport } from './routes/karyawan/_layout/dashboard/index'
-import { Route as AdminLayoutUsersIndexRouteImport } from './routes/admin/_layout/users/index'
 import { Route as AdminLayoutReportsIndexRouteImport } from './routes/admin/_layout/reports/index'
 import { Route as AdminLayoutDocumentsIndexRouteImport } from './routes/admin/_layout/documents/index'
 import { Route as AdminLayoutDashboardIndexRouteImport } from './routes/admin/_layout/dashboard/index'
@@ -32,10 +31,13 @@ import { Route as publicauthLoginIndexRouteImport } from './routes/(public)/(aut
 import { Route as AdminLayoutBerkasPerusahaanRouteImport } from './routes/admin/_layout/berkas/perusahaan'
 import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layout/berkas/menu'
 import { Route as AdminLayoutReportsPermissionReportIndexRouteImport } from './routes/admin/_layout/reports/permission-report/index'
-import { Route as AdminLayoutMasterDataUserManagementIndexRouteImport } from './routes/admin/_layout/master-data/user-management/index'
+import { Route as AdminLayoutMasterDataUsersIndexRouteImport } from './routes/admin/_layout/master-data/users/index'
 import { Route as AdminLayoutMasterDataConfigLogsIndexRouteImport } from './routes/admin/_layout/master-data/config-logs/index'
 import { Route as AdminLayoutMasterDataActivityLogsIndexRouteImport } from './routes/admin/_layout/master-data/activity-logs/index'
 import { Route as AdminLayoutAccountingKasbankIndexRouteImport } from './routes/admin/_layout/accounting/kasbank/index'
+import { Route as AdminLayoutMasterDataUsersNewIndexRouteImport } from './routes/admin/_layout/master-data/users/new/index'
+import { Route as AdminLayoutMasterDataUsersIdIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/index'
+import { Route as AdminLayoutMasterDataUsersIdEditIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/edit/index'
 
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
@@ -108,11 +110,6 @@ const KaryawanLayoutDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => KaryawanLayoutRoute,
   } as any)
-const AdminLayoutUsersIndexRoute = AdminLayoutUsersIndexRouteImport.update({
-  id: '/users/',
-  path: '/users/',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
 const AdminLayoutReportsIndexRoute = AdminLayoutReportsIndexRouteImport.update({
   id: '/reports/',
   path: '/reports/',
@@ -157,10 +154,10 @@ const AdminLayoutReportsPermissionReportIndexRoute =
     path: '/reports/permission-report/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
-const AdminLayoutMasterDataUserManagementIndexRoute =
-  AdminLayoutMasterDataUserManagementIndexRouteImport.update({
-    id: '/master-data/user-management/',
-    path: '/master-data/user-management/',
+const AdminLayoutMasterDataUsersIndexRoute =
+  AdminLayoutMasterDataUsersIndexRouteImport.update({
+    id: '/master-data/users/',
+    path: '/master-data/users/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
 const AdminLayoutMasterDataConfigLogsIndexRoute =
@@ -179,6 +176,24 @@ const AdminLayoutAccountingKasbankIndexRoute =
   AdminLayoutAccountingKasbankIndexRouteImport.update({
     id: '/accounting/kasbank/',
     path: '/accounting/kasbank/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
+const AdminLayoutMasterDataUsersNewIndexRoute =
+  AdminLayoutMasterDataUsersNewIndexRouteImport.update({
+    id: '/master-data/users/new/',
+    path: '/master-data/users/new/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
+const AdminLayoutMasterDataUsersIdIndexRoute =
+  AdminLayoutMasterDataUsersIdIndexRouteImport.update({
+    id: '/master-data/users/$id/',
+    path: '/master-data/users/$id/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
+const AdminLayoutMasterDataUsersIdEditIndexRoute =
+  AdminLayoutMasterDataUsersIdEditIndexRouteImport.update({
+    id: '/master-data/users/$id/edit/',
+    path: '/master-data/users/$id/edit/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
 
@@ -203,13 +218,15 @@ export interface FileRoutesByFullPath {
   '/admin/dashboard/': typeof AdminLayoutDashboardIndexRoute
   '/admin/documents/': typeof AdminLayoutDocumentsIndexRoute
   '/admin/reports/': typeof AdminLayoutReportsIndexRoute
-  '/admin/users/': typeof AdminLayoutUsersIndexRoute
   '/karyawan/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
-  '/admin/master-data/user-management/': typeof AdminLayoutMasterDataUserManagementIndexRoute
+  '/admin/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
   '/admin/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/admin/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
+  '/admin/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
+  '/admin/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -231,13 +248,15 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminLayoutDashboardIndexRoute
   '/admin/documents': typeof AdminLayoutDocumentsIndexRoute
   '/admin/reports': typeof AdminLayoutReportsIndexRoute
-  '/admin/users': typeof AdminLayoutUsersIndexRoute
   '/karyawan/dashboard': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs': typeof AdminLayoutMasterDataConfigLogsIndexRoute
-  '/admin/master-data/user-management': typeof AdminLayoutMasterDataUserManagementIndexRoute
+  '/admin/master-data/users': typeof AdminLayoutMasterDataUsersIndexRoute
   '/admin/reports/permission-report': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/admin/master-data/users/$id': typeof AdminLayoutMasterDataUsersIdIndexRoute
+  '/admin/master-data/users/new': typeof AdminLayoutMasterDataUsersNewIndexRoute
+  '/admin/master-data/users/$id/edit': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -261,13 +280,15 @@ export interface FileRoutesById {
   '/admin/_layout/dashboard/': typeof AdminLayoutDashboardIndexRoute
   '/admin/_layout/documents/': typeof AdminLayoutDocumentsIndexRoute
   '/admin/_layout/reports/': typeof AdminLayoutReportsIndexRoute
-  '/admin/_layout/users/': typeof AdminLayoutUsersIndexRoute
   '/karyawan/_layout/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/_layout/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/_layout/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/_layout/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
-  '/admin/_layout/master-data/user-management/': typeof AdminLayoutMasterDataUserManagementIndexRoute
+  '/admin/_layout/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
   '/admin/_layout/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/admin/_layout/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
+  '/admin/_layout/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
+  '/admin/_layout/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -292,13 +313,15 @@ export interface FileRouteTypes {
     | '/admin/dashboard/'
     | '/admin/documents/'
     | '/admin/reports/'
-    | '/admin/users/'
     | '/karyawan/dashboard/'
     | '/admin/accounting/kasbank/'
     | '/admin/master-data/activity-logs/'
     | '/admin/master-data/config-logs/'
-    | '/admin/master-data/user-management/'
+    | '/admin/master-data/users/'
     | '/admin/reports/permission-report/'
+    | '/admin/master-data/users/$id/'
+    | '/admin/master-data/users/new/'
+    | '/admin/master-data/users/$id/edit/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -320,13 +343,15 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/documents'
     | '/admin/reports'
-    | '/admin/users'
     | '/karyawan/dashboard'
     | '/admin/accounting/kasbank'
     | '/admin/master-data/activity-logs'
     | '/admin/master-data/config-logs'
-    | '/admin/master-data/user-management'
+    | '/admin/master-data/users'
     | '/admin/reports/permission-report'
+    | '/admin/master-data/users/$id'
+    | '/admin/master-data/users/new'
+    | '/admin/master-data/users/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -349,13 +374,15 @@ export interface FileRouteTypes {
     | '/admin/_layout/dashboard/'
     | '/admin/_layout/documents/'
     | '/admin/_layout/reports/'
-    | '/admin/_layout/users/'
     | '/karyawan/_layout/dashboard/'
     | '/admin/_layout/accounting/kasbank/'
     | '/admin/_layout/master-data/activity-logs/'
     | '/admin/_layout/master-data/config-logs/'
-    | '/admin/_layout/master-data/user-management/'
+    | '/admin/_layout/master-data/users/'
     | '/admin/_layout/reports/permission-report/'
+    | '/admin/_layout/master-data/users/$id/'
+    | '/admin/_layout/master-data/users/new/'
+    | '/admin/_layout/master-data/users/$id/edit/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -468,13 +495,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KaryawanLayoutDashboardIndexRouteImport
       parentRoute: typeof KaryawanLayoutRoute
     }
-    '/admin/_layout/users/': {
-      id: '/admin/_layout/users/'
-      path: '/users'
-      fullPath: '/admin/users/'
-      preLoaderRoute: typeof AdminLayoutUsersIndexRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
     '/admin/_layout/reports/': {
       id: '/admin/_layout/reports/'
       path: '/reports'
@@ -531,11 +551,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutReportsPermissionReportIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
-    '/admin/_layout/master-data/user-management/': {
-      id: '/admin/_layout/master-data/user-management/'
-      path: '/master-data/user-management'
-      fullPath: '/admin/master-data/user-management/'
-      preLoaderRoute: typeof AdminLayoutMasterDataUserManagementIndexRouteImport
+    '/admin/_layout/master-data/users/': {
+      id: '/admin/_layout/master-data/users/'
+      path: '/master-data/users'
+      fullPath: '/admin/master-data/users/'
+      preLoaderRoute: typeof AdminLayoutMasterDataUsersIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/config-logs/': {
@@ -557,6 +577,27 @@ declare module '@tanstack/react-router' {
       path: '/accounting/kasbank'
       fullPath: '/admin/accounting/kasbank/'
       preLoaderRoute: typeof AdminLayoutAccountingKasbankIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/master-data/users/new/': {
+      id: '/admin/_layout/master-data/users/new/'
+      path: '/master-data/users/new'
+      fullPath: '/admin/master-data/users/new/'
+      preLoaderRoute: typeof AdminLayoutMasterDataUsersNewIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/master-data/users/$id/': {
+      id: '/admin/_layout/master-data/users/$id/'
+      path: '/master-data/users/$id'
+      fullPath: '/admin/master-data/users/$id/'
+      preLoaderRoute: typeof AdminLayoutMasterDataUsersIdIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/master-data/users/$id/edit/': {
+      id: '/admin/_layout/master-data/users/$id/edit/'
+      path: '/master-data/users/$id/edit'
+      fullPath: '/admin/master-data/users/$id/edit/'
+      preLoaderRoute: typeof AdminLayoutMasterDataUsersIdEditIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
   }
@@ -594,12 +635,14 @@ interface AdminLayoutRouteChildren {
   AdminLayoutDashboardIndexRoute: typeof AdminLayoutDashboardIndexRoute
   AdminLayoutDocumentsIndexRoute: typeof AdminLayoutDocumentsIndexRoute
   AdminLayoutReportsIndexRoute: typeof AdminLayoutReportsIndexRoute
-  AdminLayoutUsersIndexRoute: typeof AdminLayoutUsersIndexRoute
   AdminLayoutAccountingKasbankIndexRoute: typeof AdminLayoutAccountingKasbankIndexRoute
   AdminLayoutMasterDataActivityLogsIndexRoute: typeof AdminLayoutMasterDataActivityLogsIndexRoute
   AdminLayoutMasterDataConfigLogsIndexRoute: typeof AdminLayoutMasterDataConfigLogsIndexRoute
-  AdminLayoutMasterDataUserManagementIndexRoute: typeof AdminLayoutMasterDataUserManagementIndexRoute
+  AdminLayoutMasterDataUsersIndexRoute: typeof AdminLayoutMasterDataUsersIndexRoute
   AdminLayoutReportsPermissionReportIndexRoute: typeof AdminLayoutReportsPermissionReportIndexRoute
+  AdminLayoutMasterDataUsersIdIndexRoute: typeof AdminLayoutMasterDataUsersIdIndexRoute
+  AdminLayoutMasterDataUsersNewIndexRoute: typeof AdminLayoutMasterDataUsersNewIndexRoute
+  AdminLayoutMasterDataUsersIdEditIndexRoute: typeof AdminLayoutMasterDataUsersIdEditIndexRoute
 }
 
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
@@ -608,17 +651,21 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutDashboardIndexRoute: AdminLayoutDashboardIndexRoute,
   AdminLayoutDocumentsIndexRoute: AdminLayoutDocumentsIndexRoute,
   AdminLayoutReportsIndexRoute: AdminLayoutReportsIndexRoute,
-  AdminLayoutUsersIndexRoute: AdminLayoutUsersIndexRoute,
   AdminLayoutAccountingKasbankIndexRoute:
     AdminLayoutAccountingKasbankIndexRoute,
   AdminLayoutMasterDataActivityLogsIndexRoute:
     AdminLayoutMasterDataActivityLogsIndexRoute,
   AdminLayoutMasterDataConfigLogsIndexRoute:
     AdminLayoutMasterDataConfigLogsIndexRoute,
-  AdminLayoutMasterDataUserManagementIndexRoute:
-    AdminLayoutMasterDataUserManagementIndexRoute,
+  AdminLayoutMasterDataUsersIndexRoute: AdminLayoutMasterDataUsersIndexRoute,
   AdminLayoutReportsPermissionReportIndexRoute:
     AdminLayoutReportsPermissionReportIndexRoute,
+  AdminLayoutMasterDataUsersIdIndexRoute:
+    AdminLayoutMasterDataUsersIdIndexRoute,
+  AdminLayoutMasterDataUsersNewIndexRoute:
+    AdminLayoutMasterDataUsersNewIndexRoute,
+  AdminLayoutMasterDataUsersIdEditIndexRoute:
+    AdminLayoutMasterDataUsersIdEditIndexRoute,
 }
 
 const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(
