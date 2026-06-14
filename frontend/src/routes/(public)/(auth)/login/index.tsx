@@ -6,7 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/domains/auth/hooks/use-auth";
 import { useAuthStore } from "@/shared/stores/authStore";
 import { useToast } from '@/shared/hooks/use-toast';
-import { loginSchema, type ILoginInput } from "@/domains/auth/auth";
+import { loginSchema, type ILoginInput } from "@/domains/auth/schemas/auth";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/shared/ui/form";
 import { Input } from "@/shared/ui/form/input";
 import { Button } from "@/shared/ui/overlay/button";

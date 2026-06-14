@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ISettingsNumbering } from '@/domains/settings/settings';
+import { ISettingsNumbering } from '@/domains/settings/types/settings';
 import { useSettings } from '@/domains/settings/hooks/useSettings';
 import {
   Form,

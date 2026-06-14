@@ -21,7 +21,7 @@ import { menuService } from '@/domains/menu/services/menuService'
 import type {
   IPermissionReportFilters,
   TMenuTypeFilter,
-} from '@/domains/reports/permissionReport'
+} from '@/domains/reports/types/permissionReport'
 
 const PICKER_PAGE_SIZE = 200
 

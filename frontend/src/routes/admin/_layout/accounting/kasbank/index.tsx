@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { IKasBankHeader } from '@/domains/accounting/kasbank';
+import { IKasBankHeader } from '@/domains/accounting/types/kasbank';
 import { KasBankDataTable } from '@/domains/accounting/components/accounting/kasbank/KasBankDataTable';
 import { KasBankFormDialog } from '@/domains/accounting/components/accounting/kasbank/KasBankFormDialog';
 

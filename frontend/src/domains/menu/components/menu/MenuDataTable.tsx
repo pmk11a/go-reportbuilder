@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { IDbMenu } from '@/domains/menu/menu';
+import { IDbMenu } from '@/domains/menu/types/menu';
 import { useMenus, useDeleteMenu, menuKeys } from "@/domains/menu/hooks/useMenu";
 import { Button } from "@/shared/ui/overlay/button";
 import { Input } from "@/shared/ui/form/input";
@@ -52,7 +52,7 @@ export function MenuDataTable() {
     const pagination = response?.data?.pagination || { current_page: 1, last_page: 1, total: 0, per_page: 10 };
 
     return (
-        <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
+        <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex w-full sm:w-auto items-center">
                     <div className="relative w-full sm:w-64">

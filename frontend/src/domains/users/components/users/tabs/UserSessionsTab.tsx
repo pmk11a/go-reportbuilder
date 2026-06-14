@@ -48,7 +48,7 @@ export function UserSessionsTab({ userId }: IUserSessionsTabProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
+      <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
         <div className="space-y-3">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
@@ -60,7 +60,7 @@ export function UserSessionsTab({ userId }: IUserSessionsTabProps) {
 
   if (isError) {
     return (
-      <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
+      <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
         <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/20 flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-red-700 dark:text-red-300">
@@ -102,7 +102,7 @@ export function UserSessionsTab({ userId }: IUserSessionsTabProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+    <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
       <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>

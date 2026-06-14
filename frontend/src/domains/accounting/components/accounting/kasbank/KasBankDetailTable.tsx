@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { IKasBankDetail } from '@/domains/accounting/types/kasbank';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/data/table';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { Each, Show } from '@/shared/ui/layout/Render';
 import { Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/ui/overlay/button';
+import { IKasBankDetail } from '@/domains/accounting/types/kasbank';
 
 interface KasBankDetailTableProps {
   details: IKasBankDetail[];

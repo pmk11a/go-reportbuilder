@@ -12,7 +12,7 @@ import {
 } from '@/shared/ui'
 import { Each, Show } from '@/shared/ui/layout/Render'
 import { FileBarChart2 } from 'lucide-react'
-import type { IPermissionReportRow } from '@/domains/reports/permissionReport'
+import type { IPermissionReportRow } from '@/domains/reports/types/permissionReport'
 
 export interface PermissionReportTableProps {
   rows: IPermissionReportRow[]

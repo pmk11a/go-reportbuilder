@@ -4,7 +4,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { IKasBankHeader, ICreateKasBankPayload, KasBankTipe } from '@/domains/accounting/kasbank';
+import { IKasBankHeader, ICreateKasBankPayload, KasBankTipe } from '@/domains/accounting/types/kasbank';
 import { useCreateKasBank, useUpdateKasBank, useGenerateNoBukti, useLookupPerkiraan } from '@/domains/accounting/hooks/useKasBank';
 import { useToast } from '@/shared/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/ui/overlay/dialog';

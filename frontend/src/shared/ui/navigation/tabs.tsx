@@ -39,7 +39,7 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
 
     return (
       <div className="w-full">
-        <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
+        <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
           {/* Tab List */}
           <div className={cn(tabListVariants(), 'px-4 bg-white dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800')}>
             {tabs.map((tab) => (

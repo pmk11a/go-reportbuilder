@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
-import { registerSchema, type IRegisterInput } from "@/domains/auth/auth";
+import { registerSchema, type IRegisterInput } from "@/domains/auth/schemas/auth";
 import { useThemeStore } from "@/shared/stores/themeStore";
 import { useAuthStore } from "@/shared/stores/authStore";
 import { useAuth } from "@/domains/auth/hooks/use-auth";

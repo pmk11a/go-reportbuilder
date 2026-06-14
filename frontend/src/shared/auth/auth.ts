@@ -1,4 +1,4 @@
-import type { IUser } from '@/domains/users/user';
+import type { IUser } from '@/domains/users/types/user';
 
 export const Tingkat = {
   KARYAWAN: '0',

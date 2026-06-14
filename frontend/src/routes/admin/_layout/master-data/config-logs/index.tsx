@@ -6,7 +6,7 @@ import { Badge } from "@/shared/ui/overlay/badge";
 import { Button } from "@/shared/ui";
 import { Input } from "@/shared/ui/form/input";
 import { activityLogService } from "@/domains/activity/services/activityLogService";
-import { IActivityLogConfig, IActivityLogField } from "@/domains/activity/activity-log";
+import { IActivityLogConfig, IActivityLogField } from "@/domains/activity/types/activity-log";
 import { Settings, Save, Check, X, ShieldAlert, FileText, Activity, Search } from "lucide-react";
 import { Each, Show } from "@/shared/ui/layout/Render";
 import { Skeleton } from "@/shared/ui/feedback/skeleton";
@@ -153,7 +153,7 @@ function ConfigLogsPage() {
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden p-4">
+                <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden p-4">
                     <h3 className={`font-bold mb-4 px-2 ${isDark ? "text-slate-200" : "text-slate-700"}`}>{t("config.choose_db_table")}</h3>
                     <div className="relative mb-4 px-2">
                         <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -192,7 +192,7 @@ function ConfigLogsPage() {
                         when={!!selectedTable && !isLoading}
                         fallback={
                             isLoading ? (
-                                <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl p-6">
+                                <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl p-6">
                                     <div className="flex justify-between items-center mb-6 pb-6 border-b border-dashed border-slate-300 dark:border-slate-700">
                                         <Skeleton className="h-8 w-48" />
                                         <div className="flex items-center gap-3">
@@ -246,12 +246,12 @@ function ConfigLogsPage() {
                                 </div>
                             ) : (
                                 <div
-                                    className={`h-full min-h-[400px] flex items-center justify-center rounded-[24px] border border-slate-100 dark:border-white/5 ${isDark ? "bg-slate-800/30" : "bg-slate-50"}`}>
+                                    className={`h-full min-h-[400px] flex items-center justify-center rounded-3xl border border-slate-100 dark:border-white/5 ${isDark ? "bg-slate-800/30" : "bg-slate-50"}`}>
                                     <p className={isDark ? "text-slate-500" : "text-slate-400"}>{t("config.select_table_left")}</p>
                                 </div>
                             )
                         }>
-                        <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden p-6 mb-6">
+                        <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden p-6 mb-6">
                             <div className="flex justify-between items-center mb-6 pb-6 border-b border-dashed border-slate-300 dark:border-slate-700">
                                 <div>
                                     <h2 className={`text-xl font-bold flex items-center gap-2 ${isDark ? "text-white" : "text-slate-800"}`}>

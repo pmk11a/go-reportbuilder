@@ -97,7 +97,7 @@ export function UserDetailPage({ userId }: IUserDetailPageProps) {
       </button>
 
       {/* Header Card */}
-      <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
+      <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
         <Show when={isLoading}>
           <div className="flex items-center gap-4">
             <Skeleton className="h-14 w-14 rounded-full" />
@@ -157,7 +157,7 @@ export function UserDetailPage({ userId }: IUserDetailPageProps) {
       <Show when={!isLoading && !!user}>
         {() => (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-            <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-2">
+            <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-2">
               <TabsList className="w-full justify-start gap-1 bg-transparent">
                 <Each items={TABS}>
                   {(tab) => (
@@ -197,7 +197,7 @@ export function UserDetailPage({ userId }: IUserDetailPageProps) {
       </Show>
 
       <Show when={isLoading}>
-        <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6 space-y-4">
+        <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6 space-y-4">
           <Skeleton className="h-8 w-48" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Skeleton className="h-24 w-full" />

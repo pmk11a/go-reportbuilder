@@ -20,7 +20,7 @@ export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6 space-y-6">
+      <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6 space-y-6">
         <div className="flex items-start gap-6">
           <Skeleton className="h-20 w-20 rounded-full" />
           <div className="space-y-3 flex-1">
@@ -39,7 +39,7 @@ export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
   const roleLabel = user.tingkat === '2' ? t('dialog.role_admin', 'Admin') : t('dialog.role_karyawan', 'Karyawan / Employee')
 
   return (
-    <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
+    <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
       {/* User Avatar and Basic Info */}
       <div className="flex items-start gap-6 mb-8">
         <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">

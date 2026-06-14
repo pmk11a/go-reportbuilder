@@ -6,7 +6,7 @@ import { Badge } from "@/shared/ui/overlay/badge";
 import { Button } from "@/shared/ui";
 import { Input } from "@/shared/ui/form/input";
 import { activityLogService } from "@/domains/activity/services/activityLogService";
-import { IActivityLogRes } from "@/domains/activity/activity-log";
+import { IActivityLogRes } from "@/domains/activity/types/activity-log";
 import { History, Search, RefreshCw, Eye } from "lucide-react";
 import { Each, Show } from "@/shared/ui/layout/Render";
 import { usePagination } from "@/shared/hooks/usePagination";
@@ -64,7 +64,7 @@ function ActivityLogsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
+            <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
                 <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex w-full sm:w-auto items-center">
                         <div className="relative w-full sm:w-64">

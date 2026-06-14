@@ -8,7 +8,7 @@ import {
 import { useToast } from '@/shared/hooks/use-toast'
 import { formatAPIError } from '@/shared/utils/errorMapper'
 import { Show } from '@/shared/ui/layout/Render'
-import type { IPermissionReportFilters } from '@/domains/reports/permissionReport'
+import type { IPermissionReportFilters } from '@/domains/reports/types/permissionReport'
 
 export interface PermissionReportActionsProps {
   filters: IPermissionReportFilters

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IKasBankHeader, IKasBankListParams, KasBankTipe } from '@/domains/accounting/kasbank';
+import { IKasBankHeader, IKasBankListParams, KasBankTipe } from '@/domains/accounting/types/kasbank';
 import { useKasBankList, useDeleteKasBank, useDownloadKasBankPdf } from '@/domains/accounting/hooks/useKasBank';
 import { useKasBankDetailList } from '@/domains/accounting/hooks/useKasBankDetail';
 import { Button } from '@/shared/ui/overlay/button';
@@ -84,11 +84,11 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
   };
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-100 bg-white shadow-xl shadow-blue-500/5 dark:border-white/5 dark:bg-[#0f172a] dark:shadow-2xl">
+    <div className="overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-xl shadow-blue-500/5 dark:border-white/5 dark:bg-[#0f172a] dark:shadow-2xl">
       {/* Filter bar */}
       <div className="flex flex-col gap-4 border-b border-slate-200 p-4 dark:border-slate-800 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <div className="relative min-w-[240px] flex-1">
+          <div className="relative min-w-60 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder={t('filter.search_placeholder')}
@@ -227,7 +227,7 @@ function KasBankRow({ voucher, onDelete, onEdit, onPdf }: {
           <KasBankTypeBadge tipe={voucher.tipetranshd} />
         </TableCell>
         <TableCell className="text-sm">{voucher.perkiraanhd || '-'}</TableCell>
-        <TableCell className="max-w-[240px] truncate text-sm" title={voucher.note || undefined}>{voucher.note || '-'}</TableCell>
+        <TableCell className="max-w-60 truncate text-sm" title={voucher.note || undefined}>{voucher.note || '-'}</TableCell>
         <TableCell className="text-right font-mono">
           {Number(voucher.totald ?? 0).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
         </TableCell>

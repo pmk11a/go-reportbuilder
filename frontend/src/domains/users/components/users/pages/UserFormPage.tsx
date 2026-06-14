@@ -6,7 +6,8 @@ import { Button } from '@/shared/ui/overlay/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/layout/card'
 import { UserForm } from '@/domains/users/components/users/form/UserForm'
 import { useUser } from '@/domains/users/hooks/useUsers'
-import type { IUserDetail } from '@/domains/users/types/user'
+import { IUserDetail } from '@/domains/users/types'
+import type { IUserDetail } from '@/domains/users/types'
 
 export interface IUserFormPageProps {
   mode: 'create' | 'edit'
@@ -21,14 +22,14 @@ export const UserFormPage: React.FC<IUserFormPageProps> = ({ mode, userEid }) =>
   const userQuery = useUser(userEid ?? '', { enabled: isEdit && !!userEid })
 
   const handleSuccess = (user: IUserDetail) => {
-    navigate({ to: '/admin/master-data/users/$eid', params: { eid: user.eid } })
+    navigate({ to: '/admin/master-data/users', search: { eid: user.eid } })
   }
 
   const handleCancel = () => {
     if (isEdit && userEid) {
-      navigate({ to: '/admin/master-data/users/$eid', params: { eid: userEid } })
+      navigate({ to: '/admin/master-data/users', search: { eid: userEid } })
     } else {
-      navigate({ to: '/admin/master-data/users/' })
+      navigate({ to: '/admin/master-data/users' })
     }
   }
 

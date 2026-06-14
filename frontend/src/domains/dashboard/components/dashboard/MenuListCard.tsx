@@ -171,7 +171,7 @@ const MenuListCard = () => {
     if (isLoading) {
         return (
             <div
-                className={`relative rounded-[24px] border p-8 flex items-center justify-center transition-all duration-500 ${
+                className={`relative rounded-3xl border p-8 flex items-center justify-center transition-all duration-500 ${
                     isDark ? "bg-[#0f172a] border-white/5 shadow-2xl" : "bg-white border-slate-100 shadow-xl shadow-blue-500/5"
                 }`}>
                 <Loader2
@@ -185,7 +185,7 @@ const MenuListCard = () => {
     if (error) {
         return (
             <div
-                className={`relative rounded-[24px] border p-6 transition-all duration-500 ${
+                className={`relative rounded-3xl border p-6 transition-all duration-500 ${
                     isDark ? "bg-[#0f172a] border-white/5 shadow-2xl" : "bg-white border-slate-100 shadow-xl"
                 }`}>
                 <p className="text-red-500 text-center font-semibold">{error}</p>
@@ -195,7 +195,7 @@ const MenuListCard = () => {
 
     return (
         <div
-            className={`relative rounded-[24px] border p-4 flex flex-col gap-3 transition-all duration-500 ${
+            className={`relative rounded-3xl border p-4 flex flex-col gap-3 transition-all duration-500 ${
                 isDark ? "bg-[#0f172a] border-white/5 shadow-2xl" : "bg-white border-slate-100 shadow-xl shadow-blue-500/5"
             }`}>
             {/* Expanded Search State */}

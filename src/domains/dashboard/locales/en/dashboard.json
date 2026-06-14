@@ -1,0 +1,47 @@
+{
+  "total_active_employees": "TOTAL ACTIVE EMPLOYEES",
+  "total_retired_employees": "TOTAL RETIRED EMPLOYEES",
+  "active_employees_stats": "Active Employees Statistics",
+  "retired_employees_stats": "Retired Employees Statistics",
+  "this_year": "THIS YEAR",
+  "last_year": "LAST YEAR",
+  "next_year": "NEXT YEAR",
+  "retired_no_docs": "Retired Without Documents",
+  "pensiunan_count": "{{count}} Retired",
+  "all_docs_completed": "All retired employees have completed their documents.",
+  "pensiunan_no_docs_footer": "Retired employees who have not completed their documents",
+  "karyawan_dashboard": {
+    "greeting": "Hello, {{name}}! 👋",
+    "fallback_name": "Colleague",
+    "welcome_text": "Welcome to the DAPEN employee portal. Easily monitor attendance, apply for leave, and manage your membership documents.",
+    "btn_attendance": "Clock In Now",
+    "btn_leave": "Apply for Leave",
+    "stat_annual_leave": "Remaining Annual Leave",
+    "stat_annual_leave_value": "{{days}} Days",
+    "stat_work_hours": "Total Working Hours",
+    "stat_work_hours_value": "{{hours}} Hours",
+    "stat_membership_status": "Membership Status",
+    "stat_membership_status_active": "Active",
+    "stat_announcements": "Announcement Messages",
+    "stat_announcements_new": "{{count}} New",
+    "quick_links": "Quick Links",
+    "link_download_payslip": "Download Latest Payslip",
+    "link_update_profile": "Update Profile & Address",
+    "link_report_issue": "Report Issue / Support",
+    "tips_today": "Tip of the Day",
+    "tips_today_text": "Don't forget to verify your membership data before the end of this quarter to ensure smooth administrative processing."
+  },
+  "headers": {
+    "no": "No",
+    "name": "Name",
+    "employee_no": "Employee No.",
+    "birth_date": "Birth Date",
+    "retirement_date": "Retirement Date"
+  },
+  "menu_list": {
+    "menu": "MENU",
+    "search_menu": "Search menu...",
+    "no_menu": "No menu available",
+    "expand_menu": "Expand menu"
+  }
+}

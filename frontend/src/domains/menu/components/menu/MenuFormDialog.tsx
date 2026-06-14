@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
-import { IDbMenu } from '@/domains/menu/menu';
+import { IDbMenu } from '@/domains/menu/types/menu';
 import { PMenuFormDialogProps } from '@/shared/types/components'
 import { useParentMenus, useCreateMenu, useUpdateMenu } from '@/domains/menu/hooks/useMenu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/shared/ui/overlay/dialog'

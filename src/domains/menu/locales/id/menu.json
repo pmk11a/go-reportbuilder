@@ -1,0 +1,41 @@
+{
+  "title": "Menu",
+  "search_placeholder": "Cari kode atau nama menu...",
+  "search_button": "Cari",
+  "refresh": "Refresh",
+  "add_menu": "Tambah Menu",
+  "add_new_menu": "Tambah Menu Baru",
+  "edit_menu": "Edit Menu",
+  "form_desc": "Isi form berikut untuk {{action}} menu.",
+  "form_desc_add": "menambahkan",
+  "form_desc_edit": "mengedit",
+  "delete_confirm": "Yakin ingin menghapus menu {{kode}}?",
+  "code": "Kode Menu",
+  "level": "Level Menu (L0)",
+  "parent": "Parent Menu",
+  "parent_placeholder": "Pilih parent menu",
+  "parent_loading": "Memuat parent...",
+  "description": "Keterangan / Nama Menu",
+  "icon": "Ikon (Lucide React)",
+  "icon_search": "Cari ikon...",
+  "routename": "Routename (Opsional)",
+  "tipe_trans": "Tipe Transaksi (Opsional)",
+  "access": "ACCESS (Legacy)",
+  "ol": "Otorisasi Level (OL)",
+  "no_data": "Tidak ada data menu yang ditemukan.",
+  "save_failed": "Gagal menyimpan menu",
+  "saving": "Menyimpan...",
+  "headers": {
+    "code": "Kode Menu",
+    "level": "Level (L0)",
+    "description": "Keterangan",
+    "icon": "Ikon",
+    "route": "Rute",
+    "actions": "Aksi"
+  },
+  "validation": {
+    "code_required": "Kode menu wajib diisi",
+    "description_required": "Keterangan wajib diisi",
+    "level_min": "Level minimal 0"
+  }
+}

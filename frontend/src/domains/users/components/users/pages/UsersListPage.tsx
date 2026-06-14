@@ -121,7 +121,7 @@ export function UsersListPage() {
   }
 
   return (
-    <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
+    <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
       {/* Toolbar Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-3">

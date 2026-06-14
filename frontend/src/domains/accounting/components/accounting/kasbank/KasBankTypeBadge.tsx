@@ -1,4 +1,4 @@
-import type { KasBankTipe } from '@/domains/accounting/types/kasbank';
+import { KasBankTipe } from '@/domains/accounting/types/kasbank';
 import { Badge } from '@/shared/ui';
 
 const TIPE_CONFIG: Record<KasBankTipe, { label: string; className: string }> = {

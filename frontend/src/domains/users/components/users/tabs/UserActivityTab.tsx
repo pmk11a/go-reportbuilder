@@ -82,7 +82,7 @@ export function UserActivityTab({ userId }: IUserActivityTabProps) {
 
   return (
     <>
-      <div className="bg-white dark:bg-[#0f172a] rounded-[24px] border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+      <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
         <div className="p-6">
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">

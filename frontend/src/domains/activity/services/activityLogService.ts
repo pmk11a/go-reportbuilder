@@ -1,4 +1,4 @@
-import { getActivityLogsFn, getActivityLogConfigsFn, getActivityLogConfigDetailFn, getActivityLogsByUserFn } from '@/server/functions/admin/activity-logs'
+import { getActivityLogsFn, getActivityLogConfigDetailFn, getActivityLogsByUserFn } from '@/server/functions/admin/activity-logs'
 import { getDatabaseTablesFn, getDatabaseColumnsFn } from '@/server/functions/admin/database'
 import { proxyFn } from '@/server/functions/proxy'
 import { IAPIResponse, IPaginatedResponse } from '@/shared/types/api'

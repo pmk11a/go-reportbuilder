@@ -1,0 +1,59 @@
+{
+  "permission_report": {
+    "title": "Laporan Hak Akses",
+    "description": "Matriks pengguna dan hak akses mereka",
+    "filters": {
+      "title": "Filter",
+      "user": "Pengguna",
+      "user_placeholder": "Semua pengguna",
+      "menu": "Menu",
+      "menu_placeholder": "Semua menu",
+      "menu_type": "Jenis Menu",
+      "menu_type_menu": "Menu",
+      "menu_type_report": "Laporan",
+      "menu_type_all": "Semua",
+      "apply": "Terapkan Filter",
+      "reset": "Atur Ulang"
+    },
+    "actions": {
+      "print": "Cetak",
+      "excel": "Ekspor Excel",
+      "pdf": "Ekspor PDF"
+    },
+    "table": {
+      "headers": {
+        "user": "Pengguna",
+        "full_name": "Nama Lengkap",
+        "role": "Peran",
+        "menu_code": "Kode Menu",
+        "menu_name": "Nama Menu",
+        "has_access": "Akses",
+        "create": "Tambah",
+        "update": "Ubah",
+        "delete": "Hapus",
+        "print": "Cetak",
+        "export": "Ekspor",
+        "approve_1": "Otorisasi 1",
+        "approve_2": "Otorisasi 2",
+        "approve_3": "Otorisasi 3",
+        "approve_4": "Otorisasi 4",
+        "approve_5": "Otorisasi 5",
+        "canceled": "Batal"
+      },
+      "yes": "Ya",
+      "no": "Tidak",
+      "empty": "Tidak ada data. Terapkan filter untuk melihat hasil."
+    },
+    "errors": {
+      "filter_required": "Terapkan minimal satu filter sebelum mengekspor ke Excel atau PDF.",
+      "load_failed": "Gagal memuat laporan hak akses.",
+      "export_failed": "Gagal mengekspor. Silakan coba lagi."
+    }
+  },
+  "reports_index": {
+    "title": "Laporan",
+    "description": "Buat dan ekspor laporan",
+    "permission_report_title": "Laporan Hak Akses",
+    "permission_report_description": "Audit hak akses pengguna di seluruh sistem"
+  }
+}
