@@ -40,7 +40,7 @@ function KaryawanDashboard() {
             <button className="px-6 py-3 bg-white text-indigo-600 rounded-2xl font-bold shadow-lg hover:scale-105 transition-all">
               {t("karyawan_dashboard.btn_attendance")}
             </button>
-            <button className="px-6 py-3 bg-indigo-500/20 backdrop-blur-md text-white border border-white/20 rounded-2xl font-bold hover:bg-white/10 transition-all">
+            <button className="px-6 py-3 bg-indigo-500/30 text-white border border-white/20 rounded-2xl font-bold hover:bg-indigo-500/40 transition-colors">
               {t("karyawan_dashboard.btn_leave")}
             </button>
           </div>

@@ -10,7 +10,23 @@ export interface IKasBankHeader {
   totalk: number;
   otorisasi1: boolean;
   otorisasi2: boolean;
+  otorisasi3: boolean;
+  otorisasi4: boolean;
+  otorisasi5: boolean;
+  maxol: number;
   locked: boolean;
+  jumlahvalas: number;
+  jumlahrupiah: number;
+  otouser1: string;
+  otouser2: string;
+  otouser3: string;
+  otouser4: string;
+  otouser5: string;
+  tgloto1: string | null;
+  tgloto2: string | null;
+  tgloto3: string | null;
+  tgloto4: string | null;
+  tgloto5: string | null;
 }
 
 export interface IKasBankDetail {
@@ -73,7 +89,7 @@ export interface IUpdateDetailPayload extends IAddDetailPayload {
 }
 
 export interface IOtorisasiRequest {
-  level: 1 | 2;
+  level: 1 | 2 | 3 | 4 | 5;
   action: 'set' | 'cancel';
 }
 

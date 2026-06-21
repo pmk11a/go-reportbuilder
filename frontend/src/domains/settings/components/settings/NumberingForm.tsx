@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Control } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ISettingsNumbering } from '@/domains/settings/types/settings';
 import { useSettings } from '@/domains/settings/hooks/useSettings';
@@ -91,6 +91,70 @@ const FIELD_LABELS: Record<string, string> = {
   POS: 'Point of Sale',
 };
 
+interface INumberingFieldGroupProps {
+  base: string;
+  group: { prefix?: string; counter?: string };
+  label: string;
+  control: Control<ISettingsNumbering>;
+  prefixPlaceholder: string;
+  counterPlaceholder: string;
+}
+
+const NumberingFieldGroup = React.memo(function NumberingFieldGroup({
+  base,
+  group,
+  label,
+  control,
+  prefixPlaceholder,
+  counterPlaceholder,
+}: INumberingFieldGroupProps) {
+  return (
+    <div className="bg-white dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm space-y-2 hover:border-primary-400/50 dark:hover:border-primary-500/30 transition-colors duration-200">
+      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+        {label} <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono font-normal">({base})</span>
+      </span>
+      <div className="grid grid-cols-2 gap-2">
+        {group.prefix && (
+          <FormField
+            control={control}
+            name={group.prefix as any}
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input
+                    placeholder={prefixPlaceholder}
+                    {...field}
+                    value={field.value ?? ''}
+                    className="h-8 text-xs font-semibold"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        )}
+        {group.counter && (
+          <FormField
+            control={control}
+            name={group.counter as any}
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input
+                    placeholder={counterPlaceholder}
+                    {...field}
+                    value={field.value ?? ''}
+                    className="h-8 text-xs font-semibold font-mono"
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        )}
+      </div>
+    </div>
+  );
+});
+
 export function NumberingForm() {
   const { t } = useTranslation('numbering');
   const { useNumbering, useUpdateNumbering } = useSettings();
@@ -125,13 +189,19 @@ export function NumberingForm() {
   ], [t]);
 
   // Watch configuration fields to calculate Example preview reactively
-  const watchedPemisah = useWatch({ control: form.control, name: 'pemisah' });
-  const watchedFormat1 = useWatch({ control: form.control, name: 'format1' });
-  const watchedFormat2 = useWatch({ control: form.control, name: 'format2' });
-  const watchedFormat3 = useWatch({ control: form.control, name: 'format3' });
-  const watchedFormat4 = useWatch({ control: form.control, name: 'format4' });
-  const watchedInicab = useWatch({ control: form.control, name: 'inicab' });
-  const watchedDigitNomor = useWatch({ control: form.control, name: 'digitNomor' });
+  // Consolidated into a single useWatch call (name array) to reduce subscription overhead
+  const [
+    watchedPemisah,
+    watchedFormat1,
+    watchedFormat2,
+    watchedFormat3,
+    watchedFormat4,
+    watchedInicab,
+    watchedDigitNomor,
+  ] = useWatch({
+    control: form.control,
+    name: ['pemisah', 'format1', 'format2', 'format3', 'format4', 'inicab', 'digitNomor'],
+  });
 
   React.useEffect(() => {
     if (data) {
@@ -234,7 +304,7 @@ export function NumberingForm() {
 
   if (isLoading) {
     return (
-      <Card className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+      <Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end bg-slate-50/50 dark:bg-slate-950/20">
           <Skeleton className="h-9 w-36 rounded-md" />
         </div>
@@ -249,7 +319,7 @@ export function NumberingForm() {
   }
 
   return (
-    <Card className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+    <Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
       {/* Toolbar */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end bg-slate-50/50 dark:bg-slate-950/20">
         <Button type="submit" form="numbering-form" loading={updateMutation.isPending} size="sm" className="gap-2">
@@ -302,57 +372,17 @@ export function NumberingForm() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {Object.entries(filteredGroups).map(([base, group]) => {
-                          const label = t('fields.' + base, FIELD_LABELS[base] || base);
-                          return (
-                            <div
-                              key={base}
-                              className="bg-white dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm space-y-2 hover:border-primary-400/50 dark:hover:border-primary-500/30 transition-all duration-200"
-                            >
-                              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                                {label} <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono font-normal">({base})</span>
-                              </span>
-                              <div className="grid grid-cols-2 gap-2">
-                                {group.prefix && (
-                                  <FormField
-                                    control={form.control}
-                                    name={group.prefix as any}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormControl>
-                                          <Input
-                                            placeholder={t('prefix')}
-                                            {...field}
-                                            value={field.value ?? ''}
-                                            className="h-8 text-xs font-semibold"
-                                          />
-                                        </FormControl>
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
-                                {group.counter && (
-                                  <FormField
-                                    control={form.control}
-                                    name={group.counter as any}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormControl>
-                                          <Input
-                                            placeholder={t('counter')}
-                                            {...field}
-                                            value={field.value ?? ''}
-                                            className="h-8 text-xs font-semibold font-mono"
-                                          />
-                                        </FormControl>
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                        {Object.entries(filteredGroups).map(([base, group]) => (
+                          <NumberingFieldGroup
+                            key={base}
+                            base={base}
+                            group={group}
+                            label={t('fields.' + base, FIELD_LABELS[base] || base)}
+                            control={form.control}
+                            prefixPlaceholder={t('prefix')}
+                            counterPlaceholder={t('counter')}
+                          />
+                        ))}
                       </div>
                     )}
                   </div>

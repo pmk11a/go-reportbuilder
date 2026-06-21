@@ -11,7 +11,8 @@ export { EmptyState, type EmptyStateProps } from './feedback/empty-state';
 export { LoadingState, type LoadingStateProps } from './feedback/loading-state';
 export { Progress, type ProgressProps } from './feedback/progress';
 export { Skeleton, type SkeletonProps } from './feedback/skeleton';
-export { Toast } from './feedback/toast';
+// `Toast` component intentionally NOT re-exported — conflicts with the `Toast` interface from `@/shared/hooks/use-toast`.
+// Import directly: import { Toast } from '@/shared/ui/feedback/toast'
 export { Toaster } from './feedback/toaster';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, type TooltipProps } from './feedback/tooltip';
 
@@ -49,7 +50,8 @@ export { DataPagination } from './navigation/data-pagination';
 export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuCheckboxItem, DropdownMenuRadioItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuGroup, DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuRadioGroup } from './navigation/dropdown-menu';
 export { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarLabel, MenubarCheckboxItem, MenubarRadioGroup, MenubarRadioItem, MenubarSubTrigger, MenubarSubContent, MenubarGroup, MenubarSub, MenubarShortcut } from './navigation/menubar';
 export { Pagination, type PaginationProps } from './navigation/pagination';
-export { Sidebar } from './navigation/sidebar';
+// Sidebar primitive NOT re-exported — use the app-specific one from '@/shared/components/layouts/Sidebar'
+// or import primitives directly: import { SidebarProvider, SidebarContent, ... } from '@/shared/ui/navigation/sidebar'
 export { Steps, type StepsProps } from './navigation/steps';
 export { Tabs, type TabsProps } from './navigation/tabs';
 

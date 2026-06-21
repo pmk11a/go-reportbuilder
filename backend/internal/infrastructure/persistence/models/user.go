@@ -36,21 +36,25 @@ func (SUser) TableName() string {
 	return "users"
 }
 
-// GetDynamicRole derives a human-readable role string from the linked legacy DBFLPASS record.
-// Falls back to the Role field if no DBFLPASS is loaded.
+// GetDynamicRole derives a human-readable role string used as the JWT "role"
+// claim. Role is the source of truth and is checked FIRST — see the
+// equivalent method on internal/features/identity/user.SUser for the full
+// rationale (TASK-020). Kept in sync with that copy.
 func (u *SUser) GetDynamicRole() string {
+	if u.Role == RoleAdmin {
+		return "admin"
+	}
 	if u.SDBFLPASS != nil {
 		switch u.SDBFLPASS.TINGKAT {
 		case "2":
 			return "admin"
 		case "1":
 			return "pengurus"
+		case "5":
+			return "system_admin"
 		case "0":
 			return "karyawan"
 		}
-	}
-	if u.Role == RoleAdmin {
-		return "admin"
 	}
 	return "karyawan"
 }

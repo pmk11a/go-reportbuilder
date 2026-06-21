@@ -1,5 +1,6 @@
 // Package kasbank owns the Accounting > Kas Bank sub-domain: BKM/BKK/BBM/BBK
-// journal voucher recording with two-level authorization workflow.
+// journal voucher recording with a sequential, up-to-5-level authorization
+// workflow (effective level count per record decided by effectiveMaxOL).
 //
 // All legacy table models are re-exported here so the kasbank code is fully
 // isolated from `infrastructure/persistence/models/`. Per the Domain-Based +
@@ -47,11 +48,45 @@ type SKasBankHeader struct {
 	TotalD float64 `json:"totald"`
 	// TotalK is the sum of Kredit across all detail lines (pre-computed).
 	TotalK float64 `json:"totalk"`
+	// JumlahValas is the sum of (Debet+Kredit) across detail lines whose
+	// Valas is not "IDR" — i.e. the foreign-currency amount, correctly
+	// labeled (see TASK-022 business problem: trade-exchange computes the
+	// same formula but mislabels it as TotalD).
+	JumlahValas float64 `json:"jumlahvalas"`
+	// JumlahRupiah is the sum of (Debet+Kredit)*Kurs across all detail
+	// lines — the Rupiah-converted total, mirroring trade-exchange's TotalRp.
+	JumlahRupiah float64 `json:"jumlahrupiah"`
 	// OtorisasiLevel1 is true when IsOtorisasi1=1.
 	OtorisasiLevel1 bool `json:"otorisasi1"`
 	// OtorisasiLevel2 is true when IsOtorisasi2=1.
 	OtorisasiLevel2 bool `json:"otorisasi2"`
-	// Locked is true when both authorization levels are set; edits are rejected.
+	// OtorisasiLevel3 is true when IsOtorisasi3=1.
+	OtorisasiLevel3 bool `json:"otorisasi3"`
+	// OtorisasiLevel4 is true when IsOtorisasi4=1.
+	OtorisasiLevel4 bool `json:"otorisasi4"`
+	// OtorisasiLevel5 is true when IsOtorisasi5=1.
+	OtorisasiLevel5 bool `json:"otorisasi5"`
+	// OtoUser1..5 echo the approving user for each level, used by the
+	// frontend's DetailTooltip on hover (TASK-022).
+	OtoUser1 string `json:"otouser1"`
+	OtoUser2 string `json:"otouser2"`
+	OtoUser3 string `json:"otouser3"`
+	OtoUser4 string `json:"otouser4"`
+	OtoUser5 string `json:"otouser5"`
+	// TglOto1..5 echo the approval timestamp for each level, used by the
+	// frontend's DetailTooltip on hover (TASK-022).
+	TglOto1 *time.Time `json:"tgloto1"`
+	TglOto2 *time.Time `json:"tgloto2"`
+	TglOto3 *time.Time `json:"tgloto3"`
+	TglOto4 *time.Time `json:"tgloto4"`
+	TglOto5 *time.Time `json:"tgloto5"`
+	// MaxOL is the EFFECTIVE maximum otorisasi level for this record (see
+	// effectiveMaxOL in service.go): the record's own MaxOL column when it
+	// holds a valid 1-5 value, otherwise 2 (the legacy DAPEN default).
+	MaxOL int `json:"maxol"`
+	// Locked is true once all levels from 1 through MaxOL are approved;
+	// edits/deletes are rejected once IsOtorisasi1=1 regardless of Locked
+	// (see ErrLockedByOtorisasi1 in service.go — a separate, stricter rule).
 	Locked bool `json:"locked"`
 }
 

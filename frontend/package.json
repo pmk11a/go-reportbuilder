@@ -13,7 +13,8 @@
     "coverage": "vitest run --coverage",
     "check": "../scripts/check-all.sh --frontend-only",
     "check:errors": "cat ../tmp/*frontend*_errors.log 2>/dev/null || echo 'no error logs'",
-    "check:warnings": "cat ../tmp/*frontend*_warnings.log 2>/dev/null || echo 'no warning logs'"
+    "check:warnings": "cat ../tmp/*frontend*_warnings.log 2>/dev/null || echo 'no warning logs'",
+    "route-gen": "tanstack-router-cli generate --entry src/App.tsx --output src/routes.tsx"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

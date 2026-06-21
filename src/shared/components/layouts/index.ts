@@ -1,8 +1,0 @@
-export { AdminLayout } from './AdminLayout'
-export { AppBackground } from './AppBackground'
-export { Header } from './Header'
-export { KaryawanLayout } from './KaryawanLayout'
-export { KaryawanSidebar } from './KaryawanSidebar'
-export { MainHeader } from './MainHeader'
-export { MainLayout } from './MainLayout'
-export { Sidebar } from './Sidebar'

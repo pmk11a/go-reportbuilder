@@ -1,10 +1,10 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/start-server-core'
-import { getSession, getValidAccessToken, type SessionData } from '../session'
+import { getSession, getValidAccessToken, SESSION_COOKIE_NAME, type SessionData } from '../session'
 
 export const sessionMiddleware = createMiddleware({ type: 'request' })
   .server(async ({ next }) => {
-    const sessionId = getCookie('session_id')
+    const sessionId = getCookie(SESSION_COOKIE_NAME)
 
     if (!sessionId) {
       throw new Error('Unauthorized: No session')

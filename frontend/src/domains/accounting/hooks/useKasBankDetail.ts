@@ -11,6 +11,7 @@ export function useKasBankDetailList(noBukti: string) {
   });
 }
 
+
 export function useKasBankDetail(noBukti: string, urut: number) {
   return useQuery({
     queryKey: [...kasbankKeys.detail(noBukti), 'line', urut] as const,

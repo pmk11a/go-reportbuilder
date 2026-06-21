@@ -10,3 +10,5 @@ export { Skeleton, type SkeletonProps } from './skeleton';
 export { LoadingState, type LoadingStateProps } from './loading-state';
 export { EmptyState, type EmptyStateProps } from './empty-state';
 export { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent, SimpleTooltip, type TooltipProps } from './tooltip';
+export { DetailTooltip, type DetailTooltipProps, type DetailTooltipRow } from './detail-tooltip';
+export { CustomTooltip } from './custom-tooltip';

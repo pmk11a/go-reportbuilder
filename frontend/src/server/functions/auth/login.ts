@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { setCookie } from '@tanstack/start-server-core'
-import { createSession, type SessionData } from '../../session'
+import { createSession, SESSION_COOKIE_NAME, type SessionData } from '../../session'
 import { makeBackendRequest } from '../../backend'
 import { parseEnvTime } from '../../utils'
 
@@ -34,7 +34,7 @@ export const loginFn = createServerFn({ method: 'POST' })
     }
     const sessionId = await createSession(sessionData)
 
-    setCookie('session_id', sessionId, {
+    setCookie(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: IS_PROD,
       sameSite: 'lax',

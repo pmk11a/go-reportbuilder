@@ -15,6 +15,7 @@ const KEY_FIELDS = [
     "session_id",
     "menu_id",
     "config_id",
+    "nobukti",
 ] as const;
 
 function getAutomaticKey<T>(item: T, index: number): React.Key {
@@ -76,13 +77,19 @@ export function Each<T>({ of, render, children, fallback }: EachProps<T>) {
 export interface ShowProps {
     when: any;
     fallback?: ReactNode;
-    children: ReactNode;
+    children: ReactNode | (() => ReactNode);
 }
 
 /**
  * A declarative component for conditional rendering.
  * Replaces the native `{condition && ...}` or `{condition ? ... : ...}` pattern with an HTML-like `<Show />` tag.
+ * Supports both a plain `ReactNode` child and the Function-as-Child pattern (mirrors `Each`).
  */
 export function Show({ when, fallback, children }: ShowProps) {
-    return when ? <>{children}</> : fallback ? <>{fallback}</> : null;
+    if (!when) {
+        return fallback ? <>{fallback}</> : null;
+    }
+
+    const renderedNode = typeof children === "function" ? children() : children;
+    return <>{renderedNode}</>;
 }

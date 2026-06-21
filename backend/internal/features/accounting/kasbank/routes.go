@@ -45,11 +45,13 @@ func RegisterKasBankRoutes(rg *gin.RouterGroup, h *SKasBankHandler, permMW *midd
 		g.DELETE("/:noBukti", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsHapus), h.DeleteKasBank)
 		g.DELETE("/:noBukti/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsHapus), h.DeleteKasBankDetail)
 
-		// Otorisasi — gated by IsOtorisasi1 / IsOtorisasi2.
-		// We mount the SAME handler on two routes with different middleware
-		// so the user can call /otorisasi with the right level without
-		// knowing the permission name in advance. The handler reads the
-		// level from the request body.
+		// Otorisasi — supports levels 1-5 (IsOtorisasi1-5), gated by the
+		// IsOtorisasi1 permission as the entry-level gate for both set and
+		// cancel. We mount the SAME handler on two routes with different
+		// middleware so the user can call /otorisasi with the right level
+		// without knowing the permission name in advance. The handler reads
+		// the level from the request body; the service enforces the
+		// sequential-approval and different-approver rules per level.
 		g.POST("/:noBukti/otorisasi", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsOtorisasi1), h.SetOtorisasiKasBank)
 		g.POST("/:noBukti/batal-otorisasi", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsBatal), h.BatalOtorisasiKasBank)
 	}

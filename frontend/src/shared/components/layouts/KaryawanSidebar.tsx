@@ -31,7 +31,7 @@ export function KaryawanSidebar({ open, onToggle }: SidebarProps) {
     <aside
       className={`${
         open ? 'w-72' : 'w-20'
-      } relative flex flex-col h-screen border-r border-white/10 dark:border-slate-800/50 bg-white/70 dark:bg-slate-950/80 backdrop-blur-xl transition-all duration-500 ease-in-out z-30`}
+      } relative flex flex-col h-screen border-r border-slate-200 dark:border-slate-800/50 bg-white dark:bg-slate-950 transition-[width] duration-500 ease-in-out z-30`}
     >
       <div className="h-20 flex items-center px-6 mb-4">
         <div className="flex items-center space-x-3">

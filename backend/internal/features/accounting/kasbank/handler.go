@@ -56,7 +56,9 @@ func userIDFromContext(c *gin.Context) string {
 
 // ListKasBank godoc
 // @Summary List Kas/Bank Vouchers
-// @Description Paginated list of journal headers with optional filters
+// @Description Paginated list of journal headers with optional filters. When
+// @Description dateFrom/dateTo are omitted, the list defaults to the caller's
+// @Description active accounting period (DBPERIODE).
 // @Tags AccountingKasBank
 // @Produce json
 // @Param tipe query string false "Filter by TipeTransHd (BKM/BKK/BBM/BBK)"
@@ -83,6 +85,7 @@ func (h *SKasBankHandler) ListKasBank(c *gin.Context) {
 		return
 	}
 	q.Tipe = strings.ToUpper(q.Tipe)
+	q.UserID = userIDFromContext(c)
 	out, err := h.svc.List(c.Request.Context(), q)
 	if err != nil {
 		response.InternalError(c, "Failed to list kas bank: "+err.Error())
@@ -331,7 +334,9 @@ func (h *SKasBankHandler) DeleteKasBankDetail(c *gin.Context) {
 
 // SetOtorisasiKasBank godoc
 // @Summary Set Otorisasi
-// @Description Set IsOtorisasiN=1 for the given level (1 or 2)
+// @Description Set IsOtorisasiN=1 for the given level (1 to 5). Level N
+// @Description requires level N-1 already approved, and the approver of
+// @Description level N must differ from the approver of level N-1.
 // @Tags AccountingKasBank
 // @Accept json
 // @Produce json
@@ -359,7 +364,8 @@ func (h *SKasBankHandler) SetOtorisasiKasBank(c *gin.Context) {
 
 // BatalOtorisasiKasBank godoc
 // @Summary Cancel Otorisasi
-// @Description Clear IsOtorisasiN for the given level (1 or 2)
+// @Description Clear IsOtorisasiN for the given level (1 to 5). Rejected
+// @Description when level N+1 is already approved.
 // @Tags AccountingKasBank
 // @Accept json
 // @Produce json
@@ -481,7 +487,10 @@ func writeServiceError(c *gin.Context, err error) {
 		errors.Is(err, ErrDoubleEntryUnbalanced),
 		errors.Is(err, ErrSelfOtorisasi),
 		errors.Is(err, ErrDetailRequired),
-		errors.Is(err, ErrDetailUrutConflict):
+		errors.Is(err, ErrDetailUrutConflict),
+		errors.Is(err, ErrOtorisasiLevelInvalid),
+		errors.Is(err, ErrOtorisasiPrevLevelMissing),
+		errors.Is(err, ErrOtorisasiNextLevelSet):
 		response.BadRequest(c, err.Error())
 	default:
 		response.InternalError(c, err.Error())

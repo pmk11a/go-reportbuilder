@@ -3,7 +3,9 @@ package kasbank
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -74,6 +76,39 @@ func TestList_NoFilters(t *testing.T) {
 	assertMock(t, mock)
 }
 
+// TestList_NoTipe_RestrictsToKasBankDiscriminators verifies that when the
+// caller does not pass a specific tipe, the repository still constrains the
+// query to the 4 kasbank discriminators (BKM/BKK/BBM/BBK) rather than
+// leaving TipeTransHd unrestricted. DBTRANS is a legacy table shared across
+// modules — without this filter, the list would leak non-kasbank rows.
+// We assert the exact IN(...) args reach the driver; the mocked rows
+// returned only contain kasbank-typed rows, which is what the real SQL
+// Server engine would also do once the WHERE clause is applied.
+func TestList_NoTipe_RestrictsToKasBankDiscriminators(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
+		WithArgs("BKM", "BKK", "BBM", "BBK").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
+		WithArgs("BKM", "BKK", "BBM", "BBK").
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "TipeTransHd"}).
+			AddRow("BKK-1", "BKK").
+			AddRow("BKM-1", "BKM"))
+
+	out, total, err := repo.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	assert.Len(t, out, 2)
+	for _, item := range out {
+		assert.Contains(t, []string{TipeBKM, TipeBKK, TipeBBM, TipeBBK}, *item.TipeTransHd)
+	}
+	assertMock(t, mock)
+}
+
 // TestList_WithFilters exercises the filter branches: tipe + search.
 func TestList_WithFilters(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
@@ -96,6 +131,105 @@ func TestList_WithFilters(t *testing.T) {
 	assert.Equal(t, int64(1), total)
 	assert.Len(t, out, 1)
 	assertMock(t, mock)
+}
+
+// TestList_DefaultPeriod_NoExplicitDate verifies that when the caller does
+// not pass dateFrom/dateTo, the list query is scoped to the user's active
+// DBPERIODE (year/month), mirroring trade-exchange's default view.
+func TestList_DefaultPeriod_NoExplicitDate(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPeriode).
+		WithArgs("SA").
+		WillReturnRows(sqlmock.NewRows([]string{"USERID", "BULAN", "TAHUN"}).AddRow("SA", "06", "2026"))
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
+		WithArgs(2026, 6).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
+		WithArgs(2026, 6).
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "Tanggal"}).AddRow("BKK-202606-0001", time.Now()))
+
+	out, total, err := repo.List(context.Background(), SListKasBankQuery{
+		Page: 1, PerPage: 10, UserID: "SA",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, out, 1)
+	assertMock(t, mock)
+}
+
+// TestList_ExplicitDate_OverridesPeriod verifies that when the caller passes
+// dateFrom/dateTo, the explicit range is used and DBPERIODE is never
+// queried at all.
+func TestList_ExplicitDate_OverridesPeriod(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti"}).AddRow("BKK-1"))
+
+	out, total, err := repo.List(context.Background(), SListKasBankQuery{
+		Page: 1, PerPage: 10, UserID: "SA",
+		DateFrom: "2026-01-01", DateTo: "2026-01-31",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), total)
+	assert.Len(t, out, 1)
+	assertMock(t, mock) // no DBPERIODE query expected/consumed
+}
+
+// TestList_NoPeriodRow_FallsBackToUnrestricted verifies that a user with no
+// DBPERIODE row (GetPeriode returns 0,0) gets the unrestricted list rather
+// than an error or an empty result.
+func TestList_NoPeriodRow_FallsBackToUnrestricted(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPeriode).
+		WithArgs("NEWUSER").
+		WillReturnRows(sqlmock.NewRows([]string{"USERID"}))
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti"}))
+
+	out, total, err := repo.List(context.Background(), SListKasBankQuery{
+		Page: 1, PerPage: 10, UserID: "NEWUSER",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), total)
+	assert.Len(t, out, 0)
+	assertMock(t, mock)
+}
+
+// TestList_NoUserID_SkipsPeriodResolution verifies that when UserID is
+// blank (e.g. an internal caller that never set it), the repository does
+// not attempt to resolve a period and behaves like the pre-TASK-021
+// unrestricted query.
+func TestList_NoUserID_SkipsPeriodResolution(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti"}))
+
+	out, total, err := repo.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), total)
+	assert.Len(t, out, 0)
+	assertMock(t, mock) // no DBPERIODE query expected/consumed
 }
 
 // TestList_CountError covers the error path on the count query.
@@ -304,14 +438,47 @@ func TestSetOtorisasi_Level1(t *testing.T) {
 	assertMock(t, mock)
 }
 
-// TestSetOtorisasi_InvalidLevel returns an error for level 3.
+// TestSetOtorisasi_InvalidLevel returns an error for level 6 (out of the
+// supported 1-5 range).
 func TestSetOtorisasi_InvalidLevel(t *testing.T) {
 	gormDB, _, rawDB := newTestDB(t)
 	defer rawDB.Close()
 	repo := NewSKasBankRepository(gormDB)
 
-	err := repo.SetOtorisasi(context.Background(), "BKK-1", 3, "SA")
+	err := repo.SetOtorisasi(context.Background(), "BKK-1", 6, "SA")
 	require.Error(t, err)
+}
+
+// TestSetOtorisasi_Level5 verifies the raw-SQL update generalises correctly
+// to level 5, not just levels 1/2.
+func TestSetOtorisasi_Level5(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectExec(`UPDATE DBTRANS SET IsOtorisasi5 = 1, OtoUser5 = @p1, TglOto5 = @p2 WHERE NoBukti = @p3`).
+		WithArgs("SA", sqlmock.AnyArg(), "BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.SetOtorisasi(context.Background(), "BKK-1", 5, "SA")
+	require.NoError(t, err)
+	assertMock(t, mock)
+}
+
+// TestCancelOtorisasi_Level5 verifies the raw-SQL update generalises
+// correctly to level 5.
+func TestCancelOtorisasi_Level5(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectExec(`UPDATE DBTRANS SET IsOtorisasi5 = 0, OtoUser5 = '', TglOto5 = NULL WHERE NoBukti = @p1`).
+		WithArgs("BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.CancelOtorisasi(context.Background(), "BKK-1", 5)
+	require.NoError(t, err)
+	assertMock(t, mock)
 }
 
 // TestCancelOtorisasi_Level2 verifies the raw-SQL update for level 2.
@@ -450,5 +617,94 @@ func TestRecalcTotals_Ok(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 5000.0, d)
 	assert.Equal(t, 5000.0, k)
+	assertMock(t, mock)
+}
+
+// TestGetAggregateTotals_EmptyInput verifies that an empty noBuktis slice
+// short-circuits before issuing any SQL — avoiding a query with an empty
+// IN (...) clause. No mock expectation is set, so any query attempt would
+// fail the test via assertMock.
+func TestGetAggregateTotals_EmptyInput(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	out, err := repo.GetAggregateTotals(context.Background(), []string{})
+	require.NoError(t, err)
+	assert.Empty(t, out)
+	assertMock(t, mock) // no query expected/consumed
+}
+
+// TestGetAggregateTotals_SingleVoucher_IdrAndUsdLines covers TASK-022
+// Scenario 1: a voucher with one IDR line and one USD line. JumlahValas
+// must equal only the USD line's Debet+Kredit; JumlahRupiah must equal the
+// sum of both lines' Rupiah-converted amounts (each (Debet+Kredit)*Kurs).
+func TestGetAggregateTotals_SingleVoucher_IdrAndUsdLines(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	// IDR line: Debet=1000000, Kredit=0, Kurs=1 -> contributes 0 to JumlahValas, 1000000 to JumlahRupiah.
+	// USD line: Debet=0, Kredit=100, Kurs=15000 -> contributes 100 to JumlahValas, 1500000 to JumlahRupiah.
+	mock.ExpectQuery(`SELECT NoBukti,\s*COALESCE\(SUM\(Debet\), 0\) AS TotalD,\s*COALESCE\(SUM\(Kredit\), 0\) AS TotalK,\s*COALESCE\(SUM\(CASE WHEN Valas <> 'IDR' THEN Debet \+ Kredit ELSE 0 END\), 0\) AS JumlahValas,\s*COALESCE\(SUM\(\(Debet \+ Kredit\) \* Kurs\), 0\) AS JumlahRupiah\s*FROM DBTRANSAKSI\s*WHERE NoBukti IN \(.+\)\s*GROUP BY NoBukti`).
+		WithArgs("BKK-1").
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "TotalD", "TotalK", "JumlahValas", "JumlahRupiah"}).
+			AddRow("BKK-1", 1000000.0, 100.0, 100.0, 2500000.0))
+
+	out, err := repo.GetAggregateTotals(context.Background(), []string{"BKK-1"})
+	require.NoError(t, err)
+	require.Contains(t, out, "BKK-1")
+	assert.Equal(t, 100.0, out["BKK-1"].JumlahValas, "jumlahvalas must equal only the USD line's Debet+Kredit")
+	assert.Equal(t, 2500000.0, out["BKK-1"].JumlahRupiah, "jumlahrupiah must equal the sum of both lines' Rupiah-converted amounts")
+	assertMock(t, mock)
+}
+
+// TestGetAggregateTotals_MultipleVouchers_SingleQuery covers TASK-022
+// Scenario 2: given 10 vouchers, exactly one aggregate query is issued for
+// the whole page — not 10 separate queries. We assert this implicitly by
+// only setting up ONE mock.ExpectQuery; if the repository issued more than
+// one query, sqlmock would error with "all expectations were already
+// fulfilled" on the second call.
+func TestGetAggregateTotals_MultipleVouchers_SingleQuery(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	noBuktis := make([]string, 0, 10)
+	args := make([]driver.Value, 0, 10)
+	rows := sqlmock.NewRows([]string{"NoBukti", "TotalD", "TotalK", "JumlahValas", "JumlahRupiah"})
+	for i := 0; i < 10; i++ {
+		nb := fmt.Sprintf("BKK-%d", i)
+		noBuktis = append(noBuktis, nb)
+		args = append(args, nb)
+		rows.AddRow(nb, 1000.0, 1000.0, 0.0, 1000.0)
+	}
+
+	mock.ExpectQuery(`SELECT NoBukti,.*FROM DBTRANSAKSI\s*WHERE NoBukti IN \(.+\)\s*GROUP BY NoBukti`).
+		WithArgs(args...).
+		WillReturnRows(rows)
+
+	out, err := repo.GetAggregateTotals(context.Background(), noBuktis)
+	require.NoError(t, err)
+	assert.Len(t, out, 10)
+	assertMock(t, mock) // exactly one query expected/consumed for the whole batch
+}
+
+// TestGetAggregateTotals_VoucherWithNoDetailLines_NotInResult covers the
+// edge case where a voucher has zero detail lines: GROUP BY naturally
+// excludes it from the result set, so the caller must treat a missing key
+// as zero totals (not an error) — verified at the service layer.
+func TestGetAggregateTotals_VoucherWithNoDetailLines_NotInResult(t *testing.T) {
+	gormDB, mock, rawDB := newTestDB(t)
+	defer rawDB.Close()
+	repo := NewSKasBankRepository(gormDB)
+
+	mock.ExpectQuery(`SELECT NoBukti,.*FROM DBTRANSAKSI\s*WHERE NoBukti IN \(.+\)\s*GROUP BY NoBukti`).
+		WithArgs("BKK-EMPTY").
+		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "TotalD", "TotalK", "JumlahValas", "JumlahRupiah"}))
+
+	out, err := repo.GetAggregateTotals(context.Background(), []string{"BKK-EMPTY"})
+	require.NoError(t, err)
+	assert.NotContains(t, out, "BKK-EMPTY")
 	assertMock(t, mock)
 }

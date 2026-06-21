@@ -93,7 +93,7 @@ export function UserListRow({
             className="h-8 w-8 text-slate-400"
             onClick={(e) => {
               e.stopPropagation()
-              navigate({ to: '/admin/_layout/master-data/users/$id', params: { id: user.user_id } })
+              navigate({ to: '/admin/master-data/users/$id', params: { id: user.user_id } })
             }}
             title={t('buttons.detail', 'Detail')}
           >

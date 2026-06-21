@@ -3,6 +3,8 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/joho/godotenv"
 )
@@ -26,9 +28,16 @@ type SConfig struct {
 }
 
 func LoadConfig() *SConfig {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: .env file not found, using system environment variables")
+	// Resolve .env relative to this source file via runtime.Caller
+	// config.go is at internal/infrastructure/config/config.go
+	_, filename, _, _ := runtime.Caller(0)
+	configDir := filepath.Dir(filename) // internal/infrastructure/config
+	envPath := filepath.Join(configDir, "..", "..", "..", ".env")
+
+	if info, err := os.Stat(envPath); err == nil && !info.IsDir() {
+		_ = godotenv.Load(envPath)
+	} else {
+		log.Println("Warning: .env file not found at expected path, using system environment variables")
 	}
 
 	return &SConfig{

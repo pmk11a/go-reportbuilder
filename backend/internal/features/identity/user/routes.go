@@ -10,6 +10,7 @@ import (
 //
 // Routes:
 //   GET    /users
+//   GET    /users/:id
 //   POST   /users
 //   PUT    /users/:id
 //   DELETE /users/:id
@@ -20,6 +21,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *SUserHandler, authMW gin.HandlerFunc
 	}
 	{
 		users.GET("", h.GetUsers)
+		users.GET("/:id", h.GetUser)
 		users.POST("", h.CreateUser)
 		users.PUT("/:id", h.UpdateUser)
 		users.DELETE("/:id", h.DeleteUser)
