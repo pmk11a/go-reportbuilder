@@ -55,6 +55,7 @@ After every bug fix, error resolution, or pattern discovery — **automatically 
 5. **Prefer edit over create** — Modify existing files when possible.
 6. **No unsolicited docs** — Only create documentation when explicitly asked.
 7. **Never commit secrets** — No API keys, passwords, or sensitive data.
+8. **DILARANG GIT COMMAND TANPA PERINTAH** — `git stash`, `git stash drop`, `git checkout`, `git commit`, `git push` — JANGAN PERNAH dijalankan tanpa perintah eksplisit dari user, termasuk saat auto-edit mode aktif atau bypass permission on. Tidak ada pengecualian.
 8. **Use existing patterns** — Follow Domain-Based architecture and TanStack Start server function conventions.
 9. **One feature per task** — Create a separate task file in `tasks/` per distinct feature before starting. Do not combine unrelated features.
 10. **Verify compilation** — Go code MUST compile with zero errors before handoff.

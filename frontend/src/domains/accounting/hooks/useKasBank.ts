@@ -70,7 +70,7 @@ export function useDeleteKasBank(onSuccess?: () => void) {
   });
 }
 
-export function useSetOtorisasi(noBukti: string, onSuccess?: () => void) {
+export function useSetOtorisasi(noBukti: string, onSuccess?: () => void, onError?: (msg: string) => void) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: IOtorisasiRequest) => kasbankService.setOtorisasi(noBukti, data),
@@ -79,10 +79,14 @@ export function useSetOtorisasi(noBukti: string, onSuccess?: () => void) {
       qc.invalidateQueries({ queryKey: kasbankKeys.detail(noBukti) });
       onSuccess?.();
     },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Gagal memproses otorisasi';
+      onError?.(msg);
+    },
   });
 }
 
-export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void) {
+export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onError?: (msg: string) => void) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: IOtorisasiRequest) => kasbankService.batalOtorisasi(noBukti, data),
@@ -90,6 +94,10 @@ export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void) {
       qc.invalidateQueries({ queryKey: kasbankKeys.all });
       qc.invalidateQueries({ queryKey: kasbankKeys.detail(noBukti) });
       onSuccess?.();
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Gagal memproses pembatalan otorisasi';
+      onError?.(msg);
     },
   });
 }

@@ -12,7 +12,7 @@ import { Badge } from '@/shared/ui/overlay/badge';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { Each, Show } from '@/shared/ui/layout/Render';
 import { toast } from '@/shared/hooks/use-toast';
-import { AuthLevelCell } from './OtorisasiButton';
+import { AuthLevelBadge } from './OtorisasiButton';
 import { KasBankTypeBadge } from './KasBankTypeBadge';
 
 /* ========================================================= */
@@ -154,7 +154,7 @@ export function KasBankDetailPage({ nobukti }: { nobukti: string }) {
             return (
               <div key={`auth-${levelNum}`} className="flex items-center gap-2">
                 <span className="text-sm font-medium w-20">Authorized {levelNum}:</span>
-                <AuthLevelCell voucher={voucher} level={levelNum} />
+                <AuthLevelBadge voucher={voucher} level={levelNum} />
               </div>
             );
           })}

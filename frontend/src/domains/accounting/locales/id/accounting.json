@@ -48,7 +48,11 @@
     "search": "Cari",
     "refresh": "Segarkan",
     "filter": "Filter",
-    "clear_filter": "Hapus Filter"
+    "clear_filter": "Hapus Filter",
+    "authorize_level": "Otorisasi Tingkat {{level}}",
+    "cancel_authorization": "Batalkan Otorisasi",
+    "confirm_auth": "Konfirmasi Otorisasi",
+    "yes_cancel": "Ya, Batalkan"
   },
   "headers": {
     "no_bukti": "No. Bukti",

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IKasBankHeader } from '@/domains/accounting/types/kasbank';
+import { useAuthStore } from '@/shared/stores/authStore';
 import { useSetOtorisasi, useBatalOtorisasi } from '@/domains/accounting/hooks/useKasBank';
 import { Button } from '@/shared/ui/overlay/button';
 import {
@@ -17,6 +18,7 @@ import {
 import { Each, Show } from '@/shared/ui/layout/Render';
 import { Ban, CheckCircle, MinusCircle, ShieldCheck, Undo2, XCircle } from 'lucide-react';
 import { CustomTooltip } from '@/shared/ui/feedback/custom-tooltip';
+import { useToast } from '@/shared/hooks/use-toast';
 
 export type TOtorisasiLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -60,16 +62,14 @@ function formatOtorisasiDate(value: string | null): string {
   return new Date(value).toLocaleDateString('id-ID');
 }
 
-/* ===== Cell renderer for a single authorization level column ===== */
+/* ===== Auth level logic hook — reusable by both table and detail views ===== */
 
-export function AuthLevelCell({ voucher, level }: { voucher: IKasBankHeader; level: TOtorisasiLevel }) {
-  const { t } = useTranslation(['accounting', 'common']);
+function useAuthLevelState(voucher: IKasBankHeader, level: TOtorisasiLevel) {
   const approved = isLevelApproved(voucher, level);
   const user = getOtorisasiUser(voucher, level);
   const date = getOtorisasiDate(voucher, level);
   const formattedDate = formatOtorisasiDate(date);
 
-  /* Determine if this is the next authorize-able level (sequential) */
   let isNext = false;
   if (!approved && !voucher.locked) {
     isNext = true;
@@ -82,89 +82,121 @@ export function AuthLevelCell({ voucher, level }: { voucher: IKasBankHeader; lev
     }
   }
 
-  /* When all levels approved, voucher.locked=true. In this state the user
-     still needs to see the full approval history (who approved, when) and
-     the ability to cancel individual levels. */
   const isFullyLocked = voucher.locked && approved;
+  return { approved, user, formattedDate, isNext, isFullyLocked };
+}
+
+/* ===== Shared badge/renderer for a single authorization level ===== */
+
+export function AuthLevelBadge({ voucher, level }: { voucher: IKasBankHeader; level: TOtorisasiLevel }) {
+  const { t } = useTranslation(['accounting', 'common']);
+  const { approved, user, formattedDate, isNext, isFullyLocked } = useAuthLevelState(voucher, level);
+
+  if (isFullyLocked) {
+    return (
+      <div className="flex items-center justify-center gap-1 py-0.5">
+        <CustomTooltip
+          rows={[
+            { label: t('otorisasi.approved_by'), value: user || '-' },
+            { label: t('otorisasi.approved_at'), value: formattedDate },
+          ]}
+        >
+          <span className="inline-flex items-center justify-center h-6 min-w-[48px] rounded-md border border-emerald-200 bg-emerald-50 px-1.5 text-xs font-medium text-emerald-700 cursor-help dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-400">
+            <CheckCircle className="h-3 w-3 mr-0.5 shrink-0" />
+            <span className="truncate ml-0.5">{user || '?'}</span>
+          </span>
+        </CustomTooltip>
+        <CancelLevelButton level={level} voucher={voucher} otouser={user} />
+      </div>
+    );
+  }
+
+  if (voucher.locked) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+        <MinusCircle className="h-3 w-3" />
+        —
+      </span>
+    );
+  }
+
+  if (approved) {
+    return (
+      <div className="flex items-center justify-center gap-1 py-0.5">
+        <CustomTooltip
+          rows={[
+            { label: t('otorisasi.approved_by'), value: user || '-' },
+            { label: t('otorisasi.approved_at'), value: formattedDate },
+          ]}
+        >
+          <span className="inline-flex items-center justify-center h-6 min-w-[48px] rounded-md border border-emerald-200 bg-emerald-50 px-1.5 text-xs font-medium text-emerald-700 cursor-help dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-400">
+            <CheckCircle className="h-3 w-3 mr-0.5 shrink-0" />
+            {user ? (
+              <span className="truncate ml-0.5">{user}</span>
+            ) : (
+              <span className="ml-0.5">{formattedDate}</span>
+            )}
+          </span>
+        </CustomTooltip>
+        <CancelLevelButton level={level} voucher={voucher} otouser={user} />
+      </div>
+    );
+  }
+
+  if (isNext) {
+    return <AuthorizeLevelButton level={level} voucher={voucher} />;
+  }
 
   return (
-    <>
-      {/* Authorized value */}
-      <td className="whitespace-nowrap px-2 py-1.5 text-center align-middle">
-        {isFullyLocked ? (
-          <div className="flex items-center justify-center gap-1 py-0.5">
-            <CustomTooltip
-              rows={[
-                { label: t('otorisasi.approved_by'), value: user || '-' },
-                { label: t('otorisasi.approved_at'), value: formattedDate },
-              ]}
-            >
-              <span className="inline-flex items-center justify-center h-6 min-w-[48px] rounded-md border border-emerald-200 bg-emerald-50 px-1.5 text-xs font-medium text-emerald-700 cursor-help dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-400">
-                <CheckCircle className="h-3 w-3 mr-0.5 shrink-0" />
-                <span className="truncate ml-0.5">{user || '?'}</span>
-              </span>
-            </CustomTooltip>
-            <CancelLevelButton level={level} voucher={voucher} />
-          </div>
-        ) : voucher.locked ? (
-          /* Fallback for locked but not-yet-approved edge */
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-            <MinusCircle className="h-3 w-3" />
-            —
-          </span>
-        ) : approved ? (
-          <div className="flex items-center justify-center gap-1 py-0.5">
-            <CustomTooltip
-              rows={[
-                { label: t('otorisasi.approved_by'), value: user || '-' },
-                { label: t('otorisasi.approved_at'), value: formattedDate },
-              ]}
-            >
-              <span className="inline-flex items-center justify-center h-6 min-w-[48px] rounded-md border border-emerald-200 bg-emerald-50 px-1.5 text-xs font-medium text-emerald-700 cursor-help dark:border-emerald-800/50 dark:bg-emerald-900/20 dark:text-emerald-400">
-                <CheckCircle className="h-3 w-3 mr-0.5 shrink-0" />
-                {user ? (
-                  <span className="truncate ml-0.5">{user}</span>
-                ) : (
-                  <span className="ml-0.5">{formattedDate}</span>
-                )}
-              </span>
-            </CustomTooltip>
-            <CancelLevelButton level={level} voucher={voucher} />
-          </div>
-        ) : isNext ? (
-          <AuthorizeLevelButton level={level} voucher={voucher} />
-        ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-400 dark:bg-slate-800">
-            <span>—</span>
-          </span>
-        )}
-      </td>
-      {/* Authorized user */}
-      <td className="whitespace-nowrap px-2 py-1.5 text-center align-middle">
-        {approved && user ? (
-          <span className="text-xs text-slate-600 dark:text-slate-300">{user}</span>
-        ) : (
-          <span className="text-xs text-slate-400">-</span>
-        )}
-      </td>
-      {/* Authorized date */}
-      <td className="whitespace-nowrap px-2 py-1.5 text-center align-middle">
-        {approved && formattedDate !== '-' ? (
-          <span className="text-xs text-slate-600 dark:text-slate-300">{formattedDate}</span>
-        ) : (
-          <span className="text-xs text-slate-400">-</span>
-        )}
-      </td>
-    </>
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-400 dark:bg-slate-800">
+      <span>—</span>
+    </span>
   );
 }
 
-/* ===== Cancel authorization icon button ===== */
+/* ===== Table cell renderer — wraps badge in <td> ===== */
 
-function CancelLevelButton({ level, voucher }: { level: TOtorisasiLevel; voucher: IKasBankHeader }) {
+export function AuthLevelCell({ voucher, level }: { voucher: IKasBankHeader; level: TOtorisasiLevel }) {
+  return (
+    <td className="whitespace-nowrap px-2 py-1.5 text-center align-middle">
+      <AuthLevelBadge voucher={voucher} level={level} />
+    </td>
+  );
+}
+
+/* ===== Export hook for detail page reuse ===== */
+export { useAuthLevelState };
+
+/* ===== Cancel authorization icon button — hidden if not the authorizer ===== */
+
+function CancelLevelButton({
+  level,
+  voucher,
+  otouser,
+}: {
+  level: TOtorisasiLevel;
+  voucher: IKasBankHeader;
+  otouser: string;
+}) {
   const { t } = useTranslation(['accounting', 'common']);
   const [open, setOpen] = useState(false);
-  const batalOto = useBatalOtorisasi(voucher.nobukti, () => setOpen(false));
+  const { toast } = useToast();
+  const batalOto = useBatalOtorisasi(
+    voucher.nobukti,
+    () => {
+      setOpen(false);
+      toast({ title: t('messages.otorisasi_canceled'), variant: 'success' });
+    },
+    (msg) => {
+      setOpen(false);
+      toast({ title: msg, variant: 'destructive' });
+    },
+  );
+
+  const currentUser = useAuthStore(s => s.user);
+  const isAuthorizer = currentUser?.username === otouser || currentUser?.user_id === otouser;
+
+  if (!isAuthorizer) return null;
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -193,7 +225,16 @@ function CancelLevelButton({ level, voucher }: { level: TOtorisasiLevel; voucher
 
 function AuthorizeLevelButton({ level, voucher }: { level: TOtorisasiLevel; voucher: IKasBankHeader }) {
   const { t } = useTranslation(['accounting', 'common']);
-  const setOto = useSetOtorisasi(voucher.nobukti, () => {});
+  const { toast } = useToast();
+  const setOto = useSetOtorisasi(
+    voucher.nobukti,
+    () => {
+      toast({ title: t('messages.otorisasi_level_success', { level }), variant: 'success' });
+    },
+    (msg) => {
+      toast({ title: msg, variant: 'destructive' });
+    },
+  );
 
   return (
     <AlertDialog>
@@ -232,10 +273,30 @@ interface OtorisasiButtonProps {
 export function OtorisasiButton({ voucher, onSuccess }: OtorisasiButtonProps) {
   const { t } = useTranslation(['accounting', 'common']);
   const [showBatal, setShowBatal] = useState(false);
-  const batalOto = useBatalOtorisasi(voucher.nobukti, () => setShowBatal(false));
+  const { toast } = useToast();
+  const batalOto = useBatalOtorisasi(
+    voucher.nobukti,
+    () => {
+      setShowBatal(false);
+      toast({ title: t('messages.otorisasi_canceled'), variant: 'success' });
+      onSuccess?.();
+    },
+    (msg) => {
+      setShowBatal(false);
+      toast({ title: msg, variant: 'destructive' });
+    },
+  );
+  const currentUser = useAuthStore(s => s.user);
 
   const approvedLevels = Array.from({ length: voucher.maxol }, (_, i) => (i + 1) as TOtorisasiLevel)
-    .filter((level) => isLevelApproved(voucher, level));
+    .filter((level) => {
+      if (!isLevelApproved(voucher, level)) return false;
+      const levelUser = getOtorisasiUser(voucher, level);
+      // Only include if current user matches the authorizer
+      return currentUser?.username === levelUser || currentUser?.user_id === levelUser;
+    });
+
+  const canCancel = approvedLevels.length > 0;
 
   return (
     <div className="flex items-center gap-2">
@@ -244,12 +305,13 @@ export function OtorisasiButton({ voucher, onSuccess }: OtorisasiButtonProps) {
           <CheckCircle className="h-3 w-3" />
           {t('otorisasi.locked')}
         </span>
-        <AlertDialog open={showBatal} onOpenChange={setShowBatal}>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-              <Undo2 className="h-3.5 w-3.5" />
-            </Button>
-          </AlertDialogTrigger>
+        <Show when={canCancel}>
+          <AlertDialog open={showBatal} onOpenChange={setShowBatal}>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                <Undo2 className="h-3.5 w-3.5" />
+              </Button>
+            </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t('actions.batal_otorisasi')}</AlertDialogTitle>
@@ -266,7 +328,8 @@ export function OtorisasiButton({ voucher, onSuccess }: OtorisasiButtonProps) {
               </Each>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>
+          </AlertDialog>
+        </Show>
       </Show>
     </div>
   );

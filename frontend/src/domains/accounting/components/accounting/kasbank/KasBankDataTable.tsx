@@ -109,15 +109,8 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
   const deleteMutation = useDeleteKasBank();
   const downloadPdf = useDownloadKasBankPdf('');
 
-  // Debug logging
-  console.log('[KasBankDataTable] response:', JSON.stringify(response, null, 2));
-  console.log('[KasBankDataTable] response?.data:', response?.data);
-
   const listData = response?.data;
   const vouchers: IKasBankHeader[] = listData?.items ?? [];
-  console.log('[KasBankDataTable] listData:', listData);
-  console.log('[KasBankDataTable] vouchers:', vouchers);
-  console.log('[KasBankDataTable] vouchers.length:', vouchers.length);
   const pagination = listData ?? { total: 0, page: 1, perPage: 10 };
 
   const handleDelete = (v: IKasBankHeader) => {
@@ -146,17 +139,9 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
   const maxOtorisasi = vouchers.length > 0 ? Math.max(...vouchers.map(v => v.maxol ?? 2)) : 2;
 
   const authHeaders = Array.from({ length: maxOtorisasi }, (_, i) => i + 1).map(level => (
-    <>
-      <TableHead key={`auth-hdr-${level}`} className="text-center min-w-[80px] w-[80px]">
-        Authorized {level}
-      </TableHead>
-      <TableHead key={`auth-hdr-${level}-user`} className="text-center min-w-[100px] w-[100px]">
-        User {level}
-      </TableHead>
-      <TableHead key={`auth-hdr-${level}-date`} className="text-center min-w-[80px] w-[80px]">
-        Tanggal {level}
-      </TableHead>
-    </>
+    <TableHead key={`auth-hdr-${level}`} className="text-center min-w-[80px] w-[80px]">
+      Authorized {level}
+    </TableHead>
   ));
 
   return (
@@ -247,7 +232,7 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
                       <TableCell><Skeleton className="h-6 w-full" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-full" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-full" /></TableCell>
-                      <Each of={Array.from({ length: maxOtorisasi * 3 }, (_, i) => i)}>
+                      <Each of={Array.from({ length: maxOtorisasi }, (_, i) => i)}>
                         {(i: number) => (
                           <TableCell key={i}><Skeleton className="h-6 w-full" /></TableCell>
                         )}
@@ -262,7 +247,7 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
                 of={vouchers}
                 fallback={
                   <TableRow>
-                    <TableCell colSpan={8 + 3 * maxOtorisasi} className="text-center py-12 text-slate-500">
+                    <TableCell colSpan={8 + maxOtorisasi} className="text-center py-12 text-slate-500">
                       {t('messages.no_data')}
                     </TableCell>
                   </TableRow>

@@ -48,7 +48,11 @@
     "search": "Search",
     "refresh": "Refresh",
     "filter": "Filter",
-    "clear_filter": "Clear Filter"
+    "clear_filter": "Clear Filter",
+    "authorize_level": "Authorize Level {{level}}",
+    "cancel_authorization": "Cancel Authorization",
+    "confirm_auth": "Confirm Authorization",
+    "yes_cancel": "Yes, Cancel"
   },
   "headers": {
     "no_bukti": "Voucher No.",
