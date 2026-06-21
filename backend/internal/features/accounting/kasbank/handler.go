@@ -56,7 +56,9 @@ func userIDFromContext(c *gin.Context) string {
 
 // ListKasBank godoc
 // @Summary List Kas/Bank Vouchers
-// @Description Paginated list of journal headers with optional filters
+// @Description Paginated list of journal headers with optional filters. When
+// @Description dateFrom/dateTo are omitted, the list defaults to the caller's
+// @Description active accounting period (DBPERIODE).
 // @Tags AccountingKasBank
 // @Produce json
 // @Param tipe query string false "Filter by TipeTransHd (BKM/BKK/BBM/BBK)"
@@ -83,6 +85,7 @@ func (h *SKasBankHandler) ListKasBank(c *gin.Context) {
 		return
 	}
 	q.Tipe = strings.ToUpper(q.Tipe)
+	q.UserID = userIDFromContext(c)
 	out, err := h.svc.List(c.Request.Context(), q)
 	if err != nil {
 		response.InternalError(c, "Failed to list kas bank: "+err.Error())
@@ -102,7 +105,7 @@ func (h *SKasBankHandler) ListKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti} [get]
 func (h *SKasBankHandler) GetKasBank(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	header, _, err := h.svc.GetByNoBukti(c.Request.Context(), noBukti)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -156,7 +159,7 @@ func (h *SKasBankHandler) CreateKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti} [put]
 func (h *SKasBankHandler) UpdateKasBank(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	var req SUpdateKasBankRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request body: "+err.Error())
@@ -181,7 +184,7 @@ func (h *SKasBankHandler) UpdateKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti} [delete]
 func (h *SKasBankHandler) DeleteKasBank(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	if err := h.svc.DeleteHeader(c.Request.Context(), noBukti); err != nil {
 		writeServiceError(c, err)
 		return
@@ -200,7 +203,7 @@ func (h *SKasBankHandler) DeleteKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/detail [get]
 func (h *SKasBankHandler) ListKasBankDetail(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	header, details, err := h.svc.GetByNoBukti(c.Request.Context(), noBukti)
 	if err != nil {
 		writeServiceError(c, err)
@@ -224,7 +227,7 @@ func (h *SKasBankHandler) ListKasBankDetail(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/detail/{urut} [get]
 func (h *SKasBankHandler) GetKasBankDetail(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	urut, err := strconv.Atoi(c.Param("urut"))
 	if err != nil {
 		response.BadRequest(c, "Invalid urut parameter")
@@ -259,7 +262,7 @@ func (h *SKasBankHandler) GetKasBankDetail(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/detail [post]
 func (h *SKasBankHandler) AddKasBankDetail(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	var d SDetailInput
 	if err := c.ShouldBindJSON(&d); err != nil {
 		response.BadRequest(c, "Invalid detail body: "+err.Error())
@@ -286,7 +289,7 @@ func (h *SKasBankHandler) AddKasBankDetail(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/detail/{urut} [put]
 func (h *SKasBankHandler) UpdateKasBankDetail(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	urut, err := strconv.Atoi(c.Param("urut"))
 	if err != nil {
 		response.BadRequest(c, "Invalid urut parameter")
@@ -316,7 +319,7 @@ func (h *SKasBankHandler) UpdateKasBankDetail(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/detail/{urut} [delete]
 func (h *SKasBankHandler) DeleteKasBankDetail(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	urut, err := strconv.Atoi(c.Param("urut"))
 	if err != nil {
 		response.BadRequest(c, "Invalid urut parameter")
@@ -331,7 +334,9 @@ func (h *SKasBankHandler) DeleteKasBankDetail(c *gin.Context) {
 
 // SetOtorisasiKasBank godoc
 // @Summary Set Otorisasi
-// @Description Set IsOtorisasiN=1 for the given level (1 or 2)
+// @Description Set IsOtorisasiN=1 for the given level (1 to 5). Level N
+// @Description requires level N-1 already approved, and the approver of
+// @Description level N must differ from the approver of level N-1.
 // @Tags AccountingKasBank
 // @Accept json
 // @Produce json
@@ -343,7 +348,7 @@ func (h *SKasBankHandler) DeleteKasBankDetail(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/otorisasi [post]
 func (h *SKasBankHandler) SetOtorisasiKasBank(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	var req SOtorisasiRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request body: "+err.Error())
@@ -359,7 +364,8 @@ func (h *SKasBankHandler) SetOtorisasiKasBank(c *gin.Context) {
 
 // BatalOtorisasiKasBank godoc
 // @Summary Cancel Otorisasi
-// @Description Clear IsOtorisasiN for the given level (1 or 2)
+// @Description Clear IsOtorisasiN for the given level (1 to 5). Rejected
+// @Description when level N+1 is already approved.
 // @Tags AccountingKasBank
 // @Accept json
 // @Produce json
@@ -370,7 +376,7 @@ func (h *SKasBankHandler) SetOtorisasiKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/batal-otorisasi [post]
 func (h *SKasBankHandler) BatalOtorisasiKasBank(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	var req SOtorisasiRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request body: "+err.Error())
@@ -444,7 +450,7 @@ func (h *SKasBankHandler) LookupPerkiraan(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti}/pdf [get]
 func (h *SKasBankHandler) DownloadPDF(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	header, details, err := h.svc.GetByNoBukti(c.Request.Context(), noBukti)
 	if err != nil {
 		writeServiceError(c, err)
@@ -481,7 +487,10 @@ func writeServiceError(c *gin.Context, err error) {
 		errors.Is(err, ErrDoubleEntryUnbalanced),
 		errors.Is(err, ErrSelfOtorisasi),
 		errors.Is(err, ErrDetailRequired),
-		errors.Is(err, ErrDetailUrutConflict):
+		errors.Is(err, ErrDetailUrutConflict),
+		errors.Is(err, ErrOtorisasiLevelInvalid),
+		errors.Is(err, ErrOtorisasiPrevLevelMissing),
+		errors.Is(err, ErrOtorisasiNextLevelSet):
 		response.BadRequest(c, err.Error())
 	default:
 		response.InternalError(c, err.Error())

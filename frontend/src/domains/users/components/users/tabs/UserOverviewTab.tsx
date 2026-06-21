@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
 import { Skeleton } from '@/shared/ui/feedback/skeleton'
 import { Badge } from '@/shared/ui'
-import { User, Mail, Shield, Clock, Calendar } from 'lucide-react'
+import { User, IdCard, Shield, Power, Calendar } from 'lucide-react'
 import type { IDbflpass } from '@/domains/users/types/user'
 
 interface IUserOverviewTabProps {
@@ -42,7 +42,7 @@ export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
     <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
       {/* User Avatar and Basic Info */}
       <div className="flex items-start gap-6 mb-8">
-        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+        <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
           {user.full_name?.charAt(0)?.toUpperCase() || user.user_id.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1">
@@ -78,7 +78,7 @@ export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
         {/* Full Name */}
         <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5">
           <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <Shield className="h-5 w-5" />
+            <IdCard className="h-5 w-5" />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -93,7 +93,7 @@ export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
         {/* Role */}
         <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5">
           <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-            <Mail className="h-5 w-5" />
+            <Shield className="h-5 w-5" />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -108,7 +108,7 @@ export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
         {/* Status */}
         <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5">
           <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
-            <Clock className="h-5 w-5" />
+            <Power className="h-5 w-5" />
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">

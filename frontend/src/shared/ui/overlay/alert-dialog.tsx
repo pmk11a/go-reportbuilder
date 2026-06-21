@@ -22,8 +22,8 @@ export const AlertDialogTrigger = forwardRef<HTMLButtonElement, AlertDialogTrigg
   ({ asChild, children, ...props }, ref) => {
     if (asChild) {
       return (
-        <DialogTrigger asChild>
-          <Button ref={ref} {...props}>{children}</Button>
+        <DialogTrigger asChild ref={ref} {...props}>
+          {children}
         </DialogTrigger>
       );
     }

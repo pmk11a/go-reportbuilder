@@ -117,6 +117,32 @@ func (h *SUserHandler) CreateUser(c *gin.Context) {
 	response.Created(c, "User created successfully", newUser)
 }
 
+// GetUser godoc
+// @Summary Get User
+// @Description Fetch a single legacy user record from the DBFLPASS table by USERID
+// @Tags User
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/admin/users/{id} [get]
+func (h *SUserHandler) GetUser(c *gin.Context) {
+	userID := c.Param("id") // The userID string (e.g. SA, ADMIN, MIA)
+	if userID == "" {
+		response.BadRequest(c, "Invalid user ID")
+		return
+	}
+
+	user, err := h.repo.GetByUserIDDBFLPASS(userID)
+	if err != nil {
+		response.NotFound(c, "User not found")
+		return
+	}
+
+	response.Success(c, "User retrieved successfully", user)
+}
+
 // UpdateUser godoc
 // @Summary Update User
 // @Description Update legacy fields for a user inside the DBFLPASS table

@@ -5,7 +5,10 @@
 //   - Validate the journal date is inside the user's active period (DBPERIODE).
 //   - Enforce double-entry (sum(Debet) == sum(Kredit) across ALL detail rows).
 //   - Reject mutations after IsOtorisasi1=1 (locked once Otorisasi 1 fires).
-//   - Reject Otorisasi 2 by the same user that did Otorisasi 1.
+//   - Support up to 5 sequential otorisasi levels (IsOtorisasi1-5): level N
+//     requires level N-1 already approved, and the approver of level N must
+//     differ from the approver of level N-1. The record's effective MaxOL
+//     decides how many levels are actually required (see effectiveMaxOL).
 //   - Re-validate on every detail mutation (Add/Update/Delete).
 //
 // The service holds a *gorm.DB so it can wrap multi-table operations in a
@@ -26,19 +29,31 @@ import (
 // Sentinel errors translated by the handler into HTTP status codes.
 // 400 = validation, 403 = authorization, 404 = missing, 500 = internal.
 var (
-	ErrTanggalDiLuarPeriode = errors.New("tanggal di luar periode aktif user")
-	ErrTanggalInvalid       = errors.New("format tanggal tidak valid")
-	ErrTipeInvalid          = errors.New("tipe voucher harus BKM/BKK/BBM/BBK")
-	ErrNoBuktiEmpty         = errors.New("no bukti kosong")
-	ErrPeriodeNotSet        = errors.New("user belum memiliki periode aktif di DBPERIODE")
-	ErrLockedByOtorisasi1   = errors.New("transaksi sudah diotorisasi level 1")
-	ErrLockedByOtorisasi2   = errors.New("transaksi sudah diotorisasi level 2")
-	ErrDoubleEntryUnbalanced = errors.New("total debet dan kredit harus seimbang")
-	ErrSelfOtorisasi        = errors.New("user yang mengotorisasi level 1 tidak boleh mengotorisasi level 2")
-	ErrDetailRequired       = errors.New("minimal satu baris jurnal diperlukan")
-	ErrDetailUrutConflict   = errors.New("urut detail bentrok dengan baris yang sudah ada")
-	ErrNotFound             = errors.New("transaksi kas bank tidak ditemukan")
+	ErrTanggalDiLuarPeriode      = errors.New("tanggal di luar periode aktif user")
+	ErrTanggalInvalid            = errors.New("format tanggal tidak valid")
+	ErrTipeInvalid               = errors.New("tipe voucher harus BKM/BKK/BBM/BBK")
+	ErrNoBuktiEmpty              = errors.New("no bukti kosong")
+	ErrPeriodeNotSet             = errors.New("user belum memiliki periode aktif di DBPERIODE")
+	ErrLockedByOtorisasi1        = errors.New("transaksi sudah diotorisasi level 1")
+	ErrLockedByOtorisasi2        = errors.New("transaksi sudah diotorisasi level 2")
+	ErrDoubleEntryUnbalanced     = errors.New("total debet dan kredit harus seimbang")
+	ErrSelfOtorisasi             = errors.New("user yang mengotorisasi level sebelumnya tidak boleh mengotorisasi level berikutnya")
+	ErrDetailRequired            = errors.New("minimal satu baris jurnal diperlukan")
+	ErrDetailUrutConflict        = errors.New("urut detail bentrok dengan baris yang sudah ada")
+	ErrNotFound                  = errors.New("transaksi kas bank tidak ditemukan")
+	ErrOtorisasiLevelInvalid     = errors.New("level otorisasi tidak valid (harus 1-5)")
+	ErrOtorisasiPrevLevelMissing = errors.New("level otorisasi sebelumnya belum disetujui")
+	ErrOtorisasiNextLevelSet     = errors.New("tidak dapat membatalkan otorisasi karena level berikutnya sudah disetujui")
 )
+
+// maxOtorisasiLevel is the highest otorisasi level DAPEN supports, mirroring
+// trade-exchange's IsOtorisasi1-5 columns on DBTRANS.
+const maxOtorisasiLevel = 5
+
+// defaultMaxOL is used when a record's MaxOL column is not a valid 1-5
+// value (0, negative, or >5). This preserves the pre-TASK-021 behaviour for
+// every record DAPEN itself created, which never populated MaxOL.
+const defaultMaxOL = 2
 
 // IKasBankService is the business-logic contract for the kasbank domain.
 // The handler depends on this interface, not the concrete struct.
@@ -73,9 +88,11 @@ type IKasBankService interface {
 	// DeleteDetail removes a row and recalculates TotalD.
 	DeleteDetail(ctx context.Context, noBukti string, urut int) error
 
-	// SetOtorisasi sets the given level (1 or 2) for the header.
+	// SetOtorisasi sets the given level (1 to 5) for the header. Level N
+	// requires level N-1 already approved by a different user.
 	SetOtorisasi(ctx context.Context, noBukti string, level int, userID string) error
-	// CancelOtorisasi clears the given level (1 or 2).
+	// CancelOtorisasi clears the given level (1 to 5). Rejected if level
+	// N+1 is already approved.
 	CancelOtorisasi(ctx context.Context, noBukti string, level int) error
 }
 
@@ -92,7 +109,12 @@ func NewSKasBankService(repo IKasBankRepository, db *gorm.DB) *SKasBankService {
 	return &SKasBankService{repo: repo, db: db}
 }
 
-// List delegates to the repository and wraps the result in a paginated DTO.
+// List delegates to the repository, batch-fetches aggregate totals for the
+// whole page in a single query (avoiding N+1), and converts every raw row
+// to the SKasBankHeader view-model — the same conversion GetByNoBukti uses
+// (otorisasi1..5, effective maxol, locked). Without this conversion the
+// list endpoint previously returned raw SDbTrans rows with no totals and
+// the wrong JSON keys (see TASK-022 business problem).
 func (s *SKasBankService) List(ctx context.Context, q SListKasBankQuery) (*SListKasBankResponse, error) {
 	if q.Page < 1 {
 		q.Page = 1
@@ -100,10 +122,27 @@ func (s *SKasBankService) List(ctx context.Context, q SListKasBankQuery) (*SList
 	if q.PerPage < 1 {
 		q.PerPage = 10
 	}
-	items, total, err := s.repo.List(ctx, q)
+	rows, total, err := s.repo.List(ctx, q)
 	if err != nil {
 		return nil, err
 	}
+
+	noBuktis := make([]string, 0, len(rows))
+	for _, h := range rows {
+		noBuktis = append(noBuktis, h.NoBukti)
+	}
+	aggregates, err := s.repo.GetAggregateTotals(ctx, noBuktis)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]SKasBankHeader, 0, len(rows))
+	for i := range rows {
+		h := &rows[i]
+		agg := aggregates[h.NoBukti] // zero-value SAggregateTotals when missing — not an error
+		items = append(items, toKasBankHeader(h, agg))
+	}
+
 	return &SListKasBankResponse{
 		Items:   items,
 		Total:   total,
@@ -114,7 +153,10 @@ func (s *SKasBankService) List(ctx context.Context, q SListKasBankQuery) (*SList
 
 // GetByNoBukti fetches the header and its detail rows in two queries. The
 // domain view-model SKasBankHeader is filled in with pre-computed totals
-// (TotalD, TotalK) for the UI badge.
+// (TotalD, TotalK, JumlahValas, JumlahRupiah) for the UI badge, via the
+// same single-NoBukti GetAggregateTotals path List() uses for a page — this
+// keeps the detail and list views consistent without duplicating the
+// aggregation SQL.
 func (s *SKasBankService) GetByNoBukti(ctx context.Context, noBukti string) (*SKasBankHeader, []SDbTransaksi, error) {
 	h, err := s.repo.GetByNoBukti(ctx, noBukti)
 	if err != nil {
@@ -127,23 +169,61 @@ func (s *SKasBankService) GetByNoBukti(ctx context.Context, noBukti string) (*SK
 	if err != nil {
 		return nil, nil, err
 	}
-	totalD, totalK, err := s.repo.RecalcTotals(ctx, noBukti)
+	aggregates, err := s.repo.GetAggregateTotals(ctx, []string{noBukti})
 	if err != nil {
 		return nil, nil, err
 	}
-	view := &SKasBankHeader{
+	agg := aggregates[noBukti] // zero-value when the voucher has no detail lines
+
+	view := toKasBankHeader(h, agg)
+	return &view, details, nil
+}
+
+// toKasBankHeader converts a raw DBTRANS row + its pre-computed aggregate
+// totals into the SKasBankHeader view-model. Shared by List() (batch path)
+// and GetByNoBukti() (single-row path) so the effectiveMaxOL/
+// isOtorisasiApproved/field-mapping logic is not duplicated.
+func toKasBankHeader(h *SDbTrans, agg SAggregateTotals) SKasBankHeader {
+	maxOL := effectiveMaxOL(h)
+	nojurnal := ""
+	if h.NoJurnal != nil {
+		nojurnal = *h.NoJurnal
+	}
+	nobuktisem := ""
+	if h.NoBuktiSem != nil {
+		nobuktisem = *h.NoBuktiSem
+	}
+	return SKasBankHeader{
 		NoBukti:         h.NoBukti,
 		Tanggal:         h.Tanggal,
 		Note:            h.Note,
+		TglJurnal:       h.TglJurnal,
+		NoJurnal:        nojurnal,
+		NoBuktiSem:      nobuktisem,
 		TipeTransHd:     h.TipeTransHd,
 		PerkiraanHd:     h.PerkiraanHd,
-		TotalD:          totalD,
-		TotalK:          totalK,
+		TotalD:          agg.TotalD,
+		TotalK:          agg.TotalK,
+		JumlahValas:     agg.JumlahValas,
+		JumlahRupiah:    agg.JumlahRupiah,
 		OtorisasiLevel1: h.IsOtorisasi1,
 		OtorisasiLevel2: h.IsOtorisasi2,
-		Locked:          h.IsOtorisasi1 || h.IsOtorisasi2,
+		OtorisasiLevel3: h.IsOtorisasi3,
+		OtorisasiLevel4: h.IsOtorisasi4,
+		OtorisasiLevel5: h.IsOtorisasi5,
+		OtoUser1:        h.OtoUser1,
+		OtoUser2:        h.OtoUser2,
+		OtoUser3:        h.OtoUser3,
+		OtoUser4:        h.OtoUser4,
+		OtoUser5:        h.OtoUser5,
+		TglOto1:         h.TglOto1,
+		TglOto2:         h.TglOto2,
+		TglOto3:         h.TglOto3,
+		TglOto4:         h.TglOto4,
+		TglOto5:         h.TglOto5,
+		MaxOL:           maxOL,
+		Locked:          isOtorisasiApproved(h, maxOL),
 	}
-	return view, details, nil
 }
 
 // GenerateNoBukti returns a freshly formatted voucher number.
@@ -214,6 +294,15 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 			Note:        req.Note,
 			TipeTransHd: strPtr(req.TipeTransHd),
 			PerkiraanHd: strPtrOrNil(req.PerkiraanHd),
+			NoJurnal:    strPtrOrNil(req.NoJurnal),
+			NoBuktiSem:  strPtrOrNil(req.NoBuktiSem),
+		}
+		if req.TglJurnal != nil && *req.TglJurnal != "" {
+			t, err := parseTanggal(*req.TglJurnal)
+			if err != nil {
+				return fmt.Errorf("invalid tgljurnal: %w", err)
+			}
+			h.TglJurnal = &t
 		}
 		if err := tx.Create(h).Error; err != nil {
 			return fmt.Errorf("inserting header %q: %w", noBukti, err)
@@ -284,6 +373,19 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 	}
 	if req.Note != "" {
 		existing.Note = req.Note
+	}
+	if req.TglJurnal != nil && *req.TglJurnal != "" {
+		t, err := parseTanggal(*req.TglJurnal)
+		if err != nil {
+			return ErrTanggalInvalid
+		}
+		existing.TglJurnal = &t
+	}
+	if req.NoJurnal != "" {
+		existing.NoJurnal = strPtr(req.NoJurnal)
+	}
+	if req.NoBuktiSem != "" {
+		existing.NoBuktiSem = strPtr(req.NoBuktiSem)
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -454,11 +556,15 @@ func (s *SKasBankService) DeleteDetail(ctx context.Context, noBukti string, urut
 	return s.repo.DeleteDetail(ctx, noBukti, urut)
 }
 
-// SetOtorisasi sets the flag/user/timestamp for the given level. The
-// service enforces "different user between level 1 and level 2".
+// SetOtorisasi sets the flag/user/timestamp for the given level (1-5). The
+// service enforces two sequential rules:
+//   - Level N (N>1) requires level N-1 already approved.
+//   - The approver of level N must differ from the approver of level N-1.
+//
+// Level 1 has no predecessor, so neither rule applies.
 func (s *SKasBankService) SetOtorisasi(ctx context.Context, noBukti string, level int, userID string) error {
-	if level != 1 && level != 2 {
-		return fmt.Errorf("invalid level %d", level)
+	if level < 1 || level > maxOtorisasiLevel {
+		return ErrOtorisasiLevelInvalid
 	}
 	header, err := s.repo.GetByNoBukti(ctx, noBukti)
 	if err != nil {
@@ -467,18 +573,25 @@ func (s *SKasBankService) SetOtorisasi(ctx context.Context, noBukti string, leve
 	if header == nil {
 		return ErrNotFound
 	}
-	if level == 2 && header.OtoUser1 == userID && header.IsOtorisasi1 {
-		return ErrSelfOtorisasi
+	if level > 1 {
+		prevApproved, prevUser := otorisasiLevelState(header, level-1)
+		if !prevApproved {
+			return ErrOtorisasiPrevLevelMissing
+		}
+		if prevUser == userID {
+			return ErrSelfOtorisasi
+		}
 	}
 	return s.repo.SetOtorisasi(ctx, noBukti, level, userID)
 }
 
-// CancelOtorisasi clears the flag/user/timestamp for the given level.
+// CancelOtorisasi clears the flag/user/timestamp for the given level (1-5).
 // We don't gate this on the existing flag — the handler will check the
-// IsBatal permission before calling.
+// IsBatal permission before calling. Cancelling level N is rejected when
+// level N+1 is already approved (you must cancel from the top down).
 func (s *SKasBankService) CancelOtorisasi(ctx context.Context, noBukti string, level int) error {
-	if level != 1 && level != 2 {
-		return fmt.Errorf("invalid level %d", level)
+	if level < 1 || level > maxOtorisasiLevel {
+		return ErrOtorisasiLevelInvalid
 	}
 	header, err := s.repo.GetByNoBukti(ctx, noBukti)
 	if err != nil {
@@ -487,7 +600,63 @@ func (s *SKasBankService) CancelOtorisasi(ctx context.Context, noBukti string, l
 	if header == nil {
 		return ErrNotFound
 	}
+	if level < maxOtorisasiLevel {
+		nextApproved, _ := otorisasiLevelState(header, level+1)
+		if nextApproved {
+			return ErrOtorisasiNextLevelSet
+		}
+	}
 	return s.repo.CancelOtorisasi(ctx, noBukti, level)
+}
+
+// otorisasiLevelState returns (IsOtorisasiN, OtoUserN) for the given level
+// (1-5). Go cannot do dynamic struct-field access by computed name without
+// reflection, and IsOtorisasi1..5/OtoUser1..5 are separate named fields
+// (not an array) mapping 1:1 to DBTRANS columns, so an explicit switch is
+// the simplest correct option. Returns (false, "") for any level outside
+// 1-5 — callers are expected to validate the level first.
+func otorisasiLevelState(h *SDbTrans, level int) (approved bool, otoUser string) {
+	switch level {
+	case 1:
+		return h.IsOtorisasi1, h.OtoUser1
+	case 2:
+		return h.IsOtorisasi2, h.OtoUser2
+	case 3:
+		return h.IsOtorisasi3, h.OtoUser3
+	case 4:
+		return h.IsOtorisasi4, h.OtoUser4
+	case 5:
+		return h.IsOtorisasi5, h.OtoUser5
+	default:
+		return false, ""
+	}
+}
+
+// effectiveMaxOL returns the EFFECTIVE maximum otorisasi level for a
+// record: the record's own MaxOL column when it holds a valid 1-5 value
+// (covers legacy/imported records, e.g. from trade-exchange), otherwise
+// defaultMaxOL (2) — preserving DAPEN's pre-TASK-021 2-level behaviour for
+// every record DAPEN itself creates (which never sets MaxOL).
+func effectiveMaxOL(h *SDbTrans) int {
+	if h.MaxOL >= 1 && h.MaxOL <= maxOtorisasiLevel {
+		return h.MaxOL
+	}
+	return defaultMaxOL
+}
+
+// isOtorisasiApproved returns true once every level from 1 through maxOL
+// is approved. Approval is sequential by construction (SetOtorisasi
+// enforces level N-1 before level N), so checking level maxOL alone would
+// suffice in practice — we still walk all levels here for clarity and to
+// stay correct even if that invariant is ever relaxed.
+func isOtorisasiApproved(h *SDbTrans, maxOL int) bool {
+	for level := 1; level <= maxOL; level++ {
+		approved, _ := otorisasiLevelState(h, level)
+		if !approved {
+			return false
+		}
+	}
+	return true
 }
 
 // assertTanggalInPeriode returns ErrTanggalDiLuarPeriode if the journal

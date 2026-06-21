@@ -37,6 +37,18 @@
     "sessions": "Sessions",
     "activity": "Activity"
   },
+  "detail": {
+    "tab_overview": "Overview",
+    "tab_permissions": "Permissions",
+    "tab_sessions": "Sessions",
+    "tab_activity": "Activity",
+    "back_to_list": "Back to users",
+    "edit_button": "Edit",
+    "delete_button": "Delete",
+    "delete_title": "Delete User",
+    "delete_confirm": "Are you sure you want to delete this user? This action cannot be undone.",
+    "load_error": "Failed to load user"
+  },
   "messages": {
     "empty": "No users found.",
     "error_loading": "Error loading users",

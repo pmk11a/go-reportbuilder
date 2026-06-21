@@ -34,13 +34,47 @@ export function installFetchInterceptor() {
       `color:${mc};font-weight:bold`,
       `color:${C.dim}`
     )
-    if (init?.body) {
-      try {
-        const parsed = JSON.parse(init.body as string)
-        if (parsed?.t?.v) {
-          console.log('%cPayload:', `color:${C.dim};font-weight:bold`, parsed.t.v)
+    // Log GET query params (only server function requests)
+    try {
+      const urlObj = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+      if (urlObj.searchParams.size > 0) {
+        const params = Object.fromEntries(urlObj.searchParams.entries())
+        // Remove TanStack Start internal params
+        delete params['tss-serverfn-split']
+        if (Object.keys(params).length > 0) {
+          console.log('%cParams:', `color:${C.dim};font-weight:bold`, params)
         }
-      } catch {}
+      }
+    } catch {}
+
+    // Log request body / FormData / URLSearchParams
+    const bodyValue = init?.body
+    if (bodyValue) {
+      try {
+        if (bodyValue instanceof FormData) {
+          const logged: Record<string, unknown> = {}
+          for (const [key, value] of bodyValue.entries()) {
+            logged[key] = value instanceof File ? `[File: ${value.name}]` : value
+          }
+          console.log('%cBody:', `color:${C.dim};font-weight:bold`, logged)
+        } else if (bodyValue instanceof URLSearchParams) {
+          console.log('%cBody:', `color:${C.dim};font-weight:bold`, Object.fromEntries(bodyValue.entries()))
+        } else if (typeof bodyValue === 'string') {
+          const parsed = JSON.parse(bodyValue)
+          // Server function envelope: { t: { v: ..., m: ..., h: ... } }
+          if (parsed?.t?.v != null) {
+            console.log('%cPayload:', `color:${C.dim};font-weight:bold`, parsed.t.v)
+          } else {
+            console.log('%cBody:', `color:${C.dim};font-weight:bold`, parsed)
+          }
+        } else {
+          // TypedArray, ArrayBuffer, Blob, ReadableStream — try stringifying
+          const text = await bodyValue.text?.().catch(() => String(bodyValue)) ?? String(bodyValue)
+          console.log('%cBody:', `color:${C.dim};font-weight:bold`, text)
+        }
+      } catch (e) {
+        console.log('%cBody:', `color:${C.dim};font-weight:bold`, bodyValue)
+      }
     }
     console.log(`%cTime: %c${new Date().toLocaleTimeString()}`, `color:${C.dim}`, 'color:#e2e8f0')
     console.groupEnd()

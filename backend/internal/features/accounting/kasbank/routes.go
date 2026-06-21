@@ -28,29 +28,31 @@ func RegisterKasBankRoutes(rg *gin.RouterGroup, h *SKasBankHandler, permMW *midd
 		g.GET("", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.ListKasBank)
 		g.GET("/generate-no-bukti", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.GenerateNoBukti)
 		g.GET("/lookup-perkiraan", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.LookupPerkiraan)
-		g.GET("/:noBukti", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.GetKasBank)
-		g.GET("/:noBukti/detail", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.ListKasBankDetail)
-		g.GET("/:noBukti/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.GetKasBankDetail)
-		g.GET("/:noBukti/pdf", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsCetak), h.DownloadPDF)
+		g.GET("/", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.GetKasBank)
+		g.GET("/detail", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.ListKasBankDetail)
+		g.GET("/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermHasAccess), h.GetKasBankDetail)
+		g.GET("/pdf", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsCetak), h.DownloadPDF)
 
 		// Create — gated by ISTAMBAH.
 		g.POST("", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsTambah), h.CreateKasBank)
-		g.POST("/:noBukti/detail", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsTambah), h.AddKasBankDetail)
+		g.POST("/detail", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsTambah), h.AddKasBankDetail)
 
 		// Update — gated by ISKOREKSI.
-		g.PUT("/:noBukti", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsKoreksi), h.UpdateKasBank)
-		g.PUT("/:noBukti/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsKoreksi), h.UpdateKasBankDetail)
+		g.PUT("/", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsKoreksi), h.UpdateKasBank)
+		g.PUT("/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsKoreksi), h.UpdateKasBankDetail)
 
 		// Delete — gated by ISHAPUS.
-		g.DELETE("/:noBukti", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsHapus), h.DeleteKasBank)
-		g.DELETE("/:noBukti/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsHapus), h.DeleteKasBankDetail)
+		g.DELETE("/", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsHapus), h.DeleteKasBank)
+		g.DELETE("/detail/:urut", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsHapus), h.DeleteKasBankDetail)
 
-		// Otorisasi — gated by IsOtorisasi1 / IsOtorisasi2.
-		// We mount the SAME handler on two routes with different middleware
-		// so the user can call /otorisasi with the right level without
-		// knowing the permission name in advance. The handler reads the
-		// level from the request body.
-		g.POST("/:noBukti/otorisasi", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsOtorisasi1), h.SetOtorisasiKasBank)
-		g.POST("/:noBukti/batal-otorisasi", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsBatal), h.BatalOtorisasiKasBank)
+		// Otorisasi — supports levels 1-5 (IsOtorisasi1-5), gated by the
+		// IsOtorisasi1 permission as the entry-level gate for both set and
+		// cancel. We mount the SAME handler on two routes with different
+		// middleware so the user can call /otorisasi with the right level
+		// without knowing the permission name in advance. The handler reads
+		// the level from the request body; the service enforces the
+		// sequential-approval and different-approver rules per level.
+		g.POST("/otorisasi", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsOtorisasi1), h.SetOtorisasiKasBank)
+		g.POST("/batal-otorisasi", permMW.RequireMenuAccess(kasBankMenuCode, middleware.PermIsBatal), h.BatalOtorisasiKasBank)
 	}
 }

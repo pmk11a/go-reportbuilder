@@ -13,7 +13,7 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     return error.message || fallback;
   }
   if (error instanceof ValidationError) {
-    return (error as ValidationError).detail?.join(', ') || fallback;
+    return error.message || fallback;
   }
   if (error instanceof Error) {
     return error.message || fallback;

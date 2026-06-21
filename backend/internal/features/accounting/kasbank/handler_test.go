@@ -158,7 +158,7 @@ func doJSON(t *testing.T, r *gin.Engine, method, path string, body interface{}) 
 func TestHandler_ListKasBank_Ok(t *testing.T) {
 	svc := &mockSvc{
 		listFn: func(ctx context.Context, q SListKasBankQuery) (*SListKasBankResponse, error) {
-			return &SListKasBankResponse{Items: []SDbTrans{{NoBukti: "BKK-1"}}, Total: 1, Page: 1, PerPage: 10}, nil
+			return &SListKasBankResponse{Items: []SKasBankHeader{{NoBukti: "BKK-1"}}, Total: 1, Page: 1, PerPage: 10}, nil
 		},
 	}
 	r := newTestRouter(svc)
@@ -338,11 +338,20 @@ func TestHandler_SetOtorisasi_Ok(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 }
 
-// TestHandler_SetOtorisasi_InvalidBody returns 400.
+// TestHandler_SetOtorisasi_InvalidBody returns 400 for a level outside the
+// supported 1-5 binding range.
 func TestHandler_SetOtorisasi_InvalidBody(t *testing.T) {
 	r := newTestRouter(&mockSvc{})
-	w := doJSON(t, r, "POST", "/api/accounting/kasbank/BKK-1/otorisasi", SOtorisasiRequest{Level: 5, Action: "set"})
+	w := doJSON(t, r, "POST", "/api/accounting/kasbank/BKK-1/otorisasi", SOtorisasiRequest{Level: 6, Action: "set"})
 	assert.Equal(t, 400, w.Code)
+}
+
+// TestHandler_SetOtorisasi_Level5_Ok confirms the binding tag now accepts
+// level 5 (previously capped at max=2).
+func TestHandler_SetOtorisasi_Level5_Ok(t *testing.T) {
+	r := newTestRouter(&mockSvc{})
+	w := doJSON(t, r, "POST", "/api/accounting/kasbank/BKK-1/otorisasi", SOtorisasiRequest{Level: 5, Action: "set"})
+	assert.Equal(t, 200, w.Code)
 }
 
 // TestHandler_SetOtorisasi_SelfOtorisasi returns 400.

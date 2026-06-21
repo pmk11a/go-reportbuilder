@@ -38,22 +38,32 @@ func (SUser) TableName() string {
 	return "users"
 }
 
-// GetDynamicRole derives a human-readable role string from the linked
-// legacy DBFLPASS record. Falls back to the Role field if no DBFLPASS
-// is loaded.
+// GetDynamicRole derives a human-readable role string used as the JWT
+// "role" claim. The modern Role field is the source of truth and is
+// checked FIRST: any user with Role == RoleAdmin always resolves to
+// "admin", regardless of what the legacy SDBFLPASS.TINGKAT column says.
+// This prevents stale/out-of-sync TINGKAT values (e.g. a legacy row
+// still set to "0" = karyawan) from overriding a deliberately-promoted
+// admin account.
+//
+// When Role is not admin, SDBFLPASS.TINGKAT is used to distinguish
+// pengurus / system_admin / karyawan for legacy admin-panel parity.
+// Falls back to "karyawan" if SDBFLPASS is nil or TINGKAT is unmapped.
 func (u *SUser) GetDynamicRole() string {
+	if u.Role == RoleAdmin {
+		return "admin"
+	}
 	if u.SDBFLPASS != nil {
 		switch u.SDBFLPASS.TINGKAT {
 		case "2":
 			return "admin"
 		case "1":
 			return "pengurus"
+		case "5":
+			return "system_admin"
 		case "0":
 			return "karyawan"
 		}
-	}
-	if u.Role == RoleAdmin {
-		return "admin"
 	}
 	return "karyawan"
 }

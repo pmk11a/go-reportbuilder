@@ -49,7 +49,7 @@ type IKasBankRepository interface {
 	// DeleteDetail removes a single detail row by composite PK.
 	DeleteDetail(ctx context.Context, noBukti string, urut int) error
 	// SetOtorisasi sets the flag, user and timestamp for the given level.
-	// level must be 1 or 2; anything else returns an error.
+	// level must be 1 to 5; anything else returns an error.
 	SetOtorisasi(ctx context.Context, noBukti string, level int, userID string) error
 	// CancelOtorisasi clears the flag, user and timestamp for the given level.
 	CancelOtorisasi(ctx context.Context, noBukti string, level int) error
@@ -68,6 +68,27 @@ type IKasBankRepository interface {
 	// over its DBTRANSAKSI rows. The legacy schema does not store totals;
 	// we recompute on the fly when the service needs them.
 	RecalcTotals(ctx context.Context, noBukti string) (totalD, totalK float64, err error)
+	// GetAggregateTotals computes totals for multiple NoBukti values in a
+	// single query, avoiding N+1 when listing a page of kasbank headers.
+	// The returned map only contains entries for NoBukti values that have
+	// at least one DBTRANSAKSI row; callers must treat a missing key as
+	// the zero-value SAggregateTotals (all fields 0), not an error.
+	GetAggregateTotals(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error)
+}
+
+// SAggregateTotals holds per-NoBukti aggregated totals computed from
+// DBTRANSAKSI in a single batch query (see GetAggregateTotals).
+type SAggregateTotals struct {
+	// TotalD is the sum of Debet across all detail lines.
+	TotalD float64
+	// TotalK is the sum of Kredit across all detail lines.
+	TotalK float64
+	// JumlahValas is the sum of (Debet+Kredit) for lines whose Valas is
+	// not "IDR" — the foreign-currency total.
+	JumlahValas float64
+	// JumlahRupiah is the sum of (Debet+Kredit)*Kurs across all lines —
+	// the Rupiah-converted total.
+	JumlahRupiah float64
 }
 
 // SKasBankRepository is the GORM-backed implementation of IKasBankRepository.
@@ -84,9 +105,14 @@ func NewSKasBankRepository(db *gorm.DB) *SKasBankRepository {
 }
 
 // List applies the optional filters and returns a page of DBTRANS rows.
-// Filters: tipe (exact match on TipeTransHd), search (LIKE on NoBukti and
-// Note), date range (Tanggal BETWEEN). Sort: Tanggal DESC, NoBukti DESC
-// (stable across pages).
+// Filters: tipe (exact match on TipeTransHd; when blank, restricted to the
+// 4 kasbank discriminators BKM/BKK/BBM/BBK — DBTRANS is a legacy table
+// shared across modules, so this restriction is always applied, mirroring
+// trade-exchange's getAllBankOrKas() "TipeTransHd in (...)" clause), search
+// (LIKE on NoBukti and Note), date range (Tanggal BETWEEN). When dateFrom/
+// dateTo are both blank, the result defaults to the caller's active
+// accounting period (DBPERIODE), resolved via q.UserID. Sort: Tanggal DESC,
+// NoBukti DESC (stable across pages).
 func (r *SKasBankRepository) List(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
 	var (
 		items []SDbTrans
@@ -96,19 +122,46 @@ func (r *SKasBankRepository) List(ctx context.Context, q SListKasBankQuery) ([]S
 
 	if q.Tipe != "" {
 		query = query.Where("TipeTransHd = ?", q.Tipe)
+	} else {
+		// No specific tipe requested: still restrict to the 4 kasbank
+		// discriminators so this list never leaks unrelated DBTRANS rows
+		// (e.g. other journal types stored in the same legacy table).
+		query = query.Where("TipeTransHd IN ?", []string{TipeBKM, TipeBKK, TipeBBM, TipeBBK})
 	}
 	if q.Search != "" {
 		searchPattern := "%" + q.Search + "%"
 		query = query.Where("NoBukti LIKE ? OR Note LIKE ?", searchPattern, searchPattern)
 	}
+	hasExplicitDate := false
 	if q.DateFrom != "" {
 		if from, err := parseDateFlexible(q.DateFrom); err == nil {
 			query = query.Where("Tanggal >= ?", from)
+			hasExplicitDate = true
 		}
 	}
 	if q.DateTo != "" {
 		if to, err := parseDateFlexible(q.DateTo); err == nil {
 			query = query.Where("Tanggal <= ?", to)
+			hasExplicitDate = true
+		}
+	}
+
+	// Default period restriction: when the caller did not pass an explicit
+	// date range, mirror trade-exchange's behaviour and scope the list to
+	// the user's active accounting period (DBPERIODE). This is what makes
+	// DAPEN's default kasbank view match trade-exchange's reference
+	// implementation instead of showing every transaction ever recorded.
+	if !hasExplicitDate && q.UserID != "" {
+		bulan, tahun, err := r.GetPeriode(ctx, q.UserID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("resolving active period for user %q: %w", q.UserID, err)
+		}
+		// (0, 0) means the user has no DBPERIODE row (e.g. brand new user).
+		// We deliberately fall back to no period restriction rather than
+		// guessing a period — the same "no row = no enforced filter"
+		// semantics already used by GetCurrentPeriode elsewhere.
+		if bulan != 0 && tahun != 0 {
+			query = query.Where("YEAR(Tanggal) = ? AND MONTH(Tanggal) = ?", tahun, bulan)
 		}
 	}
 
@@ -229,8 +282,8 @@ func (r *SKasBankRepository) DeleteDetail(ctx context.Context, noBukti string, u
 // and TglOtoN to now(). We use raw SQL because the column names contain
 // the level suffix, which GORM's struct mapping cannot express in a loop.
 func (r *SKasBankRepository) SetOtorisasi(ctx context.Context, noBukti string, level int, userID string) error {
-	if level < 1 || level > 2 {
-		return fmt.Errorf("set otorisasi: invalid level %d (expected 1 or 2)", level)
+	if level < 1 || level > 5 {
+		return fmt.Errorf("set otorisasi: invalid level %d (expected 1 to 5)", level)
 	}
 	col := fmt.Sprintf("IsOtorisasi%d", level)
 	userCol := fmt.Sprintf("OtoUser%d", level)
@@ -247,8 +300,8 @@ func (r *SKasBankRepository) SetOtorisasi(ctx context.Context, noBukti string, l
 
 // CancelOtorisasi clears the flag, user and timestamp for the given level.
 func (r *SKasBankRepository) CancelOtorisasi(ctx context.Context, noBukti string, level int) error {
-	if level < 1 || level > 2 {
-		return fmt.Errorf("cancel otorisasi: invalid level %d (expected 1 or 2)", level)
+	if level < 1 || level > 5 {
+		return fmt.Errorf("cancel otorisasi: invalid level %d (expected 1 to 5)", level)
 	}
 	col := fmt.Sprintf("IsOtorisasi%d", level)
 	userCol := fmt.Sprintf("OtoUser%d", level)
@@ -327,6 +380,51 @@ func (r *SKasBankRepository) RecalcTotals(ctx context.Context, noBukti string) (
 		return 0, 0, fmt.Errorf("recalculating totals for %q: %w", noBukti, err)
 	}
 	return t.TotalD, t.TotalK, nil
+}
+
+// GetAggregateTotals computes TotalD/TotalK/JumlahValas/JumlahRupiah for
+// multiple NoBukti values in a single GROUP BY query, so listing a page of
+// N kasbank headers issues exactly one aggregate query instead of N.
+// Returns an empty map (not an error) when noBuktis is empty — we never
+// issue a query with an empty IN (...) clause.
+func (r *SKasBankRepository) GetAggregateTotals(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error) {
+	result := make(map[string]SAggregateTotals, len(noBuktis))
+	if len(noBuktis) == 0 {
+		return result, nil
+	}
+
+	type row struct {
+		NoBukti      string
+		TotalD       float64
+		TotalK       float64
+		JumlahValas  float64
+		JumlahRupiah float64
+	}
+	var rows []row
+	err := r.db.WithContext(ctx).Raw(
+		`SELECT NoBukti,
+			COALESCE(SUM(Debet), 0) AS TotalD,
+			COALESCE(SUM(Kredit), 0) AS TotalK,
+			COALESCE(SUM(CASE WHEN Valas <> 'IDR' THEN Debet + Kredit ELSE 0 END), 0) AS JumlahValas,
+			COALESCE(SUM((Debet + Kredit) * Kurs), 0) AS JumlahRupiah
+		FROM DBTRANSAKSI
+		WHERE NoBukti IN (?)
+		GROUP BY NoBukti`,
+		noBuktis,
+	).Scan(&rows).Error
+	if err != nil {
+		return nil, fmt.Errorf("aggregating totals for %d voucher(s): %w", len(noBuktis), err)
+	}
+
+	for _, rw := range rows {
+		result[rw.NoBukti] = SAggregateTotals{
+			TotalD:       rw.TotalD,
+			TotalK:       rw.TotalK,
+			JumlahValas:  rw.JumlahValas,
+			JumlahRupiah: rw.JumlahRupiah,
+		}
+	}
+	return result, nil
 }
 
 // parseDateFlexible accepts either RFC3339 ("2026-06-07T00:00:00Z") or

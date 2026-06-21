@@ -70,7 +70,8 @@ export const kasbankService = {
     return { success: true, status: 200, message: 'Success', data: null }
   },
 
-  async getDetailList(noBukti: string): Promise<IAPIResponse<{ items: IKasBankDetail[] }>> {
+  /** Get full voucher detail: header + detail lines from GET /api/accounting/kasbank/{noBukti}/detail */
+  async getDetailList(noBukti: string): Promise<IAPIResponse<{ header: IKasBankHeader; items: IKasBankDetail[] }>> {
     const result = await getKasBankDetailListFn({ data: { noBukti } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },

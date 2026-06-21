@@ -39,7 +39,7 @@ func InitDB(cfg *config.SConfig) *gorm.DB {
 	// Loads activity_log_config from DB and registers GORM callbacks
 	activity.RegisterActivityLogPlugin(DB)
 
-	log.Println("Database connection established")
+	log.Println("Database connection established %s:%s/%s", cfg.DBHost, cfg.DBPort, cfg.DBDatabase)
 	log.Println("Activity logging plugin registered")
 	return DB
 }

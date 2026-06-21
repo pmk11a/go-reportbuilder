@@ -3,6 +3,7 @@ package kasbank
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -33,6 +34,8 @@ type mockRepo struct {
 	lookupFn         func(ctx context.Context, query string, kelompokKas bool, limit int) ([]SDbPerkiraan, error)
 	getPeriodeFn     func(ctx context.Context, userID string) (int, int, error)
 	recalcTotalsFn   func(ctx context.Context, noBukti string) (float64, float64, error)
+	getAggregateTotalsFn func(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error)
+	aggregateTotalsCalls int
 }
 
 func (m *mockRepo) List(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
@@ -131,6 +134,13 @@ func (m *mockRepo) RecalcTotals(ctx context.Context, noBukti string) (float64, f
 	}
 	return 0, 0, nil
 }
+func (m *mockRepo) GetAggregateTotals(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error) {
+	m.aggregateTotalsCalls++
+	if m.getAggregateTotalsFn != nil {
+		return m.getAggregateTotalsFn(ctx, noBuktis)
+	}
+	return map[string]SAggregateTotals{}, nil
+}
 
 // newServiceWithRealDB returns a service backed by a sqlmock-backed GORM
 // handle. The service still needs a real *gorm.DB so it can open
@@ -145,18 +155,92 @@ func newServiceWithRealDB(t *testing.T, repo IKasBankRepository) *SKasBankServic
 	return NewSKasBankService(repo, gormDB)
 }
 
-// TestService_List_Happy covers the passthrough.
+// TestService_List_Happy covers the passthrough and view-model conversion:
+// the raw SDbTrans row must come back as an SKasBankHeader with totals from
+// the batch aggregate query.
 func TestService_List_Happy(t *testing.T) {
 	repo := &mockRepo{
 		listFn: func(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
-			return []SDbTrans{{NoBukti: "BKK-1"}}, 1, nil
+			return []SDbTrans{{NoBukti: "BKK-1", IsOtorisasi1: true}}, 1, nil
+		},
+		getAggregateTotalsFn: func(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error) {
+			assert.Equal(t, []string{"BKK-1"}, noBuktis)
+			return map[string]SAggregateTotals{
+				"BKK-1": {TotalD: 1000, TotalK: 1000, JumlahValas: 500, JumlahRupiah: 1500},
+			}, nil
 		},
 	}
 	svc := newServiceWithRealDB(t, repo)
 	out, err := svc.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), out.Total)
-	assert.Len(t, out.Items, 1)
+	require.Len(t, out.Items, 1)
+	assert.Equal(t, "BKK-1", out.Items[0].NoBukti)
+	assert.True(t, out.Items[0].OtorisasiLevel1)
+	assert.Equal(t, 1000.0, out.Items[0].TotalD)
+	assert.Equal(t, 500.0, out.Items[0].JumlahValas)
+	assert.Equal(t, 1500.0, out.Items[0].JumlahRupiah)
+	assert.Equal(t, 1, repo.aggregateTotalsCalls)
+}
+
+// TestService_List_NoRows_SkipsAggregateQuery verifies that when the page
+// has zero rows, GetAggregateTotals is still called with an empty slice
+// (the mock counts calls; the real repository returns early without
+// issuing SQL for an empty IN (...) — see TestGetAggregateTotals_EmptyInput
+// in repository_test.go).
+func TestService_List_NoRows_SkipsAggregateQuery(t *testing.T) {
+	repo := &mockRepo{
+		listFn: func(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
+			return nil, 0, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	out, err := svc.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), out.Total)
+	assert.Len(t, out.Items, 0)
+}
+
+// TestService_List_PageOfTenVouchers_SingleAggregateQuery covers Scenario 2
+// from TASK-022: given a page of 10 vouchers, exactly one aggregate query
+// must be issued for the whole page (no N+1).
+func TestService_List_PageOfTenVouchers_SingleAggregateQuery(t *testing.T) {
+	rows := make([]SDbTrans, 0, 10)
+	for i := 0; i < 10; i++ {
+		rows = append(rows, SDbTrans{NoBukti: fmt.Sprintf("BKK-%d", i)})
+	}
+	repo := &mockRepo{
+		listFn: func(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
+			return rows, 10, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	out, err := svc.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
+	require.NoError(t, err)
+	assert.Len(t, out.Items, 10)
+	assert.Equal(t, 1, repo.aggregateTotalsCalls, "expected exactly one aggregate query for the whole page")
+}
+
+// TestService_List_VoucherWithNoDetailLines_ZeroTotals covers TASK-022's
+// edge case: a voucher with zero detail lines (missing from the aggregate
+// map) must come back with all totals at 0, not null/error.
+func TestService_List_VoucherWithNoDetailLines_ZeroTotals(t *testing.T) {
+	repo := &mockRepo{
+		listFn: func(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
+			return []SDbTrans{{NoBukti: "BKK-EMPTY"}}, 1, nil
+		},
+		getAggregateTotalsFn: func(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error) {
+			return map[string]SAggregateTotals{}, nil // no entry for BKK-EMPTY
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	out, err := svc.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
+	require.NoError(t, err)
+	require.Len(t, out.Items, 1)
+	assert.Equal(t, 0.0, out.Items[0].TotalD)
+	assert.Equal(t, 0.0, out.Items[0].TotalK)
+	assert.Equal(t, 0.0, out.Items[0].JumlahValas)
+	assert.Equal(t, 0.0, out.Items[0].JumlahRupiah)
 }
 
 // TestService_GetByNoBukti_NotFound returns ErrNotFound when the repo yields nil.
@@ -171,7 +255,8 @@ func TestService_GetByNoBukti_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, ErrNotFound)
 }
 
-// TestService_GetByNoBukti_Found pre-computes totals and locks the record.
+// TestService_GetByNoBukti_Found pre-computes totals (now via
+// GetAggregateTotals, see TASK-022) and locks the record.
 func TestService_GetByNoBukti_Found(t *testing.T) {
 	now := time.Now()
 	repo := &mockRepo{
@@ -181,8 +266,9 @@ func TestService_GetByNoBukti_Found(t *testing.T) {
 		listDetailFn: func(ctx context.Context, noBukti string) ([]SDbTransaksi, error) {
 			return []SDbTransaksi{{NoBukti: noBukti, Urut: 1, Debet: 1000}}, nil
 		},
-		recalcTotalsFn: func(ctx context.Context, noBukti string) (float64, float64, error) {
-			return 1000, 1000, nil
+		getAggregateTotalsFn: func(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error) {
+			assert.Equal(t, []string{"BKK-1"}, noBuktis)
+			return map[string]SAggregateTotals{"BKK-1": {TotalD: 1000, TotalK: 1000}}, nil
 		},
 	}
 	svc := newServiceWithRealDB(t, repo)
@@ -414,7 +500,7 @@ func TestService_DeleteDetail_Locked(t *testing.T) {
 	require.ErrorIs(t, err, ErrLockedByOtorisasi1)
 }
 
-// TestService_SetOtorisasi_InvalidLevel rejects levels other than 1 or 2.
+// TestService_SetOtorisasi_InvalidLevel rejects levels outside 1-5.
 func TestService_SetOtorisasi_InvalidLevel(t *testing.T) {
 	repo := &mockRepo{
 		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
@@ -422,8 +508,8 @@ func TestService_SetOtorisasi_InvalidLevel(t *testing.T) {
 		},
 	}
 	svc := newServiceWithRealDB(t, repo)
-	err := svc.SetOtorisasi(context.Background(), "BKK-1", 3, "SA")
-	require.Error(t, err)
+	err := svc.SetOtorisasi(context.Background(), "BKK-1", 6, "SA")
+	require.ErrorIs(t, err, ErrOtorisasiLevelInvalid)
 }
 
 // TestService_SetOtorisasi_SelfOtorisasi rejects the same user at level 2.
@@ -436,6 +522,187 @@ func TestService_SetOtorisasi_SelfOtorisasi(t *testing.T) {
 	svc := newServiceWithRealDB(t, repo)
 	err := svc.SetOtorisasi(context.Background(), "BKK-1", 2, "SA")
 	require.ErrorIs(t, err, ErrSelfOtorisasi)
+}
+
+// TestService_SetOtorisasi_PrevLevelMissing rejects approving level N when
+// level N-1 has not been approved yet.
+func TestService_SetOtorisasi_PrevLevelMissing(t *testing.T) {
+	repo := &mockRepo{
+		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+			return &SDbTrans{NoBukti: noBukti}, nil // nothing approved yet
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	err := svc.SetOtorisasi(context.Background(), "BKK-1", 3, "BUDI")
+	require.ErrorIs(t, err, ErrOtorisasiPrevLevelMissing)
+}
+
+// TestService_SetOtorisasi_SequentialLevels1Through5 approves a record with
+// MaxOL=5 through every level in sequence (with a different approver each
+// time) and verifies each call succeeds.
+func TestService_SetOtorisasi_SequentialLevels1Through5(t *testing.T) {
+	approvers := map[int]string{1: "SA", 2: "BUDI", 3: "CITRA", 4: "DEWI", 5: "EKO"}
+	header := &SDbTrans{NoBukti: "BKK-1", MaxOL: 5}
+
+	for level := 1; level <= 5; level++ {
+		repo := &mockRepo{
+			getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+				return header, nil
+			},
+			setOtorisasiFn: func(ctx context.Context, noBukti string, lvl int, userID string) error {
+				switch lvl {
+				case 1:
+					header.IsOtorisasi1, header.OtoUser1 = true, userID
+				case 2:
+					header.IsOtorisasi2, header.OtoUser2 = true, userID
+				case 3:
+					header.IsOtorisasi3, header.OtoUser3 = true, userID
+				case 4:
+					header.IsOtorisasi4, header.OtoUser4 = true, userID
+				case 5:
+					header.IsOtorisasi5, header.OtoUser5 = true, userID
+				}
+				return nil
+			},
+		}
+		svc := newServiceWithRealDB(t, repo)
+		err := svc.SetOtorisasi(context.Background(), "BKK-1", level, approvers[level])
+		require.NoError(t, err, "level %d should approve cleanly", level)
+	}
+	assert.True(t, header.IsOtorisasi1)
+	assert.True(t, header.IsOtorisasi2)
+	assert.True(t, header.IsOtorisasi3)
+	assert.True(t, header.IsOtorisasi4)
+	assert.True(t, header.IsOtorisasi5)
+}
+
+// TestService_SetOtorisasi_SelfOtorisasi_AllAdjacentPairs verifies the
+// self-approval rejection extends to every adjacent level pair, not just
+// level 1->2.
+func TestService_SetOtorisasi_SelfOtorisasi_AllAdjacentPairs(t *testing.T) {
+	cases := []struct {
+		level int
+		setup *SDbTrans
+	}{
+		{2, &SDbTrans{NoBukti: "BKK-1", IsOtorisasi1: true, OtoUser1: "SA"}},
+		{3, &SDbTrans{NoBukti: "BKK-1", IsOtorisasi1: true, OtoUser1: "X", IsOtorisasi2: true, OtoUser2: "SA"}},
+		{4, &SDbTrans{NoBukti: "BKK-1", IsOtorisasi1: true, OtoUser1: "X", IsOtorisasi2: true, OtoUser2: "Y", IsOtorisasi3: true, OtoUser3: "SA"}},
+		{5, &SDbTrans{NoBukti: "BKK-1", IsOtorisasi1: true, OtoUser1: "X", IsOtorisasi2: true, OtoUser2: "Y", IsOtorisasi3: true, OtoUser3: "Z", IsOtorisasi4: true, OtoUser4: "SA"}},
+	}
+	for _, tc := range cases {
+		repo := &mockRepo{
+			getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+				return tc.setup, nil
+			},
+		}
+		svc := newServiceWithRealDB(t, repo)
+		err := svc.SetOtorisasi(context.Background(), "BKK-1", tc.level, "SA")
+		require.ErrorIs(t, err, ErrSelfOtorisasi, "level %d should reject self-otorisasi", tc.level)
+	}
+}
+
+// TestService_CancelOtorisasi_NextLevelSet rejects cancelling level N when
+// level N+1 is already approved.
+func TestService_CancelOtorisasi_NextLevelSet(t *testing.T) {
+	repo := &mockRepo{
+		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+			return &SDbTrans{NoBukti: noBukti, IsOtorisasi1: true, OtoUser1: "SA", IsOtorisasi2: true, OtoUser2: "BUDI"}, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	err := svc.CancelOtorisasi(context.Background(), "BKK-1", 1)
+	require.ErrorIs(t, err, ErrOtorisasiNextLevelSet)
+}
+
+// TestService_CancelOtorisasi_TopLevelOk allows cancelling the highest
+// approved level (no level above it to block the cancel).
+func TestService_CancelOtorisasi_TopLevelOk(t *testing.T) {
+	repo := &mockRepo{
+		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+			return &SDbTrans{NoBukti: noBukti, IsOtorisasi1: true, OtoUser1: "SA", IsOtorisasi2: true, OtoUser2: "BUDI"}, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	err := svc.CancelOtorisasi(context.Background(), "BKK-1", 2)
+	require.NoError(t, err)
+}
+
+// TestEffectiveMaxOL_ValidLegacyValue uses the record's own MaxOL when valid.
+func TestEffectiveMaxOL_ValidLegacyValue(t *testing.T) {
+	assert.Equal(t, 5, effectiveMaxOL(&SDbTrans{MaxOL: 5}))
+	assert.Equal(t, 1, effectiveMaxOL(&SDbTrans{MaxOL: 1}))
+	assert.Equal(t, 3, effectiveMaxOL(&SDbTrans{MaxOL: 3}))
+}
+
+// TestEffectiveMaxOL_DefaultsTo2 falls back to 2 when MaxOL is 0/invalid.
+func TestEffectiveMaxOL_DefaultsTo2(t *testing.T) {
+	assert.Equal(t, 2, effectiveMaxOL(&SDbTrans{MaxOL: 0}))
+	assert.Equal(t, 2, effectiveMaxOL(&SDbTrans{MaxOL: -1}))
+	assert.Equal(t, 2, effectiveMaxOL(&SDbTrans{MaxOL: 6}))
+}
+
+// TestService_GetByNoBukti_Locked_DefaultMaxOL2 verifies a fresh
+// DAPEN-created record (MaxOL unset) becomes Locked after level 2, matching
+// pre-TASK-021 behaviour.
+func TestService_GetByNoBukti_Locked_DefaultMaxOL2(t *testing.T) {
+	now := time.Now()
+	repo := &mockRepo{
+		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+			return &SDbTrans{NoBukti: noBukti, Tanggal: &now, IsOtorisasi1: true, IsOtorisasi2: true}, nil
+		},
+		listDetailFn: func(ctx context.Context, noBukti string) ([]SDbTransaksi, error) {
+			return nil, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	h, _, err := svc.GetByNoBukti(context.Background(), "BKK-1")
+	require.NoError(t, err)
+	assert.Equal(t, 2, h.MaxOL)
+	assert.True(t, h.Locked)
+}
+
+// TestService_GetByNoBukti_NotLocked_UntilMaxOL5 verifies a legacy record
+// with MaxOL=5 stays unlocked until all 5 levels are approved.
+func TestService_GetByNoBukti_NotLocked_UntilMaxOL5(t *testing.T) {
+	now := time.Now()
+	repo := &mockRepo{
+		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+			return &SDbTrans{
+				NoBukti: noBukti, Tanggal: &now, MaxOL: 5,
+				IsOtorisasi1: true, IsOtorisasi2: true, IsOtorisasi3: true, IsOtorisasi4: true,
+				// level 5 not yet approved
+			}, nil
+		},
+		listDetailFn: func(ctx context.Context, noBukti string) ([]SDbTransaksi, error) {
+			return nil, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	h, _, err := svc.GetByNoBukti(context.Background(), "BKK-1")
+	require.NoError(t, err)
+	assert.Equal(t, 5, h.MaxOL)
+	assert.False(t, h.Locked)
+}
+
+// TestService_GetByNoBukti_Locked_AfterAllMaxOL5 verifies a legacy record
+// with MaxOL=5 becomes Locked only once all 5 levels are approved.
+func TestService_GetByNoBukti_Locked_AfterAllMaxOL5(t *testing.T) {
+	now := time.Now()
+	repo := &mockRepo{
+		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
+			return &SDbTrans{
+				NoBukti: noBukti, Tanggal: &now, MaxOL: 5,
+				IsOtorisasi1: true, IsOtorisasi2: true, IsOtorisasi3: true, IsOtorisasi4: true, IsOtorisasi5: true,
+			}, nil
+		},
+		listDetailFn: func(ctx context.Context, noBukti string) ([]SDbTransaksi, error) {
+			return nil, nil
+		},
+	}
+	svc := newServiceWithRealDB(t, repo)
+	h, _, err := svc.GetByNoBukti(context.Background(), "BKK-1")
+	require.NoError(t, err)
+	assert.True(t, h.Locked)
 }
 
 // TestService_SetOtorisasi_NotFound returns ErrNotFound.

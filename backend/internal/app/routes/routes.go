@@ -45,7 +45,7 @@ type SRouterConfig struct {
 // SetupRoutes wires every domain's routes into the given engine. The structure is:
 //   - Public: /health, /swagger, /api/auth/*
 //   - Protected: anything behind AuthMiddleware
-//   - Admin: anything additionally behind RoleMiddleware("admin")
+//   - Admin: anything additionally behind RoleMiddleware("admin", "pengurus", "system_admin")
 func SetupRoutes(rc SRouterConfig) {
 	// Root-level diagnostics & docs
 	rc.Engine.GET("/health", func(c *gin.Context) {
@@ -83,7 +83,9 @@ func SetupRoutes(rc SRouterConfig) {
 
 			// Admin-only routes
 			admin := protected.Group("/admin")
-			admin.Use(authpkg.RoleMiddleware("admin"))
+			// Role set kept in parity with frontend isAdmin() (frontend/src/shared/auth/auth.ts):
+			// TINGKAT "1" (pengurus) and "5" (system_admin) are admin-equivalent for /admin/* access.
+			admin.Use(authpkg.RoleMiddleware("admin", "pengurus", "system_admin"))
 			{
 				admin.GET("/stats", func(c *gin.Context) {
 					response.Success(c, "Admin stats - Authorized", nil)

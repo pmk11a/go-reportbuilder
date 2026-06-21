@@ -20,7 +20,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="h-20 flex items-center justify-between px-8 bg-white/50 dark:bg-slate-950/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/50 sticky top-0 z-20">
+    <header className="h-20 flex items-center justify-between px-8 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800/50 sticky top-0 z-20">
       {/* Search Bar - Mockup */}
       <div className="flex-1 max-w-md hidden md:block">
         <div className="relative group">

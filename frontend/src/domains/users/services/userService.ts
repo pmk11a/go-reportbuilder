@@ -9,7 +9,7 @@ import {
 } from '@/server/functions/admin/users'
 import type { IAPIResponse } from '@/shared/types/api'
 import type {
-  IUser,
+  IDbflpass,
   IUserListParams,
   ICreateUserPayload,
   IUpdateUserPayload,
@@ -34,17 +34,17 @@ export const userService = {
     return { success: true, status: 200, message: 'Success', data: result.data, meta: result.meta } as any
   },
 
-  async getById(id: string | number): Promise<IAPIResponse<IUser>> {
+  async getById(id: string | number): Promise<IAPIResponse<IDbflpass>> {
     const result = await getUserDetailFn({ data: { id: String(id) } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async create(data: ICreateUserPayload): Promise<IAPIResponse<IUser>> {
+  async create(data: ICreateUserPayload): Promise<IAPIResponse<IDbflpass>> {
     const result = await createUserFn({ data: { body: data } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async update(id: string | number, data: IUpdateUserPayload): Promise<IAPIResponse<IUser>> {
+  async update(id: string | number, data: IUpdateUserPayload): Promise<IAPIResponse<IDbflpass>> {
     const result = await updateUserFn({ data: { id: String(id), body: data } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },

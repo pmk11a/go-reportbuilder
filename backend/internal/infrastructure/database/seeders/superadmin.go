@@ -68,6 +68,24 @@ func seedSuperAdmin(database *gorm.DB) {
 		admin.UserID = "SA"
 		database.Save(&admin)
 
+		// Defense in depth: GetDynamicRole() already treats Role == admin as
+		// the source of truth regardless of legacy TINGKAT, but keep the
+		// legacy DBFLPASS row in sync too so admin-panel reads of TINGKAT
+		// directly (outside GetDynamicRole) are not stale.
+		var dbflpass models.SDBFLPASS
+		if err := database.Where("USERID = ?", "SA").First(&dbflpass).Error; err == nil {
+			if dbflpass.TINGKAT != "2" {
+				dbflpass.TINGKAT = "2"
+				if err := database.Save(&dbflpass).Error; err != nil {
+					log.Printf("Error syncing SDBFLPASS TINGKAT for SA: %v", err)
+				} else {
+					log.Println("Synced existing SDBFLPASS TINGKAT to admin (2) for SA")
+				}
+			}
+		} else {
+			log.Printf("Could not load SDBFLPASS for SA to sync TINGKAT: %v", err)
+		}
+
 		log.Println("Super Admin user updated successfully")
 	}
 }

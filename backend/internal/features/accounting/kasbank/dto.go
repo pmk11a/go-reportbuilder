@@ -6,10 +6,14 @@ package kasbank
 import "time"
 
 // SListKasBankQuery is the query-string for GET /api/accounting/kasbank.
-// Tipe is optional; when empty all 4 types are returned. Date range is
-// inclusive. Search matches NoBukti or Note (case-insensitive substring).
+// Tipe is optional; when empty the repository still restricts the result to
+// the 4 kasbank types (BKM/BKK/BBM/BBK) — it never returns unrestricted
+// DBTRANS rows. Date range is inclusive. Search matches NoBukti or Note
+// (case-insensitive substring).
 type SListKasBankQuery struct {
-	// Tipe is the journal discriminator filter (BKM/BKK/BBM/BBK). Empty = all.
+	// Tipe is the journal discriminator filter (BKM/BKK/BBM/BBK). Empty means
+	// "all 4 kasbank types" — the repository always applies an IN(...) filter
+	// over those 4 values, it is never left unrestricted.
 	Tipe string `form:"tipe" json:"tipe"`
 	// Search matches NoBukti or Note with LIKE %search%.
 	Search string `form:"search" json:"search"`
@@ -26,6 +30,10 @@ type SListKasBankQuery struct {
 	SortBy string `form:"sortBy" json:"sortBy"`
 	// SortDir is "asc" or "desc". Defaults to "desc" when empty.
 	SortDir string `form:"sortDir" json:"sortDir"`
+	// UserID is the authenticated caller, injected by the handler (never
+	// bound from the request itself). Used by the repository to resolve
+	// the default period restriction when DateFrom/DateTo are blank.
+	UserID string `form:"-" json:"-"`
 }
 
 // SCreateKasBankRequest is the JSON body for POST /api/accounting/kasbank.
@@ -41,6 +49,12 @@ type SCreateKasBankRequest struct {
 	PerkiraanHd string `json:"perkiraanHd"`
 	// Note is the free-text header description.
 	Note string `json:"note"`
+	// TglJurnal is the due date / "Batas Waktu".
+	TglJurnal *string `json:"tgljurnal"`
+	// NoJurnal is the order number / "No. Order".
+	NoJurnal string `json:"noJurnal"`
+	// NoBuktiSem is the invoice/reference number / "No. Invoice".
+	NoBuktiSem string `json:"noBuktiSem"`
 	// Details is the list of journal lines; the service validates that
 	// sum(Debet) == sum(Kredit) across the whole slice.
 	Details []SDetailInput `json:"details"`
@@ -54,6 +68,9 @@ type SUpdateKasBankRequest struct {
 	TipeTransHd  string        `json:"tipeTransHd"`
 	PerkiraanHd  string        `json:"perkiraanHd"`
 	Note         string        `json:"note"`
+	TglJurnal    *string       `json:"tgljurnal"`
+	NoJurnal     string        `json:"noJurnal"`
+	NoBuktiSem   string        `json:"noBuktiSem"`
 	Details      []SDetailInput `json:"details,omitempty"`
 }
 
@@ -84,11 +101,11 @@ type SDetailInput struct {
 }
 
 // SOtorisasiRequest is the JSON body for POST /:noBukti/otorisasi and
-// /:noBukti/batal-otorisasi. Level=1 or 2; Action is "set" or "cancel"
+// /:noBukti/batal-otorisasi. Level=1..5; Action is "set" or "cancel"
 // (the cancel endpoint is mounted separately but accepts the same shape).
 type SOtorisasiRequest struct {
-	// Level is the authorization level to set/cancel (1 or 2).
-	Level int `json:"level" binding:"required,min=1,max=2"`
+	// Level is the authorization level to set/cancel (1 to 5).
+	Level int `json:"level" binding:"required,min=1,max=5"`
 	// Action is "set" or "cancel" — kept in the same DTO so a single
 	// handler can switch on it for the merged endpoint if needed.
 	Action string `json:"action" binding:"required,oneof=set cancel"`
@@ -96,8 +113,10 @@ type SOtorisasiRequest struct {
 
 // SListKasBankResponse is the paginated JSON shape for the list endpoint.
 type SListKasBankResponse struct {
-	// Items is the current page of SDbTrans rows.
-	Items []SDbTrans `json:"items"`
+	// Items is the current page, converted to the SKasBankHeader view-model
+	// (same field semantics as GetByNoBukti: otorisasi1..5, effective
+	// maxol, locked, jumlahvalas/jumlahrupiah) — never raw SDbTrans rows.
+	Items []SKasBankHeader `json:"items"`
 	// Total is the count after applying filters (pre-pagination).
 	Total int64 `json:"total"`
 	// Page echoes the requested page number.

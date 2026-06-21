@@ -4,59 +4,45 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { Save } from 'lucide-react'
-import { Button } from '@/shared/ui/overlay/button'
 import { Input } from '@/shared/ui/form/input'
+import { PasswordInput } from '@/shared/ui/form/password-input'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/ui/form/select'
 import { Card, CardContent } from '@/shared/ui/layout/card'
 import { Alert, AlertDescription } from '@/shared/ui/feedback/alert'
-import { Each } from '@/shared/ui/layout/Render'
 import { UserFormActions } from '@/domains/users/components/users/form/UserFormActions'
-import { useUserLevels } from '@/shared/hooks/useUserLevels'
-import { useUserKinds } from '@/shared/hooks/useUserKinds'
-import { useUserRelations } from '@/shared/hooks/useUserRelations'
-import { useUserStatuses } from '@/shared/hooks/useUserStatuses'
-import { useCompanies } from '@/shared/hooks/useCompanies'
 import { useCreateUser, useUpdateUser } from '@/domains/users/hooks/useUsers'
-import type { IUserDetail } from '@/domains/users/types/user'
 import { apiErrorMessage } from '@/shared/utils/errorMapper'
+import type { IDbflpass, ICreateUserPayload, IUpdateUserPayload } from '@/domains/users/types/user'
 
-export interface IUserFormValues {
-  username: string
-  fullname: string
-  email: string
-  phone: string
-  id_company: string
-  id_user_level: string
-  id_user_kind: string
-  id_user_relation: string
-  id_user_status: string
-}
-
-const buildSchema = (t: (k: string) => string) =>
-  z.object({
-    username: z
-      .string()
-      .min(1, t('validation.required'))
-      .min(3, t('validation.minLength', { count: 3 })),
-    fullname: z.string().min(1, t('validation.required')),
-    email: z
-      .string()
-      .min(1, t('validation.required'))
-      .email(t('validation.email')),
-    phone: z.string().optional().or(z.literal('')),
-    id_company: z.string().min(1, t('validation.required')),
-    id_user_level: z.string().min(1, t('validation.required')),
-    id_user_kind: z.string().min(1, t('validation.required')),
-    id_user_relation: z.string().min(1, t('validation.required')),
-    id_user_status: z.string().min(1, t('validation.required')),
-  })
+type TUserRole = 'admin' | 'karyawan'
 
 export interface IUserFormProps {
   mode: 'create' | 'edit'
-  user?: IUserDetail
-  onSuccess: (user: IUserDetail) => void
+  user?: IDbflpass
+  onSuccess: (user: IDbflpass) => void
   onCancel: () => void
   submitLabel?: string
 }
+
+const buildSchema = (mode: 'create' | 'edit', t: (key: string, fallback: string) => string) =>
+  z.object({
+    username: z
+      .string()
+      .min(3, t('validation.username_min', 'Username must be at least 3 characters')),
+    full_name: z
+      .string()
+      .min(1, t('validation.full_name_required', 'Full name is required')),
+    role: z.enum(['admin', 'karyawan']),
+    status: z.enum(['0', '1']),
+    password: mode === 'create'
+      ? z.string().min(6, t('validation.password_min', 'Password must be at least 6 characters'))
+      : z
+          .string()
+          .optional()
+          .refine((val) => !val || val.length >= 6, {
+            message: t('validation.password_min', 'Password must be at least 6 characters'),
+          }),
+  })
 
 export const UserForm: React.FC<IUserFormProps> = ({
   mode,
@@ -65,33 +51,23 @@ export const UserForm: React.FC<IUserFormProps> = ({
   onCancel,
   submitLabel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['users', 'common'])
   const [error, setError] = useState<string | null>(null)
-
-  const levels = useUserLevels()
-  const kinds = useUserKinds()
-  const relations = useUserRelations()
-  const statuses = useUserStatuses()
-  const companies = useCompanies()
 
   const createMutation = useCreateUser()
   const updateMutation = useUpdateUser()
 
-  const schema = buildSchema(t)
+  const schema = buildSchema(mode, t)
   type TFormValues = z.infer<typeof schema>
 
   const form = useForm<TFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      username: user?.username ?? '',
-      fullname: user?.fullname ?? '',
-      email: user?.email ?? '',
-      phone: user?.phone ?? '',
-      id_company: user?.id_company ?? '',
-      id_user_level: user?.id_user_level ?? '',
-      id_user_kind: user?.id_user_kind ?? '',
-      id_user_relation: user?.id_user_relation ?? '',
-      id_user_status: user?.id_user_status ?? '',
+      username: user?.user_id ?? '',
+      full_name: user?.full_name ?? '',
+      role: user?.tingkat === '2' ? 'admin' : 'karyawan',
+      status: user?.status === '0' ? '0' : '1',
+      password: '',
     },
   })
 
@@ -99,15 +75,11 @@ export const UserForm: React.FC<IUserFormProps> = ({
   useEffect(() => {
     if (mode === 'edit' && user) {
       form.reset({
-        username: user.username,
-        fullname: user.fullname,
-        email: user.email,
-        phone: user.phone ?? '',
-        id_company: user.id_company,
-        id_user_level: user.id_user_level,
-        id_user_kind: user.id_user_kind,
-        id_user_relation: user.id_user_relation,
-        id_user_status: user.id_user_status,
+        username: user.user_id ?? '',
+        full_name: user.full_name ?? '',
+        role: user.tingkat === '2' ? 'admin' : 'karyawan',
+        status: user.status === '0' ? '0' : '1',
+        password: '',
       })
     }
   }, [mode, user, form])
@@ -115,18 +87,32 @@ export const UserForm: React.FC<IUserFormProps> = ({
   const onSubmit = async (values: TFormValues) => {
     setError(null)
     try {
-      const result =
-        mode === 'create'
-          ? await createMutation.mutateAsync(values)
-          : await updateMutation.mutateAsync({ eid: user!.eid, ...values })
-      onSuccess(result)
+      if (mode === 'create') {
+        const payload: ICreateUserPayload = {
+          username: values.username,
+          password: values.password ?? '',
+          full_name: values.full_name,
+          role: values.role as TUserRole,
+        }
+        const result = await createMutation.mutateAsync(payload)
+        onSuccess(result as IDbflpass)
+      } else {
+        const payload: IUpdateUserPayload = {
+          full_name: values.full_name,
+          role: values.role as TUserRole,
+          status: values.status,
+          ...(values.password && { password: values.password }),
+        }
+        const result = await updateMutation.mutateAsync({ id: user!.user_id, data: payload })
+        onSuccess(result as IDbflpass)
+      }
     } catch (err) {
-      setError(apiErrorMessage(err, t('userManagement.form.saveError')))
+      setError(apiErrorMessage(err, t('messages.create_failed', 'Failed to save user')))
     }
   }
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending
-  const defaultSubmitLabel = mode === 'create' ? t('common.create') : t('common.save')
+  const defaultSubmitLabel = mode === 'create' ? t('common.create', 'Create') : t('common.save', 'Save')
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -138,16 +124,14 @@ export const UserForm: React.FC<IUserFormProps> = ({
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <h3 className="text-lg font-medium">{t('userManagement.form.sections.account')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t('userManagement.form.fields.username')}
+                {t('dialog.username_label', 'Username')}
               </label>
               <Input
                 {...form.register('username')}
                 disabled={mode === 'edit'}
-                placeholder={t('userManagement.form.placeholders.username')}
               />
               {form.formState.errors.username && (
                 <p className="text-sm text-red-500">
@@ -158,146 +142,65 @@ export const UserForm: React.FC<IUserFormProps> = ({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t('userManagement.form.fields.fullname')}
+                {t('dialog.full_name_label', 'Full Name')}
               </label>
-              <Input
-                {...form.register('fullname')}
-                placeholder={t('userManagement.form.placeholders.fullname')}
-              />
-              {form.formState.errors.fullname && (
+              <Input {...form.register('full_name')} />
+              {form.formState.errors.full_name && (
                 <p className="text-sm text-red-500">
-                  {form.formState.errors.fullname.message}
+                  {form.formState.errors.full_name.message}
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t('userManagement.form.fields.email')}
+                {t('dialog.role_label', 'System Role')}
               </label>
-              <Input
-                type="email"
-                {...form.register('email')}
-                placeholder={t('userManagement.form.placeholders.email')}
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('userManagement.form.fields.phone')}
-              </label>
-              <Input
-                {...form.register('phone')}
-                placeholder={t('userManagement.form.placeholders.phone')}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <h3 className="text-lg font-medium">{t('userManagement.form.sections.organization')}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('userManagement.form.fields.company')}
-              </label>
-              <select
-                {...form.register('id_company')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              <Select
+                value={form.watch('role')}
+                onValueChange={(v) => form.setValue('role', v as TUserRole)}
               >
-                <option value="">{t('common.select')}</option>
-                <Each items={companies.data}>
-                  {(c) => <option key={c.eid} value={c.eid}>{c.name}</option>}
-                </Each>
-              </select>
-              {form.formState.errors.id_company && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.id_company.message}
-                </p>
-              )}
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">{t('dialog.role_admin', 'Admin')}</SelectItem>
+                  <SelectItem value="karyawan">{t('dialog.role_karyawan', 'Karyawan / Employee')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {t('userManagement.form.fields.level')}
+                {t('fields.status', 'STATUS')}
               </label>
-              <select
-                {...form.register('id_user_level')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              <Select
+                value={form.watch('status')}
+                onValueChange={(v) => form.setValue('status', v as '0' | '1')}
               >
-                <option value="">{t('common.select')}</option>
-                <Each items={levels.data}>
-                  {(l) => <option key={l.eid} value={l.eid}>{l.name}</option>}
-                </Each>
-              </select>
-              {form.formState.errors.id_user_level && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.id_user_level.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('userManagement.form.fields.kind')}
-              </label>
-              <select
-                {...form.register('id_user_kind')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">{t('common.select')}</option>
-                <Each items={kinds.data}>
-                  {(k) => <option key={k.eid} value={k.eid}>{k.name}</option>}
-                </Each>
-              </select>
-              {form.formState.errors.id_user_kind && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.id_user_kind.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {t('userManagement.form.fields.relation')}
-              </label>
-              <select
-                {...form.register('id_user_relation')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">{t('common.select')}</option>
-                <Each items={relations.data}>
-                  {(r) => <option key={r.eid} value={r.eid}>{r.name}</option>}
-                </Each>
-              </select>
-              {form.formState.errors.id_user_relation && (
-                <p className="text-sm text-red-500">
-                  {form.formState.errors.id_user_relation.message}
-                </p>
-              )}
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">{t('status_filter_active', 'Active')}</SelectItem>
+                  <SelectItem value="0">{t('status_filter_inactive', 'Inactive')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">
-                {t('userManagement.form.fields.status')}
+                {t('dialog.password_label', 'Password')}
               </label>
-              <select
-                {...form.register('id_user_status')}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">{t('common.select')}</option>
-                <Each items={statuses.data}>
-                  {(s) => <option key={s.eid} value={s.eid}>{s.name}</option>}
-                </Each>
-              </select>
-              {form.formState.errors.id_user_status && (
+              <PasswordInput {...form.register('password')} />
+              {mode === 'edit' && (
+                <p className="text-xs text-muted-foreground">
+                  {t('dialog.password_hint', 'leave blank to keep unchanged')}
+                </p>
+              )}
+              {form.formState.errors.password && (
                 <p className="text-sm text-red-500">
-                  {form.formState.errors.id_user_status.message}
+                  {form.formState.errors.password.message}
                 </p>
               )}
             </div>

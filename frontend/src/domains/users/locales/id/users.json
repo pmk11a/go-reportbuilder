@@ -26,6 +26,18 @@
     "disable": "Nonaktifkan",
     "detail": "Lihat Detail"
   },
+  "detail": {
+    "tab_overview": "Ringkasan",
+    "tab_permissions": "Hak Akses",
+    "tab_sessions": "Sesi",
+    "tab_activity": "Aktivitas",
+    "back_to_list": "Kembali ke daftar user",
+    "edit_button": "Edit",
+    "delete_button": "Hapus",
+    "delete_title": "Hapus User",
+    "delete_confirm": "Apakah Anda yakin ingin menghapus user ini? Aksi ini tidak dapat dibatalkan.",
+    "load_error": "Gagal memuat data user"
+  },
   "messages": {
     "empty": "Tidak ada data user yang ditemukan.",
     "error_loading": "Gagal memuat daftar user",

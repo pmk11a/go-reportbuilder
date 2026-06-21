@@ -19,7 +19,7 @@ export const getKasBankByNoBuktiFn = createServerFn({ method: 'GET' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}`,
+      `/api/accounting/kasbank/?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'GET' },
       accessToken
     )
@@ -46,7 +46,7 @@ export const updateKasBankFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}`,
+      `/api/accounting/kasbank/?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'PUT', body: JSON.stringify(data.body) },
       accessToken
     )
@@ -60,7 +60,7 @@ export const deleteKasBankFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}`,
+      `/api/accounting/kasbank/?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'DELETE' },
       accessToken
     )
@@ -74,7 +74,7 @@ export const getKasBankDetailListFn = createServerFn({ method: 'GET' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/detail`,
+      `/api/accounting/kasbank/detail?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'GET' },
       accessToken
     )
@@ -88,7 +88,7 @@ export const getKasBankDetailFn = createServerFn({ method: 'GET' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/detail/${data.urut}`,
+      `/api/accounting/kasbank/detail/${data.urut}?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'GET' },
       accessToken
     )
@@ -102,7 +102,7 @@ export const addKasBankDetailFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/detail`,
+      `/api/accounting/kasbank/detail?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'POST', body: JSON.stringify(data.body) },
       accessToken
     )
@@ -116,7 +116,7 @@ export const updateKasBankDetailFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/detail/${data.urut}`,
+      `/api/accounting/kasbank/detail/${data.urut}?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'PUT', body: JSON.stringify(data.body) },
       accessToken
     )
@@ -130,7 +130,7 @@ export const deleteKasBankDetailFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/detail/${data.urut}`,
+      `/api/accounting/kasbank/detail/${data.urut}?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'DELETE' },
       accessToken
     )
@@ -144,7 +144,7 @@ export const setOtorisasiFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/otorisasi`,
+      `/api/accounting/kasbank/otorisasi?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'POST', body: JSON.stringify(data.body) },
       accessToken
     )
@@ -158,7 +158,7 @@ export const batalOtorisasiFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/batal-otorisasi`,
+      `/api/accounting/kasbank/batal-otorisasi?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'POST', body: JSON.stringify(data.body) },
       accessToken
     )
@@ -205,7 +205,7 @@ export const downloadKasBankPdfFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const response = await makeBackendRequestRaw(
-      `/api/accounting/kasbank/${encodeURIComponent(data.noBukti)}/pdf`,
+      `/api/accounting/kasbank/pdf?noBukti=${encodeURIComponent(data.noBukti)}`,
       { method: 'GET' },
       accessToken
     )

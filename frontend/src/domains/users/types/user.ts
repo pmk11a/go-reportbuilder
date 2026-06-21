@@ -70,9 +70,6 @@ export interface IUserPermissionsData {
   coa: IUserCoaAccess[]
 }
 
-// Alias for detail view (same shape as IUser)
-export type IUserDetail = IUser;
-
 // Payload for creating a new user
 export interface ICreateUserPayload {
   username: string

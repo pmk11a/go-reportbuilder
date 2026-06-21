@@ -233,7 +233,7 @@ export function CompanyForm() {
 
   if (isLoading) {
     return (
-      <Card className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+      <Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end bg-slate-50/50 dark:bg-slate-950/20">
           <Skeleton className="h-9 w-36 rounded-md" />
         </div>
@@ -264,7 +264,7 @@ export function CompanyForm() {
   }
 
   return (
-    <Card className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
+    <Card className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 overflow-hidden">
       {/* Toolbar */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-end bg-slate-50/50 dark:bg-slate-950/20">
         <Button type="submit" form="company-form" loading={updateMutation.isPending} size="sm" className="gap-2">

@@ -5,6 +5,7 @@ import { getEnv, parseEnvTime } from './utils'
 const SESSION_PREFIX = 'bff:session:'
 const USER_SESSIONS_PREFIX = 'bff:user_sessions:'
 const LOCK_PREFIX = 'lock:refresh:'
+export const SESSION_COOKIE_NAME = 'dapen_session_id'
 const SESSION_TTL_SECONDS = parseEnvTime('SESSION_TTL_SECONDS', 604800)
 const BACKEND_URL = getEnv('BACKEND_URL', 'http://127.0.0.1:8080')
 const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 10000)

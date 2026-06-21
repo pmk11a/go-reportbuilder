@@ -6,8 +6,7 @@ import { Button } from '@/shared/ui/overlay/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/layout/card'
 import { UserForm } from '@/domains/users/components/users/form/UserForm'
 import { useUser } from '@/domains/users/hooks/useUsers'
-import { IUserDetail } from '@/domains/users/types'
-import type { IUserDetail } from '@/domains/users/types'
+import type { IDbflpass } from '@/domains/users/types/user'
 
 export interface IUserFormPageProps {
   mode: 'create' | 'edit'
@@ -15,28 +14,28 @@ export interface IUserFormPageProps {
 }
 
 export const UserFormPage: React.FC<IUserFormPageProps> = ({ mode, userEid }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['users', 'common'])
   const navigate = useNavigate()
   const isEdit = mode === 'edit'
 
   const userQuery = useUser(userEid ?? '', { enabled: isEdit && !!userEid })
 
-  const handleSuccess = (user: IUserDetail) => {
-    navigate({ to: '/admin/master-data/users', search: { eid: user.eid } })
+  const handleSuccess = (user: IDbflpass) => {
+    navigate({ to: '/admin/master-data/users' })
   }
 
   const handleCancel = () => {
     if (isEdit && userEid) {
-      navigate({ to: '/admin/master-data/users', search: { eid: userEid } })
+      navigate({ to: '/admin/master-data/users' })
     } else {
       navigate({ to: '/admin/master-data/users' })
     }
   }
 
-  const title = isEdit ? t('userManagement.edit.title') : t('userManagement.create.title')
+  const title = isEdit ? t('users:edit_user', 'Edit User') : t('users:add_user', 'Add User')
   const subtitle = isEdit
-    ? t('userManagement.edit.subtitle')
-    : t('userManagement.create.subtitle')
+    ? t('users:dialog.edit_description', 'Update user profile details below.')
+    : t('users:dialog.add_description', 'Fill out the form below to create a new user.')
 
   return (
     <div className="space-y-6">
@@ -45,7 +44,7 @@ export const UserFormPage: React.FC<IUserFormPageProps> = ({ mode, userEid }) =>
           variant="ghost"
           size="icon"
           onClick={handleCancel}
-          aria-label={t('common.back')}
+          aria-label={t('common.back', 'Back')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -62,9 +61,9 @@ export const UserFormPage: React.FC<IUserFormPageProps> = ({ mode, userEid }) =>
         <CardContent>
           {isEdit ? (
             userQuery.isLoading ? (
-              <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+              <p className="text-muted-foreground text-sm">{t('common.loading', 'Loading...')}</p>
             ) : userQuery.error ? (
-              <p className="text-red-500 text-sm">{t('userManagement.detail.loadError')}</p>
+              <p className="text-red-500 text-sm">{t('users:messages.error_loading', 'Failed to load user')}</p>
             ) : userQuery.data ? (
               <UserForm
                 mode="edit"

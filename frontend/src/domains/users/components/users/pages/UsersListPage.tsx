@@ -13,8 +13,9 @@ import { useDebounce } from '@/shared/hooks/useDebounce'
 import { useAuth } from '@/domains/auth/hooks/use-auth'
 import { useToast } from '@/shared/hooks/use-toast'
 import { DeleteConfirmationDialog } from '@/shared/ui'
-import { Search, RefreshCw, Plus, Pencil, Trash, Check, X } from 'lucide-react'
+import { Search, RefreshCw, Plus } from 'lucide-react'
 import type { IDbflpass } from '@/domains/users/types/user'
+import { UserListRow } from './UserListRow'
 
 /**
  * UsersListPage for the /admin/master-data/users list page.
@@ -61,11 +62,11 @@ export function UsersListPage() {
 
   // Action handlers
   const handleRowClick = (user: IDbflpass) => {
-    navigate({ to: '/admin/_layout/master-data/users/$id', params: { id: user.user_id } })
+    navigate({ to: '/admin/master-data/users/$id', params: { id: user.user_id } })
   }
 
   const handleEdit = (user: IDbflpass) => {
-    navigate({ to: '/admin/_layout/master-data/users/$id/edit', params: { id: user.user_id } })
+    navigate({ to: '/admin/master-data/users/$id/edit', params: { id: user.user_id } })
   }
 
   const handleDelete = (userId: string, fullName: string) => {
@@ -161,7 +162,7 @@ export function UsersListPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
             {t('common.refresh', 'Refresh')}
           </Button>
-          <Button onClick={() => navigate({ to: '/admin/_layout/master-data/users/new' })} size="sm">
+          <Button onClick={() => navigate({ to: '/admin/master-data/users/new' })} size="sm">
             <Plus className="h-4 w-4 mr-2" />
             {t('add_user', 'Tambah User')}
           </Button>
@@ -272,103 +273,5 @@ export function UsersListPage() {
         isDeleting={deleteMutation.isPending}
       />
     </div>
-  )
-}
-
-/**
- * Single user row for list page.
- * Clicking a row navigates to detail page; action buttons perform specific actions.
- */
-interface IUserListRowProps {
-  user: IDbflpass
-  currentUserId?: string
-  onRowClick: (user: IDbflpass) => void
-  onEdit: (user: IDbflpass) => void
-  onDelete: (userId: string, fullName: string) => void
-  onToggleStatus: (user: IDbflpass) => void
-}
-
-function UserListRow({
-  user,
-  currentUserId,
-  onRowClick,
-  onEdit,
-  onDelete,
-  onToggleStatus,
-}: IUserListRowProps) {
-  const { t } = useTranslation(['users', 'common'])
-
-  return (
-    <TableRow
-      key={user.user_id}
-      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-      onClick={() => onRowClick(user)}
-    >
-      {/* USER ID */}
-      <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-        {user.user_id}
-      </TableCell>
-
-      {/* FULL NAME */}
-      <TableCell>
-        {user.full_name || '-'}
-      </TableCell>
-
-      {/* LEVEL */}
-      <TableCell>
-        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-          Lvl {user.tingkat || '0'}
-        </span>
-      </TableCell>
-
-      {/* STATUS */}
-      <TableCell>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-          user.status === '1'
-            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
-            : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-        }`}>
-          {user.status === '1' ? t('status_filter_active', 'Active') : t('status_filter_inactive', 'Inactive')}
-        </span>
-      </TableCell>
-
-      {/* ACTIONS */}
-      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1">
-          {/* Toggle Status Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-8 w-8 ${user.status === '1' ? 'text-amber-500 hover:text-amber-600' : 'text-emerald-600 hover:text-emerald-700'}`}
-            onClick={() => onToggleStatus(user)}
-            title={user.status === '1' ? t('buttons.disable', 'Disable') : t('buttons.enable', 'Enable')}
-          >
-            {user.status === '1' ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-          </Button>
-
-          {/* Edit Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-blue-600 hover:text-blue-700"
-            onClick={() => onEdit(user)}
-            title={t('buttons.edit', 'Edit')}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-
-          {/* Delete Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-600 hover:text-red-700"
-            onClick={() => onDelete(user.user_id, user.full_name || user.user_id)}
-            title={t('buttons.delete', 'Hapus')}
-          >
-            <Trash className="h-4 w-4" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
   )
 }

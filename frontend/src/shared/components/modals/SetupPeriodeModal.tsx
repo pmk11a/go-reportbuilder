@@ -8,7 +8,7 @@ import { Input } from "@/shared/ui/form/input";
 import { Button } from "@/shared/ui/overlay/button";
 import { useModalStore } from "@/shared/stores/modalStore";
 import { useToast } from "@/shared/hooks/use-toast";
-import { useGetPeriode, useSetPeriode } from "@/shared/hooks/useBerkas";
+import { useGetPeriode, useSetPeriode } from "@/domains/berkas/hooks/useBerkas";
 import { useTranslation } from "react-i18next";
 
 export function SetupPeriodeModal() {
