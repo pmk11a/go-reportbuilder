@@ -1,5 +1,4 @@
-import { fromCrossJSON } from 'seroval'
-import { getDefaultSerovalPlugins } from '@tanstack/react-start'
+// import { fromCrossJSON, createSerovalJSONPlugin } from 'seroval/plugins'
 
 const isDev = typeof window !== 'undefined' && import.meta.env.DEV
 
@@ -22,62 +21,62 @@ export function installFetchInterceptor() {
       return originalFetch.call(window, input, init)
     }
 
-    const method = (init?.method || 'GET').toUpperCase() as keyof typeof C.m
-    const label = decodeServerFnUrl(url)
-    const mc = C.m[method] || C.dim
-    const ts = formatTime(new Date())
+    // const method = (init?.method || 'GET').toUpperCase() as keyof typeof C.m
+    // const label = decodeServerFnUrl(url)
+    // const mc = C.m[method] || C.dim
+    // const ts = formatTime(new Date())
 
-    console.groupCollapsed(
-      `%c→ %c[${ts}] %c${method} %c${label}`,
-      `color:${C.dim}`,
-      `color:${C.dim}`,
-      `color:${mc};font-weight:bold`,
-      `color:${C.dim}`
-    )
-    // Log GET query params (only server function requests)
-    try {
-      const urlObj = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
-      if (urlObj.searchParams.size > 0) {
-        const params = Object.fromEntries(urlObj.searchParams.entries())
-        // Remove TanStack Start internal params
-        delete params['tss-serverfn-split']
-        if (Object.keys(params).length > 0) {
-          console.log('%cParams:', `color:${C.dim};font-weight:bold`, params)
-        }
-      }
-    } catch {}
+    // console.groupCollapsed(
+    //   `%c→ %c[${ts}] %c${method} %c${label}`,
+    //   `color:${C.dim}`,
+    //   `color:${C.dim}`,
+    //   `color:${mc};font-weight:bold`,
+    //   `color:${C.dim}`
+    // )
+    // // Log GET query params (only server function requests)
+    // try {
+    //   const urlObj = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+    //   if (urlObj.searchParams.size > 0) {
+    //     const params = Object.fromEntries(urlObj.searchParams.entries())
+    //     // Remove TanStack Start internal params
+    //     delete params['tss-serverfn-split']
+    //     if (Object.keys(params).length > 0) {
+    //       console.log('%cParams:', `color:${C.dim};font-weight:bold`, params)
+    //     }
+    //   }
+    // } catch {}
 
-    // Log request body / FormData / URLSearchParams
-    const bodyValue = init?.body
-    if (bodyValue) {
-      try {
-        if (bodyValue instanceof FormData) {
-          const logged: Record<string, unknown> = {}
-          for (const [key, value] of bodyValue.entries()) {
-            logged[key] = value instanceof File ? `[File: ${value.name}]` : value
-          }
-          console.log('%cBody:', `color:${C.dim};font-weight:bold`, logged)
-        } else if (bodyValue instanceof URLSearchParams) {
-          console.log('%cBody:', `color:${C.dim};font-weight:bold`, Object.fromEntries(bodyValue.entries()))
-        } else if (typeof bodyValue === 'string') {
-          const parsed = JSON.parse(bodyValue)
-          // Server function envelope: { t: { v: ..., m: ..., h: ... } }
-          if (parsed?.t?.v != null) {
-            console.log('%cPayload:', `color:${C.dim};font-weight:bold`, parsed.t.v)
-          } else {
-            console.log('%cBody:', `color:${C.dim};font-weight:bold`, parsed)
-          }
-        } else {
-          // TypedArray, ArrayBuffer, Blob, ReadableStream — try stringifying
-          const text = await bodyValue.text?.().catch(() => String(bodyValue)) ?? String(bodyValue)
-          console.log('%cBody:', `color:${C.dim};font-weight:bold`, text)
-        }
-      } catch (e) {
-        console.log('%cBody:', `color:${C.dim};font-weight:bold`, bodyValue)
-      }
-    }
-    console.log(`%cTime: %c${new Date().toLocaleTimeString()}`, `color:${C.dim}`, 'color:#e2e8f0')
-    console.groupEnd()
+    // // Log request body / FormData / URLSearchParams
+    // const bodyValue = init?.body
+    // if (bodyValue) {
+    //   try {
+    //     if (bodyValue instanceof FormData) {
+    //       const logged: Record<string, unknown> = {}
+    //       for (const [key, value] of bodyValue.entries()) {
+    //         logged[key] = value instanceof File ? `[File: ${value.name}]` : value
+    //       }
+    //       console.log('%cBody:', `color:${C.dim};font-weight:bold`, logged)
+    //     } else if (bodyValue instanceof URLSearchParams) {
+    //       console.log('%cBody:', `color:${C.dim};font-weight:bold`, Object.fromEntries(bodyValue.entries()))
+    //     } else if (typeof bodyValue === 'string') {
+    //       const parsed = JSON.parse(bodyValue)
+    //       // Server function envelope: { t: { v: ..., m: ..., h: ... } }
+    //       if (parsed?.t?.v != null) {
+    //         console.log('%cPayload:', `color:${C.dim};font-weight:bold`, parsed.t.v)
+    //       } else {
+    //         console.log('%cBody:', `color:${C.dim};font-weight:bold`, parsed)
+    //       }
+    //     } else {
+    //       // TypedArray, ArrayBuffer, Blob, ReadableStream — try stringifying
+    //       const text = await bodyValue.text?.().catch(() => String(bodyValue)) ?? String(bodyValue)
+    //       console.log('%cBody:', `color:${C.dim};font-weight:bold`, text)
+    //     }
+    //   } catch (e) {
+    //     console.log('%cBody:', `color:${C.dim};font-weight:bold`, bodyValue)
+    //   }
+    // }
+    // console.log(`%cTime: %c${new Date().toLocaleTimeString()}`, `color:${C.dim}`, 'color:#e2e8f0')
+    // console.groupEnd()
 
     const start = performance.now()
 
@@ -85,58 +84,58 @@ export function installFetchInterceptor() {
       const response = await originalFetch.call(window, input, init)
       const duration = Math.round(performance.now() - start)
       const statusColor = response.ok ? C.ok : C.err
-      const icon = response.ok ? '✓' : '✗'
+      // const icon = response.ok ? '✓' : '✗'
       const errorLabel = !response.ok ? ' ← ERROR' : ''
 
       const cloned = response.clone()
-      const rawText = await cloned.text().catch(() => '')
+      // const rawText = await cloned.text().catch(() => '')
 
       let goResponse: any = null
 
-      if (rawText) {
-        try {
-          const parsed = JSON.parse(rawText)
+      // if (rawText) {
+      //   try {
+      //     const parsed = JSON.parse(rawText)
 
-          try {
-            goResponse = fromCrossJSON(parsed, { plugins: getDefaultSerovalPlugins() })
-          } catch (e: any) {
-            goResponse = null
-          }
-        } catch {
-          goResponse = null
-        }
-      }
+      //     try {
+      //       goResponse = fromCrossJSON(parsed, { plugins: [createSerovalJSONPlugin()] })
+      //     } catch (e: any) {
+      //       goResponse = null
+      //     }
+      //   } catch {
+      //     goResponse = null
+      //   }
+      // }
 
-      console.groupCollapsed(
-        `%c← %c[${ts}] %c${method} %c${label} %c${response.status} %c(${duration}ms)${errorLabel}`,
-        `color:${C.dim}`,
-        `color:${C.dim}`,
-        `color:${mc};font-weight:bold`,
-        `color:${C.dim}`,
-        `color:${statusColor};font-weight:bold`,
-        `color:${C.dim}`
-      )
+      // console.groupCollapsed(
+      //   `%c← %c[${ts}] %c${method} %c${label} %c${response.status} %c(${duration}ms)${errorLabel}`,
+      //   `color:${C.dim}`,
+      //   `color:${C.dim}`,
+      //   `color:${mc};font-weight:bold`,
+      //   `color:${C.dim}`,
+      //   `color:${statusColor};font-weight:bold`,
+      //   `color:${C.dim}`
+      // )
 
-      if (goResponse !== null && goResponse !== undefined) {
-        console.log('%cGo Response:', `color:${C.dim};font-weight:bold`, goResponse)
-      }
+      // if (goResponse !== null && goResponse !== undefined) {
+      //   console.log('%cGo Response:', `color:${C.dim};font-weight:bold`, goResponse)
+      // }
 
-      console.groupEnd()
+      // console.groupEnd()
 
       return response
     } catch (error) {
-      const duration = Math.round(performance.now() - start)
-      console.groupCollapsed(
-        `%c✗ %c[${ts}] %c${method} %c${label} %cNETWORK ERROR %c(${duration}ms)`,
-        `color:${C.dim}`,
-        `color:${C.dim}`,
-        `color:${mc};font-weight:bold`,
-        `color:${C.dim}`,
-        `color:${C.err};font-weight:bold`,
-        `color:${C.dim}`
-      )
-      console.error(error)
-      console.groupEnd()
+      // const duration = Math.round(performance.now() - start)
+      // console.groupCollapsed(
+      //   `%c✗ %c[${ts}] %c${method} %c${label} %cNETWORK ERROR %c(${duration}ms)`,
+      //   `color:${C.dim}`,
+      //   `color:${C.dim}`,
+      //   `color:${mc};font-weight:bold`,
+      //   `color:${C.dim}`,
+      //   `color:${C.err};font-weight:bold`,
+      //   `color:${C.dim}`
+      // )
+      // console.error(error)
+      // console.groupEnd()
       throw error
     }
   }

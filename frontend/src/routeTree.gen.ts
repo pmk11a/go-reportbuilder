@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -40,6 +42,19 @@ import { Route as AdminLayoutMasterDataUsersNewIndexRouteImport } from './routes
 import { Route as AdminLayoutMasterDataUsersIdIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/index'
 import { Route as AdminLayoutMasterDataUsersIdEditIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/edit/index'
 
+const KaryawanRouteImport = createFileRoute('/karyawan')()
+const AdminRouteImport = createFileRoute('/admin')()
+
+const KaryawanRoute = KaryawanRouteImport.update({
+  id: '/karyawan',
+  path: '/karyawan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -51,14 +66,12 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const KaryawanLayoutRoute = KaryawanLayoutRouteImport.update({
-  id: '/karyawan/_layout',
-  path: '/karyawan',
-  getParentRoute: () => rootRouteImport,
+  id: '/_layout',
+  getParentRoute: () => KaryawanRoute,
 } as any)
 const AdminLayoutRoute = AdminLayoutRouteImport.update({
-  id: '/admin/_layout',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
+  id: '/_layout',
+  getParentRoute: () => AdminRoute,
 } as any)
 const publicDocsRoute = publicDocsRouteImport.update({
   id: '/(public)/docs',
@@ -220,21 +233,21 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
-  '/login/': typeof publicauthLoginIndexRoute
-  '/register/': typeof publicauthRegisterIndexRoute
-  '/admin/dashboard/': typeof AdminLayoutDashboardIndexRoute
-  '/admin/documents/': typeof AdminLayoutDocumentsIndexRoute
-  '/admin/reports/': typeof AdminLayoutReportsIndexRoute
-  '/karyawan/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
+  '/login': typeof publicauthLoginIndexRoute
+  '/register': typeof publicauthRegisterIndexRoute
+  '/admin/dashboard': typeof AdminLayoutDashboardIndexRoute
+  '/admin/documents': typeof AdminLayoutDocumentsIndexRoute
+  '/admin/reports': typeof AdminLayoutReportsIndexRoute
+  '/karyawan/dashboard': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
-  '/admin/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
-  '/admin/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
-  '/admin/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
-  '/admin/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
-  '/admin/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
-  '/admin/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
-  '/admin/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
-  '/admin/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
+  '/admin/accounting/kasbank': typeof AdminLayoutAccountingKasbankIndexRoute
+  '/admin/master-data/activity-logs': typeof AdminLayoutMasterDataActivityLogsIndexRoute
+  '/admin/master-data/config-logs': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/master-data/users': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/reports/permission-report': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/admin/master-data/users/$id': typeof AdminLayoutMasterDataUsersIdIndexRoute
+  '/admin/master-data/users/new': typeof AdminLayoutMasterDataUsersNewIndexRoute
+  '/admin/master-data/users/$id/edit': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -272,7 +285,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/(public)/docs': typeof publicDocsRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/admin/_layout': typeof AdminLayoutRouteWithChildren
+  '/karyawan': typeof KaryawanRouteWithChildren
   '/karyawan/_layout': typeof KaryawanLayoutRouteWithChildren
   '/(public)/docs/data': typeof publicDocsDataRoute
   '/(public)/docs/feedback': typeof publicDocsFeedbackRoute
@@ -318,21 +333,21 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/admin/berkas/menu'
     | '/admin/berkas/perusahaan'
-    | '/login/'
-    | '/register/'
-    | '/admin/dashboard/'
-    | '/admin/documents/'
-    | '/admin/reports/'
-    | '/karyawan/dashboard/'
+    | '/login'
+    | '/register'
+    | '/admin/dashboard'
+    | '/admin/documents'
+    | '/admin/reports'
+    | '/karyawan/dashboard'
     | '/admin/accounting/kasbank/$nobukti'
-    | '/admin/accounting/kasbank/'
-    | '/admin/master-data/activity-logs/'
-    | '/admin/master-data/config-logs/'
-    | '/admin/master-data/users/'
-    | '/admin/reports/permission-report/'
-    | '/admin/master-data/users/$id/'
-    | '/admin/master-data/users/new/'
-    | '/admin/master-data/users/$id/edit/'
+    | '/admin/accounting/kasbank'
+    | '/admin/master-data/activity-logs'
+    | '/admin/master-data/config-logs'
+    | '/admin/master-data/users'
+    | '/admin/reports/permission-report'
+    | '/admin/master-data/users/$id'
+    | '/admin/master-data/users/new'
+    | '/admin/master-data/users/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -369,7 +384,9 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/(public)/docs'
+    | '/admin'
     | '/admin/_layout'
+    | '/karyawan'
     | '/karyawan/_layout'
     | '/(public)/docs/data'
     | '/(public)/docs/feedback'
@@ -402,14 +419,28 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   publicDocsRoute: typeof publicDocsRouteWithChildren
-  AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
-  KaryawanLayoutRoute: typeof KaryawanLayoutRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
+  KaryawanRoute: typeof KaryawanRouteWithChildren
   publicauthLoginIndexRoute: typeof publicauthLoginIndexRoute
   publicauthRegisterIndexRoute: typeof publicauthRegisterIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/karyawan': {
+      id: '/karyawan'
+      path: '/karyawan'
+      fullPath: '/karyawan'
+      preLoaderRoute: typeof KaryawanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -429,14 +460,14 @@ declare module '@tanstack/react-router' {
       path: '/karyawan'
       fullPath: '/karyawan'
       preLoaderRoute: typeof KaryawanLayoutRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof KaryawanRoute
     }
     '/admin/_layout': {
       id: '/admin/_layout'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminLayoutRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/(public)/docs': {
       id: '/(public)/docs'
@@ -504,42 +535,42 @@ declare module '@tanstack/react-router' {
     '/karyawan/_layout/dashboard/': {
       id: '/karyawan/_layout/dashboard/'
       path: '/dashboard'
-      fullPath: '/karyawan/dashboard/'
+      fullPath: '/karyawan/dashboard'
       preLoaderRoute: typeof KaryawanLayoutDashboardIndexRouteImport
       parentRoute: typeof KaryawanLayoutRoute
     }
     '/admin/_layout/reports/': {
       id: '/admin/_layout/reports/'
       path: '/reports'
-      fullPath: '/admin/reports/'
+      fullPath: '/admin/reports'
       preLoaderRoute: typeof AdminLayoutReportsIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/documents/': {
       id: '/admin/_layout/documents/'
       path: '/documents'
-      fullPath: '/admin/documents/'
+      fullPath: '/admin/documents'
       preLoaderRoute: typeof AdminLayoutDocumentsIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/dashboard/': {
       id: '/admin/_layout/dashboard/'
       path: '/dashboard'
-      fullPath: '/admin/dashboard/'
+      fullPath: '/admin/dashboard'
       preLoaderRoute: typeof AdminLayoutDashboardIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/(public)/(auth)/register/': {
       id: '/(public)/(auth)/register/'
       path: '/register'
-      fullPath: '/register/'
+      fullPath: '/register'
       preLoaderRoute: typeof publicauthRegisterIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(public)/(auth)/login/': {
       id: '/(public)/(auth)/login/'
       path: '/login'
-      fullPath: '/login/'
+      fullPath: '/login'
       preLoaderRoute: typeof publicauthLoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -560,35 +591,35 @@ declare module '@tanstack/react-router' {
     '/admin/_layout/reports/permission-report/': {
       id: '/admin/_layout/reports/permission-report/'
       path: '/reports/permission-report'
-      fullPath: '/admin/reports/permission-report/'
+      fullPath: '/admin/reports/permission-report'
       preLoaderRoute: typeof AdminLayoutReportsPermissionReportIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/users/': {
       id: '/admin/_layout/master-data/users/'
       path: '/master-data/users'
-      fullPath: '/admin/master-data/users/'
+      fullPath: '/admin/master-data/users'
       preLoaderRoute: typeof AdminLayoutMasterDataUsersIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/config-logs/': {
       id: '/admin/_layout/master-data/config-logs/'
       path: '/master-data/config-logs'
-      fullPath: '/admin/master-data/config-logs/'
+      fullPath: '/admin/master-data/config-logs'
       preLoaderRoute: typeof AdminLayoutMasterDataConfigLogsIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/activity-logs/': {
       id: '/admin/_layout/master-data/activity-logs/'
       path: '/master-data/activity-logs'
-      fullPath: '/admin/master-data/activity-logs/'
+      fullPath: '/admin/master-data/activity-logs'
       preLoaderRoute: typeof AdminLayoutMasterDataActivityLogsIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/accounting/kasbank/': {
       id: '/admin/_layout/accounting/kasbank/'
       path: '/accounting/kasbank'
-      fullPath: '/admin/accounting/kasbank/'
+      fullPath: '/admin/accounting/kasbank'
       preLoaderRoute: typeof AdminLayoutAccountingKasbankIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
@@ -602,21 +633,21 @@ declare module '@tanstack/react-router' {
     '/admin/_layout/master-data/users/new/': {
       id: '/admin/_layout/master-data/users/new/'
       path: '/master-data/users/new'
-      fullPath: '/admin/master-data/users/new/'
+      fullPath: '/admin/master-data/users/new'
       preLoaderRoute: typeof AdminLayoutMasterDataUsersNewIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/users/$id/': {
       id: '/admin/_layout/master-data/users/$id/'
       path: '/master-data/users/$id'
-      fullPath: '/admin/master-data/users/$id/'
+      fullPath: '/admin/master-data/users/$id'
       preLoaderRoute: typeof AdminLayoutMasterDataUsersIdIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/users/$id/edit/': {
       id: '/admin/_layout/master-data/users/$id/edit/'
       path: '/master-data/users/$id/edit'
-      fullPath: '/admin/master-data/users/$id/edit/'
+      fullPath: '/admin/master-data/users/$id/edit'
       preLoaderRoute: typeof AdminLayoutMasterDataUsersIdEditIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
@@ -695,6 +726,16 @@ const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(
   AdminLayoutRouteChildren,
 )
 
+interface AdminRouteChildren {
+  AdminLayoutRoute: typeof AdminLayoutRouteWithChildren
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminLayoutRoute: AdminLayoutRouteWithChildren,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface KaryawanLayoutRouteChildren {
   KaryawanLayoutDashboardIndexRoute: typeof KaryawanLayoutDashboardIndexRoute
 }
@@ -707,25 +748,27 @@ const KaryawanLayoutRouteWithChildren = KaryawanLayoutRoute._addFileChildren(
   KaryawanLayoutRouteChildren,
 )
 
+interface KaryawanRouteChildren {
+  KaryawanLayoutRoute: typeof KaryawanLayoutRouteWithChildren
+}
+
+const KaryawanRouteChildren: KaryawanRouteChildren = {
+  KaryawanLayoutRoute: KaryawanLayoutRouteWithChildren,
+}
+
+const KaryawanRouteWithChildren = KaryawanRoute._addFileChildren(
+  KaryawanRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   publicDocsRoute: publicDocsRouteWithChildren,
-  AdminLayoutRoute: AdminLayoutRouteWithChildren,
-  KaryawanLayoutRoute: KaryawanLayoutRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
+  KaryawanRoute: KaryawanRouteWithChildren,
   publicauthLoginIndexRoute: publicauthLoginIndexRoute,
   publicauthRegisterIndexRoute: publicauthRegisterIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

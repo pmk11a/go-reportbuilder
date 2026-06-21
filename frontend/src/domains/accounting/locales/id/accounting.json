@@ -1,6 +1,9 @@
 {
   "title": "Akuntansi Kas / Bank",
   "subtitle": "Pencatatan bukti kas bank dengan otorisasi 2 tingkat",
+  "kasbank": {
+    "detail_title": "Bukti {{nobukti}}"
+  },
   "tipe": {
     "bkm": "Bukti Kas Masuk (BKM)",
     "bkk": "Bukti Kas Keluar (BKK)",
@@ -63,6 +66,11 @@
     "jumlah_valas": "Jumlah (Valas)",
     "jumlah_rupiah": "Jumlah (Rupiah)",
     "otorisasi": "Otorisasi",
+    "debet": "Debet",
+    "kredit": "Kredit",
+    "deskripsi": "Deskripsi",
+    "authorization": "Otorisasi Bukti",
+    "status": "Status",
     "actions": "Aksi"
   },
   "filter": {

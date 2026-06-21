@@ -80,7 +80,7 @@ export function useSetOtorisasi(noBukti: string, onSuccess?: () => void, onError
       onSuccess?.();
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || 'Gagal memproses otorisasi';
+      const msg = err?.response?.data?.message || err?.message || 'Gagal memproses otorisasi';
       onError?.(msg);
     },
   });
@@ -96,7 +96,7 @@ export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onErr
       onSuccess?.();
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || 'Gagal memproses pembatalan otorisasi';
+      const msg = err?.response?.data?.message || err?.message || 'Gagal memproses pembatalan otorisasi';
       onError?.(msg);
     },
   });

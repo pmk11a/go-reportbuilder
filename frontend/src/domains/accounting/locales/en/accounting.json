@@ -1,6 +1,9 @@
 {
   "title": "Cash / Bank Accounting",
   "subtitle": "Journal voucher recording with two-level authorization",
+  "kasbank": {
+    "detail_title": "Voucher {{nobukti}}"
+  },
   "tipe": {
     "bkm": "Cash In (BKM)",
     "bkk": "Cash Out (BKK)",
@@ -63,6 +66,11 @@
     "jumlah_valas": "Amount (Currency)",
     "jumlah_rupiah": "Amount (Rupiah)",
     "otorisasi": "Authorization",
+    "debet": "Debit",
+    "kredit": "Credit",
+    "deskripsi": "Description",
+    "authorization": "Voucher Authorization",
+    "status": "Status",
     "actions": "Actions"
   },
   "filter": {
@@ -127,6 +135,7 @@
     "no_detail_data": "No journal lines found"
   },
   "table": {
+    "detail_lines": "Journal Lines",
     "detail_title": "Journal Lines",
     "expand_row": "Show Details",
     "collapse_row": "Hide Details"
