@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 
+	"github.com/masza1/dapen-backend/internal/features/activity"
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
@@ -36,7 +37,7 @@ func RunMigrations(database *gorm.DB) {
 			EXEC('ALTER TABLE dblogfile DROP CONSTRAINT ' + @ConstraintNameBulan)
 	`)
 
-	// SQL Server workaround: drop existing FK before AutoMigrate if it exists 
+	// SQL Server workaround: drop existing FK before AutoMigrate if it exists
 	// to prevent GORM from attempting to recreate an existing constraint.
 	database.Exec(`
 		IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_activity_log_config_fields')
@@ -45,13 +46,15 @@ func RunMigrations(database *gorm.DB) {
 		END
 	`)
 
-	// Auto-migrate the users and legacy SDBFLPASS table
+	// Auto-migrate the user and activity-log tables.
+	// SActivityLogConfig and SActivityLogField live in the activity feature
+	// package (not the persistence/models package), so we import it above.
+	// AutoMigrate creates the tables on the first run and applies non-breaking
+	// changes on subsequent runs. Run via `--migrate`, never at startup.
 	err := database.AutoMigrate(
 		&models.SUser{},
-		// &models.SDBFLPASS{},
-		// &models.SActivityLogConfig{},
-		// &models.SActivityLogField{},
-		// &models.SDBLogFile{},
+		&activity.SActivityLogConfig{},
+		&activity.SActivityLogField{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)

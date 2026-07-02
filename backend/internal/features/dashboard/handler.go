@@ -13,6 +13,7 @@ import (
 	cachepkg "github.com/masza1/dapen-backend/internal/infrastructure/cache"
 	"github.com/masza1/dapen-backend/internal/infrastructure/database"
 	"github.com/masza1/dapen-backend/internal/infrastructure/response"
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -243,11 +244,9 @@ func (h *SDashboardHandler) GetPensiunanWithoutFiles(c *gin.Context) {
 	if limit < 1 {
 		limit = 10
 	}
-	offset := (page - 1) * limit
-
-	// 3. Fetch paginated data
+	// 3. Fetch paginated data using ROW_NUMBER() — compatible with SQL Server 2008
 	var rawData []SRawPensiunan
-	query := `
+	baseQuery := `
 		SELECT
 			c.KODECUSTSUPP,
 			c.NAMACUSTSUPP,
@@ -257,11 +256,10 @@ func (h *SDashboardHandler) GetPensiunanWithoutFiles(c *gin.Context) {
 			NULL AS TglKepersertaan
 		FROM DBCUSTSUPP c
 		WHERE c.JENIS = 2
-		ORDER BY c.NAMACUSTSUPP ASC
-		OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
 	`
+	query := pagination.BuildRowNumberQuery(baseQuery, "NAMACUSTSUPP ASC", page, limit)
 
-	if err := h.db.Raw(query, offset, limit).Scan(&rawData).Error; err != nil {
+	if err := h.db.Raw(query).Scan(&rawData).Error; err != nil {
 		response.InternalError(c, fmt.Sprintf("Query pensiunan without files failed: %v", err))
 		return
 	}

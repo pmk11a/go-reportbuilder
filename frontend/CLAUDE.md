@@ -191,10 +191,10 @@ function getData() {}                                      // ❌
 
 ---
 
-## BFF Pattern (DELETED — replaced by Server Functions)
+## BFF Pattern (DEPRECATED — replaced by Server Functions)
 
-Old `src/api-handlers/` and `src/bff/` directories deleted in Phase 6 cleanup.
-All functionality now in `src/server/` (functions, middleware, session, redis).
+`src/api-handlers/` and `src/bff/` directories fully removed.
+All new code uses `src/server/` (functions, middleware, session, redis).
 
 ---
 

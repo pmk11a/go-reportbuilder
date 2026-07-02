@@ -2,7 +2,8 @@
 
 # dependencies
 /node_modules
-/.next
+/.nitro
+/.output
 /.tanstack
 /.pnp
 .pnp.*

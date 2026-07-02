@@ -23,12 +23,30 @@ var (
 )
 
 // LoadActivityLogConfig loads all configs into the cache.
+// If the activity_log_config table does not yet exist (e.g. migrations have not
+// been run, or fresh database before --migrate), the function returns nil
+// silently and the cache stays empty. Registered GORM callbacks still fire —
+// they simply find no match in the cache and no-op.
 func LoadActivityLogConfig(db *gorm.DB) error {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
+	if !activityLogConfigTableExists(db) {
+		// Table not present yet — mark cache as loaded (with zero entries) so
+		// the plugin still operates without spamming "table not in cache" warnings.
+		isCacheLoaded = true
+		return nil
+	}
+
 	var configs []SActivityLogConfig
 	if err := db.Preload("Fields").Find(&configs).Error; err != nil {
+		// Defensive: if the query still fails (race, dropped table, etc.) do
+		// not propagate the error — keep the app running and let an explicit
+		// ReloadActivityLogConfig after migration fix things.
+		if isMissingTableError(err) {
+			isCacheLoaded = true
+			return nil
+		}
 		return err
 	}
 
@@ -38,6 +56,35 @@ func LoadActivityLogConfig(db *gorm.DB) error {
 	}
 	isCacheLoaded = true
 	return nil
+}
+
+// activityLogConfigTableExists returns true if the activity_log_config table is
+// present in the current database. Uses sys.tables (SQL Server). Returns false
+// on any error so callers treat absence as "not yet migrated".
+func activityLogConfigTableExists(db *gorm.DB) bool {
+	var count int64
+	err := db.Raw(
+		"SELECT count(*) FROM sys.tables WHERE name = ?",
+		"activity_log_config",
+	).Scan(&count).Error
+	if err != nil || count == 0 {
+		return false
+	}
+	return true
+}
+
+// isMissingTableError detects GORM/SQL Server errors that indicate the
+// activity_log_config table is missing or otherwise unreachable, so we can
+// suppress those instead of returning them to the caller.
+func isMissingTableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "invalid object name") ||
+		strings.Contains(msg, "object name 'activity_log_config'") ||
+		strings.Contains(msg, "doesn't exist") ||
+		strings.Contains(msg, "does not exist")
 }
 
 // ReloadActivityLogConfig should be called when configs are updated via API.
@@ -52,8 +99,10 @@ func RegisterActivityLogPlugin(db *gorm.DB) {
 	// Initialize cache in background or synchronously
 	if err := LoadActivityLogConfig(db); err != nil {
 		log.WithError(err).Error("failed to load activity log config")
-	} else {
+	} else if activityLogConfigTableExists(db) {
 		log.Info("✅ Activity log config loaded successfully")
+	} else {
+		log.Info("ℹ️  activity_log_config table not present yet (run --migrate to create) — plugin registered with empty config cache")
 	}
 
 	db.Callback().Create().After("gorm:create").Register("activity_log:after_create", trackActivity("CREATE"))

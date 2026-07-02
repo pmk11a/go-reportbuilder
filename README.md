@@ -1,545 +1,339 @@
 # DAPEN - Full-Stack Application
 
-A modern full-stack web application built with **Next.js** (Frontend) and **Golang** (Backend), featuring a comprehensive design system, rich component library, and BFF (Backend For Frontend) architecture.
+A modern full-stack web application built with **TanStack Start** (Frontend) and **Golang** (Backend), featuring a comprehensive design system, BFF-style server functions, and SQL Server + Redis data layer.
 
 ## 📋 Overview
 
 DAPEN is a scalable, feature-rich application with:
-- **Frontend**: Modern React-based UI with Next.js
-- **Backend**: RESTful API with Golang & Gin
-- **Architecture**: Backend For Frontend (BFF) pattern
-- **Design System**: Complete theme system with light/dark mode
-- **Components**: 50+ reusable UI components
-- **Type-Safe**: Full TypeScript support
-- **State Management**: Zustand for global state
+
+- **Frontend**: React 19 + TanStack Start (SSR + Server Functions) — Vite-based, no Next.js
+- **Backend**: RESTful API with Go 1.25 + Gin + GORM + SQL Server + Redis
+- **Architecture**: Server Functions (TanStack Start) for BFF, JWT in Redis sessions
+- **State**: TanStack Query (server) + Zustand (client)
+- **Tooling**: Vite, Tailwind v4, swaggo for OpenAPI
+- **Domain-Based Backend**: `handler → service → repository → entity` per domain
 
 ## 🏗️ Project Structure
 
 ```
-dapen/
-├── golang-next/                 # Main application directory
-│   ├── frontend/               # Next.js frontend application
-│   │   ├── README.md           # Frontend documentation
-│   │   ├── src/                # Source code
-│   │   ├── package.json        # npm dependencies
-│   │   └── tsconfig.json       # TypeScript config
-│   │
-│   └── backend/                # Golang backend API
-│       ├── README.md           # Backend documentation
-│       ├── cmd/                # Application entry points
-│       ├── internal/           # Private packages
-│       ├── go.mod              # Go dependencies
-│       └── go.sum              # Dependency locks
-│
-├── laravel-next/               # Original Laravel application (reference)
-├── template/                   # Design system & components template
-├── init/                       # Initialization scripts
-├── plan.md                     # Project plan
-├── todo.md                     # Task tracking
-└── README.md                   # This file
+dapen-golang-next/
+├── Makefile                 # Cross-platform dev workflow (Windows + Unix)
+├── Taskfile.yml             # Modern alternative to Makefile
+├── README.md                # This file
+├── .air.toml                # Hot reload config
+├── backend/
+│   ├── Makefile             # Backend-only convenience targets
+│   ├── cmd/                 # main.go entry point (--migrate, --seed flags)
+│   ├── internal/
+│   │   ├── shared/          # Technical concerns (auth, cache, response, middleware)
+│   │   ├── features/        # Domain modules (activity, dashboard, identity, ...)
+│   │   └── infrastructure/  # DB, Redis, config
+│   └── go.mod
+└── frontend/
+    ├── package.json
+    └── src/
+        ├── server/          # Server functions (createServerFn), middleware, session
+        ├── routes/          # TanStack Router (file-based)
+        ├── components/      # UI (base → shared → module)
+        ├── hooks/           # TanStack Query hooks
+        ├── services/        # Service layer
+        ├── store/           # Zustand state
+        ├── types/           # Centralized types
+        └── utils/           # errorMapper, helpers
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Node.js** 18+ & **npm** 9+
-- **Go** 1.25.5+
-- **MongoDB** (for database)
+- **Go** 1.25+
+- **Node.js** 20+ LTS & **npm** 10+
+- **SQL Server** 2019+ (Express OK)
+- **Redis** 6+
 - **Git**
+- **GNU Make** OR **Task** (for cross-platform dev workflow)
 
-### Frontend Setup
+### ⚡ Fastest Setup (using Make / Task)
+
+From project root:
 
 ```bash
-cd golang-next/frontend
+# Install all deps (backend Go modules + frontend npm packages)
+make install            # or: task install
 
-# Install dependencies
-npm install
+# Initialize database (migrate + seed)
+make db-init            # or: task db:init
 
-# Start development server
-npm run dev
+# Run dev server (backend + frontend together)
+make dev                # or: task dev
 
+# Backend only:
+make dev-backend        # or: task dev:backend
+# Open http://localhost:8080
+
+# Frontend only:
+make dev-frontend       # or: task dev:frontend
 # Open http://localhost:3000
 ```
 
-See [frontend/README.md](golang-next/frontend/README.md) for detailed instructions.
+### 🛠️ Manual Setup
 
-### Backend Setup
+#### Backend
 
 ```bash
-cd golang-next/backend
-
-# Download dependencies
+cd backend
 go mod download
-
-# Run development server
-go run ./cmd/main.go
-
-# API available at http://localhost:8080
+go run ./cmd/main.go                # Start server
+go run ./cmd/main.go --migrate      # Apply migrations
+go run ./cmd/main.go --seed         # Seed initial data
+go run ./cmd/main.go --migrate --seed  # Both
 ```
 
-See [backend/README.md](golang-next/backend/README.md) for detailed instructions.
+Server runs at `http://localhost:8080`.
+
+#### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev       # Vite dev server
+npm run build     # Production build
+npm test          # Vitest unit tests
+```
+
+App runs at `http://localhost:3000`.
 
 ---
 
-## 📚 Documentation
+## 🪟 Windows Setup
 
-### Frontend
-- **Location**: `golang-next/frontend/README.md`
-- **Tech**: Next.js 16, React 19, TypeScript 5
-- **Styling**: TailwindCSS 4 + CSS Variables
-- **State**: Zustand 5
-- **Components**: 50+ UI components (Radix UI)
+Windows natively lacks GNU Make and most Unix utilities. Two paths to get cross-platform dev workflow:
 
-**Key Features:**
-- ✅ Component library with design system
-- ✅ Theme system (light/dark mode)
-- ✅ Rich text editor (Tiptap)
-- ✅ Data visualization (Recharts)
-- ✅ Form validation (Zod + React Hook Form)
-- ✅ Mobile responsive design
-- ✅ Type-safe development
+### Option 1: GNU Make (Recommended)
 
-### Backend
-- **Location**: `golang-next/backend/README.md`
-- **Tech**: Go 1.25.5, Gin Framework 1.12
-- **Database**: MongoDB 2.5
-- **API**: RESTful JSON API
+Install via your favorite package manager:
 
-**Key Features:**
-- ✅ Modular folder structure
-- ✅ Data validation & error handling
-- ✅ CORS support
-- ✅ JWT authentication (planned)
-- ✅ Role-based access control (planned)
-- ✅ Structured logging
+```powershell
+# Chocolatey (recommended)
+choco install make
 
----
+# winget
+winget install GnuWin32.Make
+# or
+winget install ezwinports.make
 
-## 🔄 Architecture
-
-### BFF (Backend For Frontend) Pattern
-
-```
-┌─────────────────────────────────────────────────────┐
-│         Next.js Frontend (Port 3000)                │
-│  - React Components                                 │
-│  - TailwindCSS + Design System                      │
-│  - Zustand State Management                         │
-│  - Client-side Validation (Zod)                     │
-└────────────────────────┬────────────────────────────┘
-                         │ HTTP/REST
-                         ▼
-┌─────────────────────────────────────────────────────┐
-│         Golang Backend (Port 8080)                  │
-│  - REST API Endpoints                               │
-│  - Business Logic                                   │
-│  - Data Validation                                  │
-│  - Database Integration                             │
-└────────────────────────┬────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────┐
-│         MongoDB Database                            │
-│  - User Data                                        │
-│  - Application Data                                 │
-│  - Audit Logs                                       │
-└─────────────────────────────────────────────────────┘
+# Scoop
+scoop install make
 ```
 
-### Data Flow
+Verify: `make --version`
 
-1. **User Interaction** → Frontend component
-2. **Frontend validates** using Zod schemas
-3. **Sends HTTP request** to Backend API
-4. **Backend validates** input again
-5. **Backend processes** business logic
-6. **Backend queries** MongoDB
-7. **Backend returns** JSON response
-8. **Frontend updates** Zustand store
-9. **React re-renders** components
-10. **User sees** updated UI
+### Option 2: Task (Modern Alternative — Easier Install)
 
----
+[Task](https://taskfile.dev/) is a single binary, cross-platform by default:
 
-## 🛠️ Technology Decisions
+```powershell
+# Via Go
+go install github.com/go-task/task/v3/cmd/task@latest
 
-### Why Next.js?
-- App Router for modern routing
-- Server components for performance
-- Built-in TypeScript support
-- Zero-config setup
-- Vercel deployment ready
+# Via Chocolatey
+choco install go-task
 
-### Why Golang?
-- Fast, compiled language
-- Excellent concurrency support
-- Simple deployment (single binary)
-- Great for APIs & microservices
-- Powerful standard library
+# Via Scoop
+scoop install task
 
-### Why Zustand?
-- Lightweight state management
-- No provider hell
-- TypeScript friendly
-- Persist middleware for localStorage
-- Easy to learn & use
+# Via winget
+winget install Task.Task
 
-### Why TailwindCSS?
-- Utility-first CSS
-- Rapid development
-- Small bundle size with PurgeCSS
-- CSS variables for theming
-- Great developer experience
-
----
-
-## 🎨 Design System
-
-### Theme Configuration
-
-Themes are defined in `frontend/src/lib/theme.ts`:
-
-```typescript
-export const LIGHT_THEME = {
-  colors: {
-    primary: '215 90% 56%',
-    secondary: '160 84% 39%',
-    accent: '280 85% 55%',
-    // ... more colors
-  },
-  radius: {
-    sm: '0.25rem',
-    md: '0.5rem',
-    lg: '0.75rem',
-  }
-}
+# Manual: download from https://github.com/go-task/task/releases
+# Add the extracted `task.exe` to your PATH
 ```
 
-### CSS Variables
+Verify: `task --version`
 
-Generated in `globals.css` for all Tailwind utilities:
+### Backend Prerequisites (Windows)
 
-```css
-:root {
-  --color-primary: 215 90% 56%;
-  --color-background: 0 0% 100%;
-  --color-foreground: 215 15% 15%;
-  /* ... */
-}
+1. **Go 1.25+** — download MSI from https://go.dev/dl/
+   - Add `%USERPROFILE%\go\bin` to your PATH
+   - Set `GOPATH` environment variable (default: `%USERPROFILE%\go`)
+2. **SQL Server** — install SQL Server 2019 Express, or run via Docker:
+   ```powershell
+   docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=YourStrong!Passw0rd" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+   ```
+3. **Redis** — install via:
+   ```powershell
+   choco install redis-64
+   # or
+   docker run -d -p 6379:6379 redis:latest
+   ```
 
-[data-theme="dark"] {
-  --color-background: 215 28% 7%;
-  --color-foreground: 0 0% 98%;
-  /* ... */
-}
+### Frontend Prerequisites (Windows)
+
+1. **Node.js 20+ LTS** — download from https://nodejs.org/ (Windows Installer `.msi`)
+2. **npm** — bundled with Node.js
+
+### Hot Reload (Air) — Optional
+
+```powershell
+go install github.com/cosmtrek/air@latest
 ```
 
-### Using the Theme
+Binary installed at `%USERPROFILE%\go\bin\air.exe` and the Makefile resolves this path automatically via `$(GOPATH)/bin/air`.
 
-```tsx
-import { Button } from '@/components/ui';
-import { useTheme } from '@/store/themeStore';
+### Path Conventions on Windows
 
-export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  
-  return (
-    <Button onClick={toggleTheme}>
-      Current theme: {theme}
-    </Button>
-  );
-}
+- The provided `Makefile` uses forward slashes (`/`) internally, which Go's `filepath.Join` accepts on Windows.
+- `os/exec` calls work cross-platform.
+- PowerShell output redirection uses `>` (same as bash).
+
+### Running on Windows (After Setup)
+
+Open PowerShell or Windows Terminal from project root:
+
+```powershell
+make install          # or: task install
+make db-init          # or: task db:init
+make dev              # or: task dev
 ```
 
 ---
 
-## 📦 Component Library
+## 🍎🐧 macOS / Linux Setup
 
-### Categories (50+ Components)
+Most tools are pre-installed or one `brew install` / `apt install` away:
 
-**Overlay Components (20+)**
-- Buttons, Badges, Dialogs, Dropdowns, Modals, Popovers, Sheets, Tooltips
+```bash
+# macOS (Homebrew)
+brew install go node sqlserver redis
 
-**Form Components (15+)**
-- Input, Textarea, Select, Checkbox, Radio, Switch, Date Picker, File Upload, Rich Text Editor
+# Ubuntu/Debian
+sudo apt install golang-go nodejs npm redis-server
+```
 
-**Feedback Components (8+)**
-- Alert, Toast, Progress, Skeleton, Loading State, Empty State
-
-**Layout Components (5+)**
-- Card, Divider, Separator, Scroll Area
-
-**Navigation Components (7+)**
-- Breadcrumb, Tabs, Pagination, Sidebar, Menubar, Steps
-
-**Data Components (5+)**
-- Table, Chart, Timeline, Stat, Data Pagination
-
-All components are:
-- ✅ Typed with TypeScript
-- ✅ Styled with TailwindCSS
-- ✅ Responsive design
-- ✅ Accessible (WCAG)
-- ✅ Configurable via props
+`make` is pre-installed on most Linux distros and Xcode Command Line Tools on macOS.
 
 ---
 
-## 🔐 Security Considerations
+## 📚 Available Commands
 
-### Frontend
-- Input validation with Zod
-- XSS prevention via React escaping
-- CSRF tokens in forms
-- Secure cookie handling
-- CSP headers
+Run `make help` or `task --list` for the full list. Common targets:
 
-### Backend
-- Input validation on all endpoints
-- Password hashing (bcrypt planned)
-- JWT token validation
-- CORS configuration
-- Rate limiting (planned)
-- SQL injection prevention (MongoDB)
+| Target | Description |
+|---|---|
+| `make dev` / `task dev` | Run backend + frontend concurrently |
+| `make dev-backend` | Backend only (`go run ./cmd/main.go`) |
+| `make dev-frontend` | Frontend only (`npm run dev`) |
+| `make migrate` | Apply DB migrations |
+| `make seed` | Seed initial data |
+| `make db-init` | Migrate + seed |
+| `make build` | Build backend binary + frontend bundle |
+| `make test` | Run all tests (Go + Vitest) |
+| `make test-e2e` | Playwright E2E |
+| `make lint` | `go vet` + ESLint |
+| `make type-check` | TypeScript `tsc --noEmit` |
+| `make format` | `gofmt` + `prettier` |
+| `make clean` | Remove `bin/`, `dist/`, `tmp/` |
+| `make air-install` | Install Air for hot reload |
+| `make help` | List all targets |
+
+The `Makefile` and `Taskfile.yml` are designed to be **identical in behavior** on macOS, Linux, and Windows. Choose whichever you prefer.
 
 ---
 
 ## 🧪 Testing
 
-### Frontend Testing (Planned)
 ```bash
-cd golang-next/frontend
-npm test                    # Unit tests
-npm run test:e2e            # E2E tests
-```
+# Backend unit tests
+make test-backend          # or: cd backend && go test ./... -v
 
-### Backend Testing (Planned)
-```bash
-cd golang-next/backend
-go test ./...              # Unit tests
-go test -v ./...           # Verbose
+# Frontend unit tests (Vitest)
+make test-frontend         # or: cd frontend && npm test -- --run
+
+# E2E tests (Playwright)
+make test-e2e              # or: cd frontend && npx playwright test
 ```
 
 ---
 
-## 📈 Performance Optimization
+## 🚢 Production Build
 
-### Frontend
-- Code splitting per route
-- Image optimization
-- CSS purging with TailwindCSS
-- Lazy loading components
-- Bundle analysis
-
-### Backend
-- Connection pooling
-- Database indexing
-- Caching strategies
-- Goroutine management
-- Load testing ready
-
----
-
-## 🚢 Deployment
-
-### Frontend Deployment Options
-
-**Vercel (Recommended)**
 ```bash
-# Auto-deploy from GitHub
-```
+# Backend binary
+make build-backend
+# Output: backend/bin/main (or main.exe on Windows)
 
-**Self-Hosted**
-```bash
-npm run build
-npm start
-```
+# Frontend bundle
+make build-frontend
+# Output: frontend/dist/
 
-**Docker**
-```bash
-docker build -t dapen-frontend .
-docker run -p 3000:3000 dapen-frontend
-```
-
-### Backend Deployment Options
-
-**Standalone Binary**
-```bash
-GOOS=linux GOARCH=amd64 go build -o bin/dapen-backend ./cmd
-```
-
-**Docker**
-```bash
-docker build -t dapen-backend .
-docker run -p 8080:8080 dapen-backend
-```
-
-**Docker Compose** (Full Stack)
-```bash
-docker-compose up
+# Cross-compile backend for Linux from any host:
+cd backend && GOOS=linux GOARCH=amd64 go build -o bin/dapen-backend ./cmd/main.go
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🔧 Troubleshooting
 
-### Common Issues
+### `make: command not found` (Windows)
 
-**Frontend won't start**
-```bash
-# Clear cache
-rm -rf .next node_modules
-npm install
-npm run dev
-```
+Install GNU Make via Chocolatey: `choco install make`. Or use Task instead.
 
-**Backend won't connect to MongoDB**
-```bash
-# Start MongoDB
-docker run -d -p 27017:27017 mongo:latest
+### `air: command not found` (Windows)
 
-# Check MONGO_URI in .env
-```
+Run `make air-install` (or `task air:install`). Air will be installed at `%USERPROFILE%\go\bin\air.exe`. Add `%USERPROFILE%\go\bin` to PATH if not already.
 
-**Port conflicts**
-```bash
-# Frontend on different port
-npm run dev -- -p 3001
+### Backend won't connect to SQL Server
 
-# Backend on different port
-PORT=8081 go run ./cmd/main.go
-```
+- Verify SQL Server is running: `docker ps` (if using Docker) or check Services.
+- Confirm connection string in `backend/.env` (e.g., `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`).
+- For SQL Server Express on Windows, default port is `1433`.
+
+### Port conflicts
+
+- Backend default: `:8080`. Override with `PORT=8081 make dev-backend`.
+- Frontend default: `:3000`. Override via `npm run dev -- --port 3001`.
+
+### Path issues on Windows
+
+If you see errors with backslashes, ensure:
+1. You're running `make` from PowerShell or Windows Terminal (not legacy CMD).
+2. `GOPATH` is set as a Windows env var (not Unix-style).
 
 ---
 
-## 📝 Development Workflow
+## 📖 Architecture & Conventions
 
-### Daily Development
-
-1. **Start Backend**
-   ```bash
-   cd golang-next/backend
-   go run ./cmd/main.go
-   ```
-
-2. **Start Frontend** (in new terminal)
-   ```bash
-   cd golang-next/frontend
-   npm run dev
-   ```
-
-3. **Make changes** & hot reload
-4. **Test in browser** at `http://localhost:3000`
-5. **Check API** at `http://localhost:8080/health`
-
-### Creating a New Feature
-
-1. **Design API endpoint** in backend
-2. **Create request/response** types
-3. **Implement handler** & business logic
-4. **Create Zod schema** in frontend
-5. **Create UI components** & pages
-6. **Integrate with API** client
-7. **Test end-to-end**
-
----
-
-## 📚 Learning Resources
-
-### Frontend Learning Path
-1. [Next.js Documentation](https://nextjs.org/docs)
-2. [React Fundamentals](https://react.dev)
-3. [TailwindCSS Guide](https://tailwindcss.com)
-4. [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-
-### Backend Learning Path
-1. [Go Tour](https://go.dev/tour)
-2. [Gin Framework Guide](https://gin-gonic.com/)
-3. [MongoDB Go Driver](https://www.mongodb.com/docs/drivers/go/)
+See [`CLAUDE.md`](./CLAUDE.md) for the complete architecture documentation including:
+- Backend Domain-Based + DDD-Lite + Layered pattern
+- Frontend Strict Separation of Concerns
+- Server Functions pattern
+- Database migration strategy
+- Caching & rate limiting rules
+- Quality gate workflow
 
 ---
 
 ## 🤝 Contributing
 
-### Code Standards
-- Use TypeScript for frontend
-- Use Go idioms for backend
-- Write meaningful commit messages
-- Document public functions
-- Add comments for complex logic
-
-### Submitting Changes
-1. Create feature branch
-2. Make changes
-3. Write/update tests
-4. Create pull request
-5. Get review & merge
-
----
-
-## 📊 Project Status
-
-- ✅ Project structure created
-- ✅ Frontend: Next.js setup with components
-- ✅ Backend: Gin framework with basic endpoints
-- ✅ Design system integrated
-- ✅ Theme system (Zustand)
-- 🔄 Authentication implementation
-- 🔄 Database integration
-- 📋 Testing infrastructure
-- �� CI/CD pipeline
-
----
-
-## 📞 Support & Questions
-
-For questions or issues:
-1. Check respective README files
-2. Review code comments
-3. Check existing documentation
-4. Create an issue in repository
+1. Use Go idioms for backend, TypeScript for frontend
+2. Follow the existing domain-based architecture
+3. Add tests for any new feature
+4. Run `make test && make lint && make type-check` before committing
+5. Update the relevant `CLAUDE.md` in the same commit
 
 ---
 
 ## 📄 License
 
-This project is part of DAPEN application.
+Internal project — DAPEN application.
 
 ---
 
-## 🎯 Next Steps
-
-1. **Implement Authentication**
-   - JWT tokens
-   - Password hashing
-   - Session management
-
-2. **Database Integration**
-   - MongoDB models
-   - CRUD operations
-   - Migrations
-
-3. **Feature Development**
-   - User dashboard
-   - Data management
-   - Reporting
-
-4. **Testing & QA**
-   - Unit tests
-   - Integration tests
-   - E2E tests
-
-5. **Deployment**
-   - CI/CD pipeline
-   - Docker setup
-   - Production deployment
-
----
-
-**Last Updated**: April 22, 2026  
-**Current Version**: 0.1.0  
+**Last Updated**: July 2, 2026
+**Current Version**: 1.0.0
 **Status**: Active Development 🚀
 
 For detailed information, see:
-- [Frontend Documentation](golang-next/frontend/README.md)
-- [Backend Documentation](golang-next/backend/README.md)
+- [Project Architecture (CLAUDE.md)](./CLAUDE.md)
+- [Backend Documentation](backend/CLAUDE.md)
+- [Frontend Documentation](frontend/CLAUDE.md)

@@ -197,10 +197,9 @@ func CleanupTestDB(db *gorm.DB) error {
 
 // TruncateAllTables truncates all test tables for a complete reset.
 // Only use at teardown of entire test suite, not between individual tests.
+// Uses explicit table list instead of sp_MSForEachTable (undocumented, not
+// guaranteed available on all SQL Server versions).
 func TruncateAllTables(db *gorm.DB) error {
-	// Disable FK checks temporarily
-	db.Exec("EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT all'")
-
 	tableNames := []string{
 		"activity_log_fields",
 		"activity_log_config",
@@ -224,9 +223,6 @@ func TruncateAllTables(db *gorm.DB) error {
 			log.Printf("Warning: Could not truncate table %s: %v\n", table, err)
 		}
 	}
-
-	// Re-enable FK checks
-	db.Exec("EXEC sp_MSForEachTable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all'")
 
 	return nil
 }

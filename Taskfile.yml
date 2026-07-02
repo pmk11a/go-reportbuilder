@@ -1,0 +1,199 @@
+version: '3'
+
+vars:
+  GO_VERSION: '1.25'
+
+env:
+  GOPATH:
+    sh: go env GOPATH
+
+tasks:
+
+  # ---------------------------------------------------------------
+  # Default
+  # ---------------------------------------------------------------
+  default:
+    desc: Tampilkan daftar task
+    cmds:
+      - task --list
+    silent: true
+
+  # ---------------------------------------------------------------
+  # Development
+  # ---------------------------------------------------------------
+  dev:backend:
+    desc: Jalankan backend only
+    dir: backend
+    cmds:
+      - go run ./cmd/main.go
+
+  dev:frontend:
+    desc: Jalankan frontend only
+    dir: frontend
+    cmds:
+      - npm run dev
+
+  dev:
+    desc: Jalankan backend + frontend concurrently
+    vars:
+      BACKEND_CMD: "cd backend && go run ./cmd/main.go"
+      FRONTEND_CMD: "cd frontend && npm run dev"
+    cmds:
+      - cmd: bash -c "{{.BACKEND_CMD}} &"
+        silent: true
+      - cmd: bash -c "{{.FRONTEND_CMD}}"
+        silent: false
+
+  # ---------------------------------------------------------------
+  # Database
+  # ---------------------------------------------------------------
+  migrate:
+    desc: Terapkan database migrations
+    dir: backend
+    cmds:
+      - go run ./cmd/main.go --migrate
+
+  seed:
+    desc: Seed data awal ke database
+    dir: backend
+    cmds:
+      - go run ./cmd/main.go --seed
+
+  db:init:
+    desc: Setup database fresh (migrate + seed)
+    cmds:
+      - task: migrate
+      - task: seed
+
+  # ---------------------------------------------------------------
+  # Build
+  # ---------------------------------------------------------------
+  build:backend:
+    desc: Build backend binary
+    dir: backend
+    cmds:
+      - go build -o bin/main{{if eq OS "windows"}}.exe{{end}} ./cmd/main.go
+
+  build:frontend:
+    desc: Build frontend production
+    dir: frontend
+    cmds:
+      - npm run build
+
+  build:
+    desc: Build backend + frontend
+    cmds:
+      - task: build:backend
+      - task: build:frontend
+
+  # ---------------------------------------------------------------
+  # Test
+  # ---------------------------------------------------------------
+  test:backend:
+    desc: Jalankan unit tests Go
+    dir: backend
+    cmds:
+      - go test ./... -v
+
+  test:frontend:
+    desc: Jalankan unit tests frontend (Vitest)
+    dir: frontend
+    cmds:
+      - npm test -- --run
+
+  test:e2e:
+    desc: Jalankan Playwright E2E tests
+    dir: frontend
+    cmds:
+      - npx playwright test
+
+  test:
+    desc: Jalankan semua tests
+    cmds:
+      - task: test:backend
+      - task: test:frontend
+
+  # ---------------------------------------------------------------
+  # Lint & Type Check
+  # ---------------------------------------------------------------
+  lint:backend:
+    desc: Go vet static analysis
+    dir: backend
+    cmds:
+      - go vet ./...
+
+  lint:frontend:
+    desc: ESLint untuk frontend
+    dir: frontend
+    cmds:
+      - npm run lint
+
+  lint:
+    desc: Jalankan linting (backend + frontend)
+    cmds:
+      - task: lint:backend
+      - task: lint:frontend
+
+  type-check:
+    desc: TypeScript type-check frontend
+    dir: frontend
+    cmds:
+      - npm run type-check
+
+  # ---------------------------------------------------------------
+  # Format
+  # ---------------------------------------------------------------
+  format:
+    desc: Format kode (gofmt + prettier)
+    cmds:
+      - cmd: gofmt -w .
+        dir: backend
+      - cmd: npx prettier --write src/
+        dir: frontend
+
+  # ---------------------------------------------------------------
+  # Clean
+  # ---------------------------------------------------------------
+  clean:
+    desc: Hapus build artifacts
+    cmds:
+      - rm -rf backend/bin
+      - rm -rf frontend/dist
+      - rm -rf tmp
+
+  # ---------------------------------------------------------------
+  # Air (Hot Reload)
+  # ---------------------------------------------------------------
+  air:install:
+    desc: Install Air untuk hot reload backend
+    cmds:
+      - go install github.com/cosmtrek/air@latest
+
+  air:
+    desc: Jalankan backend dengan Air hot reload
+    dir: backend
+    deps:
+      - task: air:install
+    cmds:
+      - '{{.GOPATH}}/bin/air{{if eq OS "windows"}}.exe{{end}}'
+
+  # ---------------------------------------------------------------
+  # Dependencies
+  # ---------------------------------------------------------------
+  install:backend:
+    desc: Install Go dependencies
+    dir: backend
+    cmds:
+      - go mod download
+
+  install:frontend:
+    desc: Install npm dependencies
+    dir: frontend
+    cmds:
+      - npm install
+
+  install:
+    desc: Install semua dependencies
+    cmds:
+      - task: install:backend
+      - task: install:frontend

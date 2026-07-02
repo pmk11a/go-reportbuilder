@@ -2,6 +2,8 @@ package permission
 
 import (
 	"gorm.io/gorm"
+
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 )
 
 // IPermissionRepository defines the persistence contract for user
@@ -238,13 +240,29 @@ func (r *permissionRepository) GetPermissionReportMatrix(userID, menuCode, menuT
 	// 2. Fetch the joined matrix. Outer join DBFLPASS so we can display FullName
 	// and TINGKAT (role). If no user joined, we still return the row with empty
 	// user metadata (shouldn't happen in practice because we filter on USERID).
-	limitClause := ""
+	var query string
 	if page > 0 && pageSize > 0 {
-		offset := (page - 1) * pageSize
-		limitClause = " ORDER BY " + userIDCol + " ASC, " + menuCodeCol + " ASC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
-		args = append(args, offset, pageSize)
+		baseSQL := `
+			SELECT ` + userIDCol + ` AS USERID, u.FullName, u.TINGKAT, ` + menuCodeCol + ` AS KODEMENU, m.Keterangan,
+				` + permsSelect + `,
+				0 AS IsApprove1, 0 AS IsApprove2, 0 AS IsApprove3, 0 AS IsApprove4, 0 AS IsApprove5,
+				0 AS IsCanceled
+			FROM ` + permsTable + ` p
+			` + masterJoin + `
+			LEFT JOIN DBFLPASS u ON u.USERID = ` + userIDCol + `
+			` + where
+		orderBy := userIDCol + " ASC, " + menuCodeCol + " ASC"
+		query = pagination.BuildRowNumberQuery(baseSQL, orderBy, page, pageSize)
 	} else {
-		limitClause = " ORDER BY " + userIDCol + " ASC, " + menuCodeCol + " ASC"
+		query = `
+			SELECT ` + userIDCol + ` AS USERID, u.FullName, u.TINGKAT, ` + menuCodeCol + ` AS KODEMENU, m.Keterangan,
+				` + permsSelect + `,
+				0 AS IsApprove1, 0 AS IsApprove2, 0 AS IsApprove3, 0 AS IsApprove4, 0 AS IsApprove5,
+				0 AS IsCanceled
+			FROM ` + permsTable + ` p
+			` + masterJoin + `
+			LEFT JOIN DBFLPASS u ON u.USERID = ` + userIDCol + `
+			` + where + " ORDER BY " + userIDCol + " ASC, " + menuCodeCol + " ASC"
 	}
 
 	type joinedRow struct {
@@ -266,16 +284,6 @@ func (r *permissionRepository) GetPermissionReportMatrix(userID, menuCode, menuT
 		IsApprove5 int
 		IsCanceled int
 	}
-
-	query := `
-		SELECT ` + userIDCol + ` AS USERID, u.FullName, u.TINGKAT, ` + menuCodeCol + ` AS KODEMENU, m.Keterangan,
-			` + permsSelect + `,
-			0 AS IsApprove1, 0 AS IsApprove2, 0 AS IsApprove3, 0 AS IsApprove4, 0 AS IsApprove5,
-			0 AS IsCanceled
-		FROM ` + permsTable + ` p
-		` + masterJoin + `
-		LEFT JOIN DBFLPASS u ON u.USERID = ` + userIDCol + `
-		` + where + limitClause
 
 	var rows []joinedRow
 	if err := r.db.Raw(query, args...).Scan(&rows).Error; err != nil {

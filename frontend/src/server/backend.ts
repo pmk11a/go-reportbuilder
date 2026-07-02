@@ -16,7 +16,8 @@ const serverLogger = {
   logRequest(method: string, path: string, body?: any) {
     if (!IS_DEV) return
     const ts = new Date().toISOString().slice(11, 23)
-    console.log(`\n→ [${ts}] ${method} ${path}`)
+    console.groupCollapsed(`\n→ [${ts}] ${method} ${path}`)
+    
     if (body) {
       try {
         const parsed = typeof body === 'string' ? JSON.parse(body) : body
@@ -25,22 +26,37 @@ const serverLogger = {
         console.log(`  Body:`, body)
       }
     }
+    
+    // log query params if present in the path
+    const url = new URL(path, getEnv('VITE_APP_URL', 'http://localhost:3000'))
+    const queryParams = Object.fromEntries(url.searchParams.entries())
+    if (Object.keys(queryParams).length > 0) {
+      console.log(`  Query Params:`, queryParams)
+    }
+    
+    console.groupEnd()
   },
   logResponse(method: string, path: string, status: number, data: any, duration: number) {
     if (!IS_DEV) return
     const ts = new Date().toISOString().slice(11, 23)
     const ok = status < 400
-    console.log(`← [${ts}] ${method} ${path} ${status} (${duration}ms)${ok ? '' : ' ← ERROR'}`)
+    
+    console.groupCollapsed(`\n← [${ts}] ${method} ${path} ${status} (${duration}ms)${ok ? '' : ' ← ERROR'}`)
+    
     if (data !== null && data !== undefined) {
-      const truncated = typeof data === 'string' ? data.slice(0, 300) : JSON.stringify(data).slice(0, 500)
-      console.log(`  Data: ${truncated}${JSON.stringify(data).length > 500 ? ' ...' : ''}`)
+      console.log(`  Data:`, data)
     }
+    
+    console.groupEnd()
   },
   logError(method: string, path: string, error: any, duration: number) {
     if (!IS_DEV) return
     const ts = new Date().toISOString().slice(11, 23)
-    console.error(`✗ [${ts}] ${method} ${path} (${duration}ms)`)
+    // console.error(`✗ [${ts}] ${method} ${path} (${duration}ms)`)
+    // console.error(`  Error:`, error?.message || error)
+    console.groupCollapsed(`\n✗ [${ts}] ${method} ${path} (${duration}ms) ← ERROR`)
     console.error(`  Error:`, error?.message || error)
+    console.groupEnd()
   },
 }
 

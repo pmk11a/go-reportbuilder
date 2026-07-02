@@ -1,0 +1,42 @@
+root = "."
+tmp_dir = "tmp"
+sandbox = false
+
+[build]
+  bin = "./bin/main"
+  cmd = "go build -o ./bin/main ./cmd/"
+  delay = 1000
+  exclude_dir = ["assets", "frontend", "node_modules", "bin", "dist", "vendor"]
+  exclude_file = []
+  exclude_regex = []
+  exclude_suffix = ["_test.go"]
+  exit_on_error = false
+  full_bin = ""
+  include_dir = ["backend"]
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  include_file = []
+  kill_delay = "0s"
+  log = "build-errors.log"
+  rerun = false
+  rerun_delay = 500
+  send_interrupt = true
+  stop_on_error = true
+
+[color]
+  app = ""
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[log]
+  main_only = false
+  silent = false
+  time = false
+
+[misc]
+  clean_on_exit = true
+
+[screen]
+  clear_on_rebuild = true
+  keep_scroll = true
