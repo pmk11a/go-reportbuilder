@@ -1,96 +1,136 @@
 package seeders
 
 import (
+	"embed"
+	"encoding/csv"
+	"fmt"
+	"io"
 	"log"
+	"strings"
 
 	"github.com/masza1/dapen-backend/internal/features/menu"
 	"gorm.io/gorm"
 )
 
+//go:embed DBMENU.csv
+var csvFS embed.FS
+
 func seedDBMenu(database *gorm.DB) {
 	log.Println("Seeding DBMENU...")
 
-	// Fetch existing menus to update icons and routes
+	data, err := csvFS.Open("DBMENU.csv")
+	if err != nil {
+		log.Fatalf("Failed to open DBMENU.csv: %v", err)
+	}
+	defer data.Close()
+
+	reader := csv.NewReader(data)
+	reader.LazyQuotes = true
+
+	// Read header
+	header, err := reader.Read()
+	if err != nil {
+		log.Fatalf("Failed to read CSV header: %v", err)
+	}
+	colIdx := map[string]int{}
+	for i, name := range header {
+		colIdx[strings.TrimSpace(name)] = i
+	}
+
+	// Read all rows
+	type csvRow struct {
+		kodeMenu    string
+		keterangan  string
+		routeName   string
+		icon        string
+	}
+	var rows []csvRow
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Printf("Warning: skipping malformed CSV row: %v", err)
+			continue
+		}
+
+		routeName := strings.TrimSpace(record[colIdx["routename"]])
+		icon := strings.TrimSpace(record[colIdx["icon"]])
+
+		// Only consider rows that have a non-empty routename and icon
+		if routeName == "" || icon == "" {
+			continue
+		}
+
+		rows = append(rows, csvRow{
+			kodeMenu:   strings.TrimSpace(record[colIdx["KODEMENU"]]),
+			keterangan: strings.TrimSpace(record[colIdx["Keterangan"]]),
+			routeName:  routeName,
+			icon:       icon,
+		})
+	}
+
+	if len(rows) == 0 {
+		log.Println("No menu items with routename+icon found in CSV.")
+		return
+	}
+
+	// Load existing menus from DB
 	var existingMenus []menu.SDbMenu
-	if err := database.Find(&existingMenus).Error; err == nil {
-		for _, menu := range existingMenus {
-			changed := false
-
-			// Map icons based on Keterangan (menu name)
-			iconMap := map[string]string{
-				"Berkas": "Folder",
-				"Setup Periode Kerja": "Calendar",
-				"Kunci Periode Kerja": "Lock",
-				"Set Nomor Transaksi dan Perusahaan": "Building",
-				"Menu": "Menu",
-				"Set Pemakai": "Users",
-				"Ganti Password": "KeyRound",
-				"Laporan": "FileText",
-				"Master": "Database",
-				"Konfigurasi": "Settings",
-				"Log": "List",
-				"Dashboard": "LayoutDashboard",
-			}
-
-			if newIcon, exists := iconMap[menu.Keterangan]; exists {
-				if menu.Icon != newIcon {
-					menu.Icon = newIcon
-					changed = true
-				}
-			}
-
-			// Update routes from old laravel format to new React frontend format
-			if menu.Routename != nil {
-				oldRoute := *menu.Routename
-				newRoute := oldRoute
-
-				if oldRoute == "berkas.mastermenu.index" {
-					newRoute = "/admin/berkas/menu"
-				} else if oldRoute == "berkas.set-pemakai.index" {
-					newRoute = "/admin/users"
-				} else if oldRoute == "berkas.perusahaan.index" {
-					newRoute = "/admin/perusahaan"
-				} else if oldRoute == "#setupPeriode" || oldRoute == "#gantiPassword" {
-					newRoute = oldRoute // Keep as is
-				}
-
-				if newRoute != oldRoute {
-					menu.Routename = &newRoute
-					changed = true
-				}
-			}
-
-			if changed {
-				database.Save(&menu)
-			}
-		}
+	if err := database.Find(&existingMenus).Error; err != nil {
+		log.Printf("Failed to query DBMENU: %v", err)
+		return
 	}
 
-	// Add Dashboard menu (KodeMenu: 11, LO: 0, OL: 0, TipeTrans: "")
-	var count int64
-	database.Model(&menu.SDbMenu{}).Where("KODEMENU = ?", "11").Count(&count)
+	updated := 0
+	notFound := 0
 
-	if count == 0 {
-		emptyStr := ""
-		dashRoute := "/admin/dashboard"
-		newDash := menu.SDbMenu{
-			KODEMENU:   "11",
-			Keterangan: "Dashboard",
-			L0:         0,
-			ACCESS:     11, // Arbitrary access code based on KODEMENU
-			OL:         0,
-			TipeTrans:  &emptyStr,
-			Routename:  &dashRoute,
-			Icon:       "LayoutDashboard",
+	for _, csvRow := range rows {
+		var item menu.SDbMenu
+		err := database.Where("KODEMENU = ?", csvRow.kodeMenu).First(&item).Error
+
+		if err == gorm.ErrRecordNotFound {
+			// Not in DB yet — skip (we only update existing records)
+			log.Printf("Menu %s (%s) not found in DB — skipping", csvRow.kodeMenu, csvRow.keterangan)
+			notFound++
+			continue
 		}
-		database.Create(&newDash)
-		log.Println("Added Dashboard menu to DBMENU")
-	} else {
-		var dashMenu menu.SDbMenu
-		database.Where("KODEMENU = ?", "11").First(&dashMenu)
-		dashRoute := "/admin/dashboard"
-		dashMenu.Routename = &dashRoute
-		dashMenu.Icon = "LayoutDashboard"
-		database.Save(&dashMenu)
+
+		if err != nil {
+			log.Printf("Error querying menu %s: %v", csvRow.kodeMenu, err)
+			continue
+		}
+
+		// Update routename and icon
+		oldRoute := item.Routename
+		oldIcon := item.Icon
+
+		item.Routename = &csvRow.routeName
+		item.Icon = csvRow.icon
+
+		if err := database.Save(&item).Error; err != nil {
+			log.Printf("Failed to save menu %s: %v", csvRow.kodeMenu, err)
+			continue
+		}
+
+		routeDesc := fmt.Sprintf("%q", csvRow.routeName)
+		if csvRow.routeName == "" {
+			routeDesc = "(empty)"
+		}
+		log.Printf("Updated menu %s [%s]: routename=%s, icon=%s",
+			csvRow.kodeMenu, csvRow.keterangan, routeDesc, csvRow.icon)
+
+		if oldRoute != nil && *oldRoute != csvRow.routeName {
+			log.Printf("  Routename: %q -> %q", *oldRoute, csvRow.routeName)
+		}
+		if oldIcon != csvRow.icon {
+			log.Printf("  Icon: %q -> %q", oldIcon, csvRow.icon)
+		}
+
+		updated++
 	}
+
+	log.Printf("DBMENU seed complete: %d updated, %d not found in DB", updated, notFound)
 }
