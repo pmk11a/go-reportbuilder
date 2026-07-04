@@ -118,6 +118,126 @@ dapen-golang-next/
 
 ---
 
+
+---
+
+## SQL Server 2008 Query Standards (MANDATORY)
+
+The legacy Laravel application runs on **SQL Server 2008 R2**. All raw SQL queries in Go backend code MUST use syntax compatible with SQL Server 2008 R2 and follow these standards:
+
+### 1. Bracket Quoting for Column Names (REQUIRED)
+
+SQL Server columns in `DBTRANSAKSI`, `DBNOMOR`, `DBPERKIRAAN`, and other legacy tables may contain uppercase names with spaces. **Bracket quoting `[column]` is REQUIRED** — do NOT use backticks, double quotes, or plain identifiers:
+
+```go
+// ✅ CORRECT — bracket-quoted columns
+tx.Raw("SELECT [No Bukti] FROM DBTRANSAKSI WHERE [IsOtorisasi1] = ?", 1)
+
+// ❌ WRONG — backticks (MySQL syntax)
+tx.Raw("SELECT `NoBukti` FROM DBTRANSAKSI ...")
+
+// ❌ WRONG — plain identifier (fails on column names with spaces)
+tx.Raw("SELECT NoBukti FROM DBTRANSAKSI ...")
+
+// ❌ WRONG — double quotes (PostgreSQL syntax)
+tx.Raw(`SELECT "NoBukti" FROM DBTRANSAKSI ...`)
+```
+
+### 2. Row Locking for Concurrent Updates
+
+When reading/writing sequence numbers (voucher numbering via `DBNOMOR`), ALWAYS use `(UPDLOCK, HOLDLOCK)` table hints to prevent race conditions under SQL Server 2008's default isolation level (READ COMMITTED):
+
+```go
+// ✅ CORRECT — UPDLOCK/HOLDLOCK prevents double-voucher bug
+tx.Raw("SELECT [PEMISAH] FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)")
+tx.Raw("UPDATE DBNOMOR SET [FORMAT1] = [FORMAT1] + 1 WHERE [ALIAS] = ?", tipe)
+
+// ❌ WRONG — no lock hint (concurrent inserts can generate identical NoBukti)
+tx.Raw("SELECT [PEMISAH] FROM DBNOMOR")
+```
+
+Supported table hints:
+- `UPDLOCK` — acquire update lock instead of shared lock
+- `HOLDLOCK` — hold lock until transaction end (SERIALIZABLE equivalent)
+
+### 3. Legacy Uppercase Column Names
+
+All legacy table columns are stored in **UPPERCASE** in the database. Match column names exactly in raw SQL:
+
+| Table | Column | Raw SQL |
+|---|---|---|
+| `DBTRANSAKSI` | `NoBukti` | `[NoBukti]` |
+| `DBTRANSAKSI` | `Tanggal` | `[Tanggal]` |
+| `DBTRANSAKSI` | `IsOtorisasi1` | `[IsOtorisasi1]` |
+| `DBNOMOR` | `ALIAS` | `[ALIAS]` |
+| `DBNOMOR` | `PEMISAH` | `[PEMISAH]` |
+| `DBNOMOR` | `FORMAT1` | `[FORMAT1]` |
+| `DBPERKIRAAN` | `Kelompok` | `[Kelompok]` |
+
+```go
+// ✅ CORRECT
+tx.Raw("UPDATE DBNOMOR SET [FORMAT1] = [FORMAT1] + 1 WHERE [ALIAS] = ?", tipe)
+
+// ❌ WRONG
+tx.Raw("UPDATE DBNOMOR SET FORMAT1 = FORMAT1 + 1 WHERE ALIAS = ?", tipe)
+```
+
+### 4. UPDATE / Zeroing Columns
+
+When resetting columns to zero/null (e.g., canceling authorization), use comma-separated `SET` clauses — no semicolons:
+
+```go
+// ✅ CORRECT
+tx.Exec("UPDATE DBTRANS SET %s = 0, %s = '', %s = NULL WHERE [NoBukti] = ?",
+    col, userCol, tglCol, noBukti)
+
+// ❌ WRONG — trailing semicolon
+tx.Exec("UPDATE DBTRANS SET IsOtorisasi1 = 0; WHERE [NoBukti] = ?", noBukti)
+```
+
+### 5. Date/Time Handling
+
+Use parameterized queries only:
+```go
+// ✅ CORRECT
+tx.Where("[Tanggal] >= ? AND [Tanggal] <= ?", start, end)
+
+// ❌ WRONG — string concatenation
+tx.Where(fmt.Sprintf("[Tanggal] = '%s'", dateStr))
+```
+
+### 6. String Operations
+
+- `LIKE '%word%'` — no regex
+- Concatenation uses `+` (not `CONCAT()`)
+- `SUBSTRING(col, start, length)` — 1-indexed
+- `UPPER(col)` / `LOWER(col)` — case conversion
+- `LEN(col)` — length (not `LENGTH()`)
+
+### 7. Pagination (No LIMIT/OFFSET)
+
+SQL Server 2008 does NOT support `LIMIT`/`OFFSET`. Use:
+
+**Option A — TOP-based:**
+```go
+tx.Raw("SELECT TOP ? * FROM DBTRANSAKSI WHERE [NoBukti] NOT IN (SELECT TOP ? [NoBukti] FROM DBTRANSAKSI ORDER BY [Tanggal] DESC) ORDER BY [Tanggal] DESC", limit, offset)
+```
+
+**Option B — CTE with ROW_NUMBER() (recommended):**
+```go
+tx.Raw(`
+  WITH CTE AS (
+    SELECT *, ROW_NUMBER() OVER (ORDER BY [Tanggal] DESC) AS RowNum
+    FROM DBTRANSAKSI
+  )
+  SELECT * FROM CTE WHERE RowNum BETWEEN ? AND ?
+`, startRow, endRow)
+```
+
+---
+
+
+
 ## Database Migrations (CRITICAL)
 
 - **NEVER** use GORM `AutoMigrate` at runtime.

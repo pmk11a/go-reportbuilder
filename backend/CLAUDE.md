@@ -41,7 +41,19 @@ backend/internal/
 ### Current Domain Map
 
 | Domain | Sub-domains |
-|---|---|
+|---
+## SQL Server 2008 Query Standards (MANDATORY)
+
+All raw SQL queries MUST use SQL Server 2008 R2 compatible syntax. Refer to root `CLAUDE.md` for full standards. Key rules:
+
+- **Bracket quoting `[column]`** for all column names — never backticks, double quotes, or bare identifiers
+- **`(UPDLOCK, HOLDLOCK)`** table hints on ALL reads of sequence tables (`DBNOMOR`) before INSERT/UPDATE to prevent race conditions
+- **No `LIMIT/OFFSET`** — use `TOP` or CTE with `ROW_NUMBER()` for pagination
+- **Parameterized queries only** — never string-concatenate values into SQL
+- **Comma-separated `SET` clauses** in UPDATE — no trailing semicolons
+
+Examples from the `kasbank` domain:
+---| -- |
 | `shared/` | auth, cache, config, database, logger, middleware, pagination, response, validator, export |
 | `identity/` | user, permission, auth |
 | `menu/` | master menu catalogue (DBMENU, DBMENUREPORT) |
@@ -53,7 +65,7 @@ backend/internal/
 
 > **Migration note**: Legacy code still exists in `internal/legacy/` (old handlers/services/repositories). Target architecture above. Migration ongoing via per-domain sprints.
 
----
+ -- 
 
 ## Dependency Rules (strict)
 
@@ -65,7 +77,7 @@ handler → service → repository → database
 - **Repository MUST NOT call service or handler.** Pure data access.
 - **Inter-domain:** `orderService → userService` ✅ | `orderService → userRepository` ❌
 
----
+ -- 
 
 ## Mandatory Checklist
 
@@ -82,7 +94,7 @@ handler → service → repository → database
 - [ ] Unit tests (`_test.go`) adjacent to source files using `testify` + `DATA-DOG/go-sqlmock`.
 - [ ] E2E tests in `backend/tests/e2e/` using `httptest`.
 
----
+ -- 
 
 ## API Response Envelope
 
@@ -118,7 +130,7 @@ WAJIB untuk semua error response (selain validation 400 dari gin binding). Struk
 ```
 
 | Field | Bahasa | Catatan |
-|---|---|---|
+| -- | -- | -- |
 | `code` | English | UPPER_SNAKE_CASE, identifier unik |
 | `error_name` | Indonesia | Judul singkat untuk UI |
 | `reason` | Indonesia | Penjelasan mengapa error terjadi |
@@ -136,7 +148,7 @@ Helper untuk emit error_map (lihat `internal/infrastructure/response/response.go
 string ke `message`, tanpa 4-field `error_map` yang dibutuhkan frontend untuk
 menampilkan reason + action.
 
----
+ -- 
 
 ## Naming Conventions
 
@@ -161,7 +173,7 @@ func getData() {}                                  // ❌
 return fmt.Errorf("fetching permissions for user %q: %w", userID, err)
 ```
 
----
+ -- 
 
 ## GORM Rules
 
@@ -170,7 +182,7 @@ return fmt.Errorf("fetching permissions for user %q: %w", userID, err)
 - Specify `size:100` on string indexes (MSSQL pitfall).
 - Parameter placeholders use SQL Server style: `@p1`, `@p2`.
 
----
+ -- 
 
 ## Security
 
@@ -178,7 +190,7 @@ return fmt.Errorf("fetching permissions for user %q: %w", userID, err)
 - Rate limiting: Redis-backed Token Bucket (global + per-IP). Atomic Lua script. Emit `X-RateLimit-*` headers. Fail-open if Redis is down.
 - `engine.SetTrustedProxies(nil)` to silence proxy-IP warnings.
 
----
+ -- 
 
 ## Testing
 
@@ -186,7 +198,7 @@ return fmt.Errorf("fetching permissions for user %q: %w", userID, err)
 - E2E tests: `httptest` against full router in `backend/tests/e2e/`. No DB mocks.
 - Adjacent placement: `user_handler_test.go` next to `handler.go`.
 
----
+ -- 
 
 ## Quick Commands
 
@@ -199,7 +211,7 @@ go test ./... -v                # Run all tests
 swag init                       # Regenerate Swagger docs
 ```
 
----
+ -- 
 
 ## Identity Domain: User Permission Management
 
@@ -233,14 +245,14 @@ GET  /api/admin/reports/permissions?format=json|xlsx|pdf
 - PDF writer uses `go-pdf/fpdf` landscape A4 with repeating headers.
 - Excel/PDF exports require at least one filter (`userId` or `menuId`) to prevent OOM.
 
----
+ -- 
 
 ## Identity Domain: User Model (CRITICAL — read before adding admin endpoints)
 
 The project has **two distinct user identifiers** in the same database. Conflating them caused the TASK-017 bug ("Invalid user ID format" on session monitoring). Both must be handled explicitly.
 
 | Field | Type | Source | Purpose |
-|---|---|---|---|
+| -- | -- | -- | -- |
 | `SUser.ID` (PK) | `uint` auto-increment | `users` table | Internal numeric ID. **Only** ID safe to use as Redis key suffix, JWT `sub` claim, foreign key, URL `/:id` for **internal** APIs. |
 | `SUser.UserID` | `string` | FK to `DBFLPASS.USERID` | Legacy login code (e.g. `"SA"`, `"ADMIN"`). **Only** identifier available in the admin UI (User Management screen). Maps to `DBFLPASS.USERID` which is the operator's login name. |
 | `SUser.Email` | `string` | `users` table | Auth login identifier (since TASK-016 migration). |
@@ -272,7 +284,7 @@ Add the method to the `IUserRepository` interface and inject the user repository
 ### SUser Entity Quick Reference
 
 | Column | Type | Notes |
-|---|---|---|
+| -- | -- | -- |
 | `id` | `uint` (PK) | Auto-increment. Used as Redis session key suffix. |
 | `user_id` | `string` (FK→DBFLPASS.USERID) | Legacy login code. Indexed, size 100. |
 | `email` | `string` | Login identifier. Unique. |
@@ -282,14 +294,14 @@ Add the method to the `IUserRepository` interface and inject the user repository
 | `is_active` | `bool` | Soft disable. |
 | `dbflpass` | *DBFLPASS | GORM relation. |
 
----
+ -- 
 
 ## Session Storage Contract (Redis) — read before touching sessions
 
 Two key formats, **both required** for session monitoring to work:
 
 | Key | Type | Written by | Read by | Purpose |
-|---|---|---|---|---|
+| -- | -- | -- | -- | -- |
 | `bff:session:{sessionId}` | `string` (JSON) | `createSession()` in `frontend/src/server/session.ts` | `getSession()`, `getValidAccessToken()` | Session payload (userId numeric, accessToken, refreshToken, expiresAt, user object). |
 | `bff:user_sessions:{userId}` | `set` (UUIDs) | `createSession()` SADD, `updateSession()` EXPIRE, `destroySession()` SREM | `session/repository.go` `GetUserSessions()` via `SMEMBERS` | Reverse index: which sessionIds belong to a user. |
 
@@ -302,7 +314,7 @@ Two key formats, **both required** for session monitoring to work:
 - `updateSession()` (called from the token-refresh path in `getValidAccessToken`) MUST refresh the EXPIRE on the user-sessions SET, not just the session key.
 - Both keys must live in the **same** Redis DB. They are both written from `frontend/src/server/redis.ts`.
 
----
+ -- 
 
 ## Scope Discipline
 

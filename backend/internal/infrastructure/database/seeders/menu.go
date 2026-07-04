@@ -3,7 +3,6 @@ package seeders
 import (
 	"bytes"
 	"encoding/csv"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -17,14 +16,12 @@ import (
 const csvFilename = "DBMENU.csv"
 
 // findCSVPath searches for the CSV in known locations relative to the binary.
-// It tries: same directory as this source file, then working directory,
-// then absolute paths. Returns the first found path.
 func findCSVPath() string {
 	candidates := []string{
-		csvFilename,                          // same dir as binary (working dir)
-		filepath.Join("..", csvFilename),     // one level up (e.g. from seeders/)
-		filepath.Join("internal", "infrastructure", "database", "seeders", csvFilename), // relative to project root
-		filepath.Join("backend", "internal", "infrastructure", "database", "seeders", csvFilename), // relative to repo root
+		csvFilename,
+		filepath.Join("..", csvFilename),
+		filepath.Join("internal", "infrastructure", "database", "seeders", csvFilename),
+		filepath.Join("backend", "internal", "infrastructure", "database", "seeders", csvFilename),
 	}
 
 	for _, c := range candidates {
@@ -56,7 +53,6 @@ func seedDBMenu(database *gorm.DB) {
 	reader := csv.NewReader(bytes.NewReader(data))
 	reader.LazyQuotes = true
 
-	// Read header
 	header, err := reader.Read()
 	if err != nil {
 		log.Fatalf("Failed to read CSV header: %v", err)
@@ -66,7 +62,6 @@ func seedDBMenu(database *gorm.DB) {
 		colIdx[strings.TrimSpace(name)] = i
 	}
 
-	// Read all rows
 	type csvRow struct {
 		kodeMenu   string
 		keterangan string
@@ -88,7 +83,6 @@ func seedDBMenu(database *gorm.DB) {
 		routeName := strings.TrimSpace(record[colIdx["routename"]])
 		icon := strings.TrimSpace(record[colIdx["icon"]])
 
-		// Only consider rows that have a non-empty routename and icon
 		if routeName == "" || icon == "" {
 			continue
 		}
@@ -106,50 +100,60 @@ func seedDBMenu(database *gorm.DB) {
 		return
 	}
 
-	// Load existing menus from DB
 	var existingMenus []menu.SDbMenu
 	if err := database.Find(&existingMenus).Error; err != nil {
 		log.Printf("Failed to query DBMENU: %v", err)
 		return
 	}
 
+	// Build a lookup map by KODEMENU
+	menuMap := map[string]*menu.SDbMenu{}
+	for i := range existingMenus {
+		menuMap[existingMenus[i].KODEMENU] = &existingMenus[i]
+	}
+
 	updated := 0
-	notFound := 0
+	created := 0
 
 	for _, r := range rows {
-		var item menu.SDbMenu
-		err := database.Where("KODEMENU = ?", r.kodeMenu).First(&item).Error
-
-		if err == gorm.ErrRecordNotFound {
-			// Not in DB yet — skip (we only update existing records)
-			log.Printf("Menu %s (%s) not found in DB — skipping", r.kodeMenu, r.keterangan)
-			notFound++
+		item, exists := menuMap[r.kodeMenu]
+		if !exists {
+			// Insert new record (e.g. Dashboard)
+			emptyStr := ""
+			// Fetch keterangan from CSV for the insert
+			newItem := menu.SDbMenu{
+				KODEMENU:   r.kodeMenu,
+				Keterangan: r.keterangan,
+				L0:         0,
+				ACCESS:     0,
+				OL:         0,
+				TipeTrans:  &emptyStr,
+				Routename:  &r.routeName,
+				Icon:       r.icon,
+			}
+			if err := database.Create(&newItem).Error; err != nil {
+				log.Printf("Failed to create menu %s: %v", r.kodeMenu, err)
+				continue
+			}
+			log.Printf("Created menu %s [%s]: routename=%q, icon=%s",
+				r.kodeMenu, r.keterangan, r.routeName, r.icon)
+			created++
 			continue
 		}
 
-		if err != nil {
-			log.Printf("Error querying menu %s: %v", r.kodeMenu, err)
-			continue
-		}
-
-		// Update routename and icon only
 		oldRoute := item.Routename
 		oldIcon := item.Icon
 
 		item.Routename = &r.routeName
 		item.Icon = r.icon
 
-		if err := database.Save(&item).Error; err != nil {
+		if err := database.Save(item).Error; err != nil {
 			log.Printf("Failed to save menu %s: %v", r.kodeMenu, err)
 			continue
 		}
 
-		routeDesc := fmt.Sprintf("%q", r.routeName)
-		if r.routeName == "" {
-			routeDesc = "(empty)"
-		}
-		log.Printf("Updated menu %s [%s]: routename=%s, icon=%s",
-			r.kodeMenu, r.keterangan, routeDesc, r.icon)
+		log.Printf("Updated menu %s [%s]: routename=%q, icon=%s",
+			r.kodeMenu, r.keterangan, r.routeName, r.icon)
 
 		if oldRoute != nil && *oldRoute != r.routeName {
 			log.Printf("  Routename: %q -> %q", *oldRoute, r.routeName)
@@ -161,5 +165,5 @@ func seedDBMenu(database *gorm.DB) {
 		updated++
 	}
 
-	log.Printf("DBMENU seed complete: %d updated, %d not found in DB", updated, notFound)
+	log.Printf("DBMENU seed complete: %d created, %d updated", created, updated)
 }

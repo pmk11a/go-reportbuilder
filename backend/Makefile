@@ -3,17 +3,39 @@
 # Tested with GNU Make 4.x (Linux/macOS) and mingw32-make / nmake (Windows).
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── Force Unix shell — GNU Make 3.81 on macOS mis-detects Windows ────────────
+# Workaround: if we're on macOS (Darwin), never treat as Windows regardless of
+# the auto-detection logic below. The safest approach: always set Unix helpers
+# first, then only override to Windows if we are *sure*.
+SHELL := /bin/bash
+
 # ── Platform detection ───────────────────────────────────────────────────────
-# Detects Windows (native, Git Bash, MSYS, Cygwin) and switches shell helpers.
 ifeq ($(OS),Windows_NT)
+define CRLF
+\r
+endef
+endif
+ifeq ($(MSYSTEM),)
+  ifdef COMSPEC
+    MSWINDOWS := 1
+  endif
+endif
+ifeq ($(MSWINDOWS),)
+  ifeq ($(shell uname),Darwin)
+    MSWINDOWS :=
+  else ifeq ($(shell uname),Linux)
+    MSWINDOWS :=
+  endif
+endif
+ifeq ($(MSWINDOWS),1)
   MKDIR       = powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path"
   RM          = powershell -NoProfile -Command "Remove-Item -Recurse -Force"
+  RMDIR       = powershell -NoProfile -Command "Remove-Item -Recurse -Force"
   BIN_EXT     = .exe
-  # On Windows, `go env GOPATH` may return backslash paths like `C:\Users\foo\go`.
-  # We normalize to forward slashes via patsubst and emit a PATH hint instead of
-  # trying to invoke `$(go env GOPATH)/bin/air` directly (Make misinterprets `:`).
-  AIR_BIN     = $(shell powershell -NoProfile -Command "(go env GOPATH) -replace '\\\\','/'" 2>$null)/bin/air.exe
-  AIR_PATH_HINT = $$(go env GOPATH)\bin
+  # Use deferred shell expansion — `go` is always on PATH, but `powershell`
+  # is often unavailable inside Git Bash.  Forward slashes work fine in Makefile.
+  AIR_BIN     = $$(go env GOPATH)/bin/air.exe
+  AIR_PATH_HINT = $$(go env GOPATH)/bin
   WHERE       = where
 else
   MKDIR       = mkdir -p

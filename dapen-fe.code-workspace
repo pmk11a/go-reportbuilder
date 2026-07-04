@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "tasks"
+		},
+		{
+			"path": "agent-converter"
+		},
+		{
+			"path": "manual-book"
 		}
 	],
 	"settings": {
