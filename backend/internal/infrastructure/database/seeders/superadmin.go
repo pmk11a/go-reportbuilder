@@ -1,9 +1,11 @@
 package seeders
 
 import (
+	"errors"
 	"log"
 
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -27,8 +29,17 @@ func seedSuperAdmin(database *gorm.DB) {
 			UID2:     string(hashedPassword),
 		}
 
-		// Use FirstOrCreate to avoid errors if already exists
-		if err := database.Where("USERID = ?", dbflpass.USERID).FirstOrCreate(&dbflpass).Error; err != nil {
+		// SQL Server 2008-compatible: use First2008 + ErrRecordNotFound -> Create
+		// (instead of FirstOrCreate, which uses OFFSET/FETCH internally).
+		err := pagination.First2008(database, &dbflpass, "[USERID]", func(q *gorm.DB) *gorm.DB {
+			return q.Where("USERID = ?", dbflpass.USERID)
+		})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if createErr := database.Create(&dbflpass).Error; createErr != nil {
+				log.Printf("Error seeding SDBFLPASS: %v", createErr)
+				return
+			}
+		} else if err != nil {
 			log.Printf("Error seeding SDBFLPASS: %v", err)
 			return
 		}
@@ -44,8 +55,18 @@ func seedSuperAdmin(database *gorm.DB) {
 			Role:     models.RoleAdmin,
 		}
 
-		if err := database.Where("username = ?", admin.Username).FirstOrCreate(&admin).Error; err != nil {
+		err = pagination.First2008(database, &admin, "id", func(q *gorm.DB) *gorm.DB {
+			return q.Where("username = ?", admin.Username)
+		})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if createErr := database.Create(&admin).Error; createErr != nil {
+				log.Printf("Error seeding user: %v", createErr)
+				return
+			}
+			log.Println("Super Admin user seeded successfully")
+		} else if err != nil {
 			log.Printf("Error seeding user: %v", err)
+			return
 		} else {
 			// Force update fields in case it already exists but was modified
 			admin.Username = "superadmin"
@@ -59,7 +80,13 @@ func seedSuperAdmin(database *gorm.DB) {
 	} else {
 		// Update existing superadmin to ensure it has the right credentials
 		var admin models.SUser
-		database.Where("username = ?", "superadmin").First(&admin)
+		err := pagination.First2008(database, &admin, "id", func(q *gorm.DB) *gorm.DB {
+			return q.Where("username = ?", "superadmin")
+		})
+		if err != nil {
+			log.Printf("Error loading existing superadmin: %v", err)
+			return
+		}
 
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("superadmin123"), bcrypt.DefaultCost)
 		admin.Username = "superadmin"
@@ -73,7 +100,9 @@ func seedSuperAdmin(database *gorm.DB) {
 		// legacy DBFLPASS row in sync too so admin-panel reads of TINGKAT
 		// directly (outside GetDynamicRole) are not stale.
 		var dbflpass models.SDBFLPASS
-		if err := database.Where("USERID = ?", "SA").First(&dbflpass).Error; err == nil {
+		if err := pagination.First2008(database, &dbflpass, "[USERID]", func(q *gorm.DB) *gorm.DB {
+			return q.Where("USERID = ?", "SA")
+		}); err == nil {
 			if dbflpass.TINGKAT != "2" {
 				dbflpass.TINGKAT = "2"
 				if err := database.Save(&dbflpass).Error; err != nil {
@@ -82,7 +111,7 @@ func seedSuperAdmin(database *gorm.DB) {
 					log.Println("Synced existing SDBFLPASS TINGKAT to admin (2) for SA")
 				}
 			}
-		} else {
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Printf("Could not load SDBFLPASS for SA to sync TINGKAT: %v", err)
 		}
 

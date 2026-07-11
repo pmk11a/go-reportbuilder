@@ -53,6 +53,7 @@ func RunMigrations(database *gorm.DB) {
 	// changes on subsequent runs. Run via `--migrate`, never at startup.
 	err := database.AutoMigrate(
 		&models.SUser{},
+		&models.SDbBrowseConfig{},
 		&activity.SActivityLogConfig{},
 		&activity.SActivityLogField{},
 	)

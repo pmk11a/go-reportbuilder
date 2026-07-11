@@ -1,4 +1,6 @@
 import {
+  resolveSubTransactionFn,
+
   getKasBankListFn,
   getKasBankByNoBuktiFn,
   createKasBankFn,
@@ -13,6 +15,7 @@ import {
   batalOtorisasiFn,
   generateNoBuktiFn,
   lookupPerkiraanFn,
+  lookupDevisiFn,
   downloadKasBankPdfFn,
 } from '@/server/functions/accounting/kasbank'
 import type { IAPIResponse } from '@/shared/types/api'
@@ -60,18 +63,17 @@ export const kasbankService = {
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async update(noBukti: string, data: IUpdateKasBankPayload): Promise<IAPIResponse<IKasBankHeader>> {
+  async update(noBukti: string, data: IUpdateKasBankPayload): Promise<IAPIResponse<any>> {
     const result = await updateKasBankFn({ data: { noBukti, body: data } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async delete(noBukti: string): Promise<IAPIResponse<null>> {
-    await deleteKasBankFn({ data: { noBukti } })
-    return { success: true, status: 200, message: 'Success', data: null }
+  async delete(noBukti: string): Promise<IAPIResponse<any>> {
+    const result = await deleteKasBankFn({ data: { noBukti } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  /** Get full voucher detail: header + detail lines from GET /api/accounting/kasbank/{noBukti}/detail */
-  async getDetailList(noBukti: string): Promise<IAPIResponse<{ header: IKasBankHeader; items: IKasBankDetail[] }>> {
+  async getDetailList(noBukti: string): Promise<IAPIResponse<{header: any, details: any[]}>> {
     const result = await getKasBankDetailListFn({ data: { noBukti } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
@@ -81,28 +83,28 @@ export const kasbankService = {
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async addDetail(noBukti: string, data: IAddDetailPayload): Promise<IAPIResponse<IKasBankDetail>> {
+  async addDetail(noBukti: string, data: IAddDetailPayload): Promise<IAPIResponse<any>> {
     const result = await addKasBankDetailFn({ data: { noBukti, body: data } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async updateDetail(noBukti: string, urut: number, data: IUpdateDetailPayload): Promise<IAPIResponse<IKasBankDetail>> {
+  async updateDetail(noBukti: string, urut: number, data: IUpdateDetailPayload): Promise<IAPIResponse<any>> {
     const result = await updateKasBankDetailFn({ data: { noBukti, urut, body: data } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async deleteDetail(noBukti: string, urut: number): Promise<IAPIResponse<null>> {
-    await deleteKasBankDetailFn({ data: { noBukti, urut } })
-    return { success: true, status: 200, message: 'Success', data: null }
-  },
-
-  async setOtorisasi(noBukti: string, data: IOtorisasiRequest): Promise<IAPIResponse<IKasBankHeader>> {
-    const result = await setOtorisasiFn({ data: { noBukti, body: data } })
+  async deleteDetail(noBukti: string, urut: number): Promise<IAPIResponse<any>> {
+    const result = await deleteKasBankDetailFn({ data: { noBukti, urut } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async batalOtorisasi(noBukti: string, data: IOtorisasiRequest): Promise<IAPIResponse<IKasBankHeader>> {
-    const result = await batalOtorisasiFn({ data: { noBukti, body: data } })
+  async setOtorisasi(data: IOtorisasiRequest): Promise<IAPIResponse<any>> {
+    const result = await setOtorisasiFn({ data: { body: data } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
+  },
+
+  async batalOtorisasi(noBukti: string, level: number): Promise<IAPIResponse<any>> {
+    const result = await batalOtorisasiFn({ data: { body: { noBukti, level } } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
@@ -111,13 +113,27 @@ export const kasbankService = {
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async lookupPerkiraan(q: string, kelompokKas: boolean = false, limit: number = 50): Promise<IAPIResponse<{ items: IPerkiraan[]; total: number }>> {
-    const result = await lookupPerkiraanFn({ data: { q, kelompokKas, limit } })
+  async lookupPerkiraan(q: string, kelompokKas?: string): Promise<IAPIResponse<IPerkiraan[]>> {
+    const sp = new URLSearchParams()
+    if (q) sp.set('q', q)
+    if (kelompokKas) sp.set('kelompokKas', kelompokKas)
+    const result = await lookupPerkiraanFn({ data: { query: `?${sp.toString()}` } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
+  },
+
+  async lookupDevisi(): Promise<IAPIResponse<any[]>> {
+    const result = await lookupDevisiFn()
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   async downloadPdf(noBukti: string): Promise<Blob> {
     const result = await downloadKasBankPdfFn({ data: { noBukti } })
-    return new Blob([new Uint8Array(result.buffer)], { type: result.contentType })
+    if (result instanceof Blob) return result
+    throw new Error('Failed to download PDF')
+  },
+
+  async resolveSubTransaction(perkiraan: string, dk: string): Promise<IAPIResponse<any>> {
+    const result = await resolveSubTransactionFn({ data: { perkiraan, dk } })
+    return { success: true, status: 200, message: 'Success', data: result } as any
   },
 }

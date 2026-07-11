@@ -23,7 +23,7 @@ type SDBAKTIVADET struct {
 	Akhir *float64 `gorm:"column:Akhir" json:"akhir"`
 	AkhirD *float64 `gorm:"column:AkhirD" json:"akhird"`
 	AkhirSusutD *float64 `gorm:"column:AkhirSusutD" json:"akhirsusutd"`
-	MyID *string `gorm:"column:MyID" json:"-"`
+	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	AkhirSusut *float64 `gorm:"column:AkhirSusut" json:"akhirsusut"`
 }
 

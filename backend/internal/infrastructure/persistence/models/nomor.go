@@ -3,7 +3,7 @@ package models
 // SDBNOMOR represents the numbering settings table
 type SDBNOMOR struct {
 	ALIAS   *string `gorm:"column:ALIAS;size:10" json:"alias"`
-	PEMISAH *string `gorm:"column:PEMISAH;size:10" json:"pemisah"`
+	PEMISAH *int `gorm:"column:PEMISAH" json:"pemisah"`
 	FORMAT1 *int    `gorm:"column:FORMAT1" json:"format1"`
 	FORMAT2 *int    `gorm:"column:FORMAT2" json:"format2"`
 	FORMAT3 *int    `gorm:"column:FORMAT3" json:"format3"`
@@ -13,7 +13,7 @@ type SDBNOMOR struct {
 	NOSERI  *string `gorm:"column:NOSERI;size:20" json:"noseri"`
 	INICAB  *string `gorm:"column:INICAB;size:10" json:"inicab"`
 	DigitNomor *string `gorm:"column:DigitNomor;size:10" json:"digitNomor"`
-	MyID       *string `gorm:"column:MyID" json:"-"`
+	MyID       *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	
 	// Dynamic Numbering Fields
 	BKK      *string `gorm:"column:BKK;size:50" json:"bkk"`

@@ -105,7 +105,7 @@ func (h *SKasBankHandler) ListKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti} [get]
 func (h *SKasBankHandler) GetKasBank(c *gin.Context) {
-	noBukti := c.Query("noBukti")
+	noBukti := c.Param("noBukti")
 	header, _, err := h.svc.GetByNoBukti(c.Request.Context(), noBukti)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -439,6 +439,28 @@ func (h *SKasBankHandler) LookupPerkiraan(c *gin.Context) {
 	response.Success(c, "Lookup perkiraan retrieved successfully", out)
 }
 
+// LookupDevisi godoc
+// @Summary Lookup Devisi
+// @Description Returns list of all Devisi from DBDIVISI table
+// @Tags AccountingKasBank
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /api/accounting/kasbank/lookup-devisi [get]
+func (h *SKasBankHandler) LookupDevisi(c *gin.Context) {
+	type SDevisiRow struct {
+		Devisi     string `gorm:"column:Devisi" json:"devisi"`
+		NamaDevisi string `gorm:"column:NamaDevisi" json:"namadevisi"`
+	}
+	var rows []SDevisiRow
+	if err := h.svc.DB().Raw("SELECT Devisi, NamaDevisi FROM DBDIVISI ORDER BY Devisi").Scan(&rows).Error; err != nil {
+		response.InternalError(c, "Failed to lookup devisi: "+err.Error())
+		return
+	}
+	response.Success(c, "Devisi list retrieved successfully", rows)
+}
+
+
 // DownloadPDF godoc
 // @Summary Download PDF Voucher
 // @Description Render the voucher to PDF and stream the bytes back
@@ -456,6 +478,21 @@ func (h *SKasBankHandler) DownloadPDF(c *gin.Context) {
 		writeServiceError(c, err)
 		return
 	}
+	// Validate Date (GAP 1.7)
+	// Cetak mundur (printing backdated vouchers) is generally restricted.
+	// For now, we allow it if today is the same as voucher date, or if it's already printed before.
+	today := time.Now().Format("2006-01-02")
+	voucherDate := ""
+	if header.Tanggal != nil {
+		voucherDate = header.Tanggal.Format("2006-01-02")
+	}
+	
+	// Simplified rule: if not today and never printed, reject.
+	if voucherDate != today && header.Cetak == 0 {
+		response.BadRequest(c, "Tidak dapat mencetak voucher mundur (tanggal transaksi tidak sama dengan hari ini).")
+		return
+	}
+
 	reader, err := GenerateKasBankPDF(header, details)
 	if err != nil {
 		response.InternalError(c, "Failed to render PDF: "+err.Error())
@@ -464,11 +501,15 @@ func (h *SKasBankHandler) DownloadPDF(c *gin.Context) {
 	filename := fmt.Sprintf("kasbank-%s.pdf", time.Now().Format("20060102-150405"))
 	c.Header("Content-Disposition", "attachment; filename="+filename)
 	c.Header("Content-Type", "application/pdf")
+	
 	// Stream the PDF bytes back to the client via io.Copy.
 	if _, err := io.Copy(c.Writer, reader); err != nil {
 		response.InternalError(c, "Failed to stream PDF: "+err.Error())
 		return
 	}
+
+	// Update DBTRANS.Cetak = 1 asynchronously or directly
+	_ = h.svc.MarkCetak(c.Request.Context(), noBukti)
 }
 
 // writeServiceError maps a service-level sentinel to the right HTTP code.
@@ -496,3 +537,73 @@ func writeServiceError(c *gin.Context, err error) {
 		response.InternalError(c, err.Error())
 	}
 }
+
+// ResolveSubTransaction godoc
+// @Summary Resolve which sub-form to trigger based on account selected
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param perkiraan query string true "Account Code"
+// @Param dk query string true "Debet or Kredit (D/K)"
+// @Success 200 {object} SSubTransactionResult
+// @Router /api/accounting/kasbank/resolve-subtrans [get]
+func (h *SKasBankHandler) ResolveSubTransaction(c *gin.Context) {
+	perkiraan := c.Query("perkiraan")
+	dk := c.Query("dk")
+
+	if perkiraan == "" || dk == "" {
+		response.BadRequest(c, "perkiraan and dk are required")
+		return
+	}
+
+	res, err := h.svc.ResolveSubTransaction(c.Request.Context(), perkiraan, dk)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, "Success", res)
+}
+
+// GetOutstandingHutPiut godoc
+// @Summary Get outstanding invoices for Hutang/Piutang settlement
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param kodeCustSupp query string true "Kode Customer/Supplier"
+// @Param perkiraan query string true "Account Code"
+// @Success 200 {object} []models.SDBHUTPIUT
+// @Router /api/accounting/kasbank/outstanding-hutpiut [get]
+func (h *SKasBankHandler) GetOutstandingHutPiut(c *gin.Context) {
+	kodeCustSupp := c.Query("kodeCustSupp")
+	perkiraan := c.Query("perkiraan")
+
+	if kodeCustSupp == "" || perkiraan == "" {
+		response.BadRequest(c, "kodeCustSupp and perkiraan are required")
+		return
+	}
+
+	res, err := h.svc.GetOutstandingHutPiut(c.Request.Context(), kodeCustSupp, perkiraan)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+
+	response.Success(c, "Success", res)
+}
+
+// LookupCustSupp godoc
+// @Summary Lookup Customer/Supplier
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param q query string false "Search query (kode or nama)"
+// @Success 200 {object} []models.SDBCUSTSUPP
+// @Router /api/accounting/kasbank/lookup-custsupp [get]
+func (h *SKasBankHandler) LookupCustSupp(c *gin.Context) {
+	q := c.Query("q")
+	res, err := h.svc.LookupCustSupp(c.Request.Context(), q)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, "Success", res)
+}
+

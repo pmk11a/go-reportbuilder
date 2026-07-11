@@ -203,13 +203,37 @@ export function NumberingForm() {
     name: ['pemisah', 'format1', 'format2', 'format3', 'format4', 'inicab', 'digitNomor'],
   });
 
+  // Convert backend pemisah (int: 0=':', 1='-', 2='/', 3=' ') to FE format (string: '1'|'2'|'3'|'4')
+  // FE options: 1='/' (maps BE 2), 2='-' (maps BE 1), 3='.' (no BE equivalent → BE 0=':'), 4=' ' (maps BE 3)
+  // Memoized so its identity is stable across renders — prevents useEffect below from re-firing every render.
+  const reversePemisahMap = React.useMemo<Record<number, string>>(
+    () => ({ 0: '3', 1: '2', 2: '1', 3: '4' }),
+    [],
+  );
+  const pemisahToString = React.useCallback(
+    (p: number | string | undefined): string => {
+      if (p === undefined || p === null) return '1'; // default '/'
+      const intVal = typeof p === 'string' ? parseInt(p, 10) : p;
+      return reversePemisahMap[intVal] || '1';
+    },
+    [reversePemisahMap],
+  );
+
   React.useEffect(() => {
     if (data) {
-      form.reset(data);
+      // Convert pemisah from backend int to frontend string before resetting form
+      const convertedData = {
+        ...data,
+        pemisah: pemisahToString(data.pemisah),
+      };
+      form.reset(convertedData);
     }
-  }, [data, form]);
+  }, [data, form, pemisahToString]);
 
-  // Reactive Contoh (Example) logic
+  // Reactive Contoh (Example) logic.
+  // `form` from useForm() is referentially stable across renders (react-hook-form v7),
+  // so it is intentionally omitted from the dep array to avoid re-firing on unrelated re-renders.
+  // Only the actual watched inputs belong here.
   React.useEffect(() => {
     const getPart = (code: number | undefined, trans: string, ini: string, digits: string) => {
       if (code === undefined || code === -1) return '';
@@ -230,7 +254,11 @@ export function NumberingForm() {
       .filter(Boolean)
       .join(sepStr);
 
-    form.setValue('contoh', example);
+    // Skip the setValue call if the computed example is unchanged — prevents needless
+    // form-state churn that could re-trigger dependent effects in a tight loop.
+    if (form.getValues('contoh') !== example) {
+      form.setValue('contoh', example, { shouldDirty: false });
+    }
   }, [
     watchedPemisah,
     watchedFormat1,
@@ -239,13 +267,20 @@ export function NumberingForm() {
     watchedFormat4,
     watchedInicab,
     watchedDigitNomor,
-    form,
   ]);
 
   const onSubmit = (values: ISettingsNumbering) => {
+    // Convert pemisah from FE string ('1'|'2'|'3'|'4') to Laravel int (0|1|2|3).
+    // Frontend options: 1='/', 2='-', 3='.', 4='[space]'
+    // Backend PEMISAH:   0=':', 1='-', 2='/', 3=' '
+    // Mapping: FE 1('\/')→BE 2('\/'), FE 2('-')→BE 1('-'), FE 3('.')→no-be, FE 4(' ')→BE 3(' ')
+    const pemisahMap: Record<string, number> = { '1': 2, '2': 1, '3': 0, '4': 3 };
+    const pemisahInt = pemisahMap[values.pemisah] ?? 2;
+
     // Standardize numbers format fields before submitting
     const payload = {
       ...values,
+      pemisah: pemisahInt,
       format1: Number(values.format1),
       format2: Number(values.format2),
       format3: Number(values.format3),

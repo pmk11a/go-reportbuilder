@@ -1,6 +1,6 @@
 package activity
 
-import (
+import (		"github.com/masza1/dapen-backend/internal/shared/pagination"
 		"gorm.io/gorm"
 )
 
@@ -37,16 +37,39 @@ func NewActivityLogRepository(db *gorm.DB) IActivityLogRepository {
 
 func (r *sqlServerActivityLogRepository) GetConfigs() ([]SActivityLogConfig, error) {
 	var configs []SActivityLogConfig
-	err := r.db.Preload("Fields").Find(&configs).Error
-	return configs, err
+	// .Find() without .Limit() is fine on SQL Server 2008 — the OFFSET/FETCH path
+	// is only triggered by .Limit()/First()/Preload(). Use ORDER BY for stable
+	// paging downstream (the handler may page this list).
+	if err := r.db.Order("id ASC").Find(&configs).Error; err != nil {
+		return nil, err
+	}
+	// Manually fetch the Fields relation per config (replaces .Preload("Fields")
+	// which triggers OFFSET/FETCH in the SQL Server 2008 path).
+	for i := range configs {
+		var fields []SActivityLogField
+		if err := r.db.Where("config_id = ?", configs[i].ID).Find(&fields).Error; err != nil {
+			return nil, err
+		}
+		configs[i].Fields = fields
+	}
+	return configs, nil
 }
 
 func (r *sqlServerActivityLogRepository) GetConfigByTableName(tableName string) (*SActivityLogConfig, error) {
 	var config SActivityLogConfig
-	err := r.db.Preload("Fields").Where("table_name = ?", tableName).First(&config).Error
+	err := pagination.First2008(r.db, &config, "id", func(q *gorm.DB) *gorm.DB {
+		return q.Where("table_name = ?", tableName)
+	})
 	if err != nil {
 		return nil, err
 	}
+	// Manually fetch the Fields relation (replaces .Preload("Fields") which
+	// triggers OFFSET/FETCH on SQL Server 2008).
+	var fields []SActivityLogField
+	if err := r.db.Where("config_id = ?", config.ID).Find(&fields).Error; err != nil {
+		return nil, err
+	}
+	config.Fields = fields
 	return &config, nil
 }
 
@@ -56,7 +79,9 @@ func (r *sqlServerActivityLogRepository) SaveConfig(config *SActivityLogConfig) 
 	// activity_log_fields rows pointing at a missing config_id.
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var existing SActivityLogConfig
-		err := tx.Where("table_name = ?", config.TargetTable).First(&existing).Error
+		err := pagination.First2008(tx, &existing, "id", func(q *gorm.DB) *gorm.DB {
+			return q.Where("table_name = ?", config.TargetTable)
+		})
 
 		if err == gorm.ErrRecordNotFound {
 			return tx.Create(config).Error
@@ -81,27 +106,41 @@ func (r *sqlServerActivityLogRepository) SaveConfig(config *SActivityLogConfig) 
 
 func (r *sqlServerActivityLogRepository) GetLogs(limit int, offset int, pemakai string, startDate string, endDate string) ([]SDBLogFile, int64, error) {
 	var logs []SDBLogFile
-	var count int64
 
-	query := r.db.Model(&SDBLogFile{})
-
+	// SQL Server 2008-compatible path: build baseSQL + args, then delegate to
+	// pagination.PaginatedFind which wraps a ROW_NUMBER() CTE and avoids
+	// OFFSET ... FETCH NEXT (SQL Server 2012+).
+	baseSQL := "SELECT * FROM dblogfile"
+	var (
+		whereSQL string
+		args     []any
+	)
 	if pemakai != "" {
-		query = query.Where("pemakai = ?", pemakai)
+		whereSQL += " AND pemakai = ?"
+		args = append(args, pemakai)
 	}
 	if startDate != "" {
-		query = query.Where("tanggal >= ?", startDate)
+		whereSQL += " AND tanggal >= ?"
+		args = append(args, startDate)
 	}
 	if endDate != "" {
-		query = query.Where("tanggal <= ?", endDate)
+		whereSQL += " AND tanggal <= ?"
+		args = append(args, endDate)
+	}
+	if whereSQL != "" {
+		// Strip leading " AND "
+		baseSQL += " WHERE " + whereSQL[5:]
 	}
 
-	err := query.Count(&count).Error
-	if err != nil {
-		return nil, 0, err
+	// Preserve the legacy (offset, limit) semantics: derive 1-based page
+	// number so callers that previously used offset/limit continue to work.
+	page := 1
+	if limit > 0 && offset > 0 {
+		page = (offset / limit) + 1
 	}
 
-	err = query.Order("tanggal desc").Limit(limit).Offset(offset).Find(&logs).Error
-	return logs, count, err
+	total, err := pagination.PaginatedFind(r.db, &logs, baseSQL, "[Tanggal] DESC", page, limit, args...)
+	return logs, total, err
 }
 
 func (r *sqlServerActivityLogRepository) GetTables() ([]string, error) {

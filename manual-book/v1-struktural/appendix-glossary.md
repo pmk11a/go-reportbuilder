@@ -11,7 +11,7 @@ Lampiran ini berisi definisi singkat untuk istilah-istilah yang umum digunakan d
 | Kode | Kepanjangan | Definisi |
 |------|-------------|----------|
 | **BKM** | Bank/Kas Masuk | Transaksi penerimaan kas/bank. Debit Kas/Bank, Kredit Lawan (piutang/pendapatan). |
-| **BKK** | Bank/Kas Keluar | Transaksi pengeluaran kas/bank. Kredit Kas/Bank, Debit Lawan (beban/utang). Nominal bernilai negatif. |
+| **BKK** | Bank/Kas Keluar | Transaksi pengeluaran kas/bank. Kredit Kas/Bank, Debit Lawan (beban/utang). Nominal bernilai positif. |
 | **BBM** | Buku Masuk | Transaksi penerimaan non-tunai/non-bank. Debit akun target. |
 | **BBK** | Bukti Bank Keluar | Transaksi pengeluaran non-tunai/non-bank. Kredit akun target. |
 | **BNM** | Bukti Memorial | Transaksi jurnal entry manual (di luar kas/bank). |
@@ -103,7 +103,7 @@ Lampiran ini berisi definisi singkat untuk istilah-istilah yang umum digunakan d
 | **Header Transaksi** | Bagian atas form transaksi: jenis, mata uang, tanggal, tujuan. |
 | **Detail/Sub-Grid Transaksi** | Baris-baris detail di bawah header: nominal, sumber, keterangan, lawan, SPK. |
 | **Lawan (Pasangan)** | Akun di sisi berlawanan dari posisi kas/bank dalam transaksi. |
-| **Nominal** | Nilai uang transaksi. BKK menggunakan nilai negatif. |
+| **Nominal** | Nilai uang transaksi. Selalu bernilai positif; sisi Debet/Kredit ditentukan otomatis oleh sistem berdasarkan jenis transaksi.
 | **Sumber** | Asal transaksi (manual/otomatis). |
 | **Sub-Ledger Settlement** | Proses pelunasan utang/piutang melalui sub-detail akun supplier/customer di transaksi Kas Bank atau Memorial. |
 | **Auto-Create** | Pembuatan record baru secara otomatis saat transaksi (misal: aktiva baru dari Memorial). |

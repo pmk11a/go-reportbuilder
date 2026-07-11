@@ -114,7 +114,7 @@ Setiap jenis transaksi menghasilkan **posting otomatis** ke buku besar. Tabel in
 | Jenis | Debit | Kredit | Catatan |
 |-------|-------|--------|---------|
 | **BKM** (Bank Masuk) | Kas/Bank | Lawan (piutang/pendapatan) | Sub-ledger customer update jika ada pelunasan |
-| **BKK** (Bank Keluar) | Lawan (beban/utang) | Kas/Bank | Nominal disimpan negatif; sub-ledger supplier update jika ada pelunasan |
+| **BKK** (Bank Keluar) | Lawan (beban/utang) | Kas/Bank | Nominal positif; sisi Kredit diisi otomatis; sub-ledger supplier update jika ada pelunasan |
 | **BBM** (Buku Masuk) | Akun target (kas/bank/piutang) | Lawan (sumber non-tunai) | Penerimaan non-tunai |
 | **BBK** (Bukti Bank Keluar) | Lawan (sumber/tujuan) | Akun target | Pengeluaran non-tunai |
 

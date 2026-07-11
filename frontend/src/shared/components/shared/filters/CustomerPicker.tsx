@@ -1,3 +1,12 @@
+/**
+ * Note: the modal-based CustomerPicker (with full CustomerData object as
+ * value) is intentionally kept here to preserve existing AR / AP invoice
+ * flows that rely on the multi-column table layout.
+ *
+ * For new code that just needs a code-string picker, import the lightweight
+ * version from `@/domains/browse/components/browse/CustomerPicker`.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/ui/overlay/dialog';

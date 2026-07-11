@@ -3,7 +3,9 @@ package menu
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -37,24 +39,33 @@ func NewMenuRepository(db *gorm.DB) IMenuRepository {
 
 func (r *menuRepository) FindPaginated(page, limit int, search string) ([]SDbMenu, int64, error) {
 	var menus []SDbMenu
-	var total int64
 
-	query := r.db.Model(&SDbMenu{})
-
+	// SQL Server 2008-compatible path: build baseSQL + args, then delegate to
+	// pagination.PaginatedFind which wraps a ROW_NUMBER() CTE and avoids
+	// OFFSET ... FETCH NEXT (SQL Server 2012+).
+	//
+	// Placeholders use `?` (GORM's portable binding syntax) rather than
+	// the SQL Server native `@pN` form. The latter conflicts with how
+	// mssql binds through `db.Raw` — the driver rewrites them in
+	// ways that produce "@p1 not declared" errors during paginated
+	// count queries. The `?` placeholder is what the working
+	// kasbank/filters repositories use.
+	baseSQL := "SELECT * FROM dbmenu"
+	var args []any
 	if search != "" {
-		searchPattern := "%" + search + "%"
-		query = query.Where("KODEMENU LIKE ? OR Keterangan LIKE ?", searchPattern, searchPattern)
+		// SQL Server: default collation is case-insensitive (e.g.
+		// SQL_Latin1_General_CP1_CI_AS) so LIKE matches both
+		// "brows" and "Browse". We still uppercase the pattern so
+		// logs and query plans are stable across DBs.
+		searchPattern := "%" + strings.ToUpper(strings.TrimSpace(search)) + "%"
+		baseSQL += " WHERE (KODEMENU LIKE ? OR Keterangan LIKE ?)"
+		args = append(args, searchPattern, searchPattern)
 	}
 
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("counting menus (page=%d limit=%d search=%q): %w", page, limit, search, err)
-	}
-
-	offset := (page - 1) * limit
-	if err := query.Order("KODEMENU ASC").Offset(offset).Limit(limit).Find(&menus).Error; err != nil {
+	total, err := pagination.PaginatedFind(r.db, &menus, baseSQL, "[KODEMENU] ASC", page, limit, args...)
+	if err != nil {
 		return nil, 0, fmt.Errorf("finding menus (page=%d limit=%d search=%q): %w", page, limit, search, err)
 	}
-
 	return menus, total, nil
 }
 
@@ -69,7 +80,9 @@ func (r *menuRepository) FindParentsByLevel(level int) ([]SDbMenu, error) {
 
 func (r *menuRepository) FindByID(kodeMenu string) (*SDbMenu, error) {
 	var menu SDbMenu
-	if err := r.db.Where("KODEMENU = ?", kodeMenu).First(&menu).Error; err != nil {
+	if err := pagination.First2008(r.db, &menu, "[KODEMENU]", func(q *gorm.DB) *gorm.DB {
+		return q.Where("KODEMENU = ?", kodeMenu)
+	}); err != nil {
 		return nil, fmt.Errorf("finding menu %q: %w", kodeMenu, err)
 	}
 	return &menu, nil

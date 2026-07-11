@@ -3,7 +3,11 @@
 // models directly (per the Domain-Based + DDD-Lite "Data Isolation" rule).
 package kasbank
 
-import "time"
+import (
+	"time"
+
+	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
+)
 
 // SListKasBankQuery is the query-string for GET /api/accounting/kasbank.
 // Tipe is optional; when empty the repository still restricts the result to
@@ -55,9 +59,23 @@ type SCreateKasBankRequest struct {
 	NoJurnal string `json:"noJurnal"`
 	// NoBuktiSem is the invoice/reference number / "No. Invoice".
 	NoBuktiSem string `json:"noBuktiSem"`
+	// Devisi is the unit business.
+	Devisi string `json:"devisi"`
+	// NoBon is the external reference number.
+	NoBon string `json:"nobon"`
+	// TPHC is the header-level payment method (C/T/H/P) that propagates to details.
+	TPHC string `json:"tphc"`
 	// Details is the list of journal lines; the service validates that
 	// sum(Debet) == sum(Kredit) across the whole slice.
 	Details []SDetailInput `json:"details"`
+	// GiroList contains optional giro data triggered during this transaction.
+	GiroList []models.SDBGIRO `json:"giroList,omitempty"`
+	// DepositoList contains optional deposito data triggered during this transaction.
+	DepositoList []models.SDBDEPOSITO `json:"depositoList,omitempty"`
+	// HutPiutList contains optional Hutang/Piutang payments triggered during this transaction.
+	HutPiutList []models.SDBHUTPIUT `json:"hutPiutList,omitempty"`
+	// AktivaList contains optional Aktiva data triggered during this transaction.
+	AktivaList []models.SDBAKTIVA `json:"aktivaList,omitempty"`
 }
 
 // SUpdateKasBankRequest is the JSON body for PUT /api/accounting/kasbank/:noBukti.
@@ -68,10 +86,18 @@ type SUpdateKasBankRequest struct {
 	TipeTransHd  string        `json:"tipeTransHd"`
 	PerkiraanHd  string        `json:"perkiraanHd"`
 	Note         string        `json:"note"`
+	Jenis        *int          `json:"jenis"`
 	TglJurnal    *string       `json:"tgljurnal"`
 	NoJurnal     string        `json:"noJurnal"`
 	NoBuktiSem   string        `json:"noBuktiSem"`
+	Devisi       string        `json:"devisi"`
+	NoBon        string        `json:"nobon"`
+	TPHC         string        `json:"tphc"`
 	Details      []SDetailInput `json:"details,omitempty"`
+	GiroList     []models.SDBGIRO     `json:"giroList,omitempty"`
+	DepositoList []models.SDBDEPOSITO `json:"depositoList,omitempty"`
+	HutPiutList  []models.SDBHUTPIUT  `json:"hutPiutList,omitempty"`
+	AktivaList   []models.SDBAKTIVA   `json:"aktivaList,omitempty"`
 }
 
 // SDetailInput is a single journal line as posted by the frontend. The service
@@ -98,6 +124,11 @@ type SDetailInput struct {
 	TipeTrans string `json:"tipeTrans"`
 	// TPHC is "D" or "C" — the debit/credit marker the legacy schema requires.
 	TPHC string `json:"tphc"`
+	// KodeBag is the SPK/project reference ("KodeBag" column in DBTRANSAKSI).
+	KodeBag string `json:"kodebag"`
+	// KodeCustSupp stores the customer/supplier code when this line is a
+	// pelunasan (Hutang/Piutang settlement).
+	KodeCustSupp string `json:"kode_cust_supp"`
 }
 
 // SOtorisasiRequest is the JSON body for POST /:noBukti/otorisasi and
@@ -152,4 +183,12 @@ type SKasBankLookupPerkiraanResponse struct {
 	Items []SDbPerkiraan `json:"items"`
 	// Total is the count returned (post-limit, useful for "showing N of M" UIs).
 	Total int `json:"total"`
+}
+
+// SSubTransactionResult indicates if a sub-form should be triggered.
+type SSubTransactionResult struct {
+	Trigger string `json:"trigger"` // "giro", "deposito", "hutpiut", "aktiva", or null/empty
+	Kode    string `json:"kode"`
+	StatusP string `json:"statusP"`
+	StatusL string `json:"statusL"`
 }

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kasbankService } from '@/domains/accounting/services/kasbankService';
+import { sharedFilterService } from '@/shared/services/sharedFilterService';
 import type {
   IKasBankHeader,
   IKasBankListParams,
@@ -118,6 +119,17 @@ export function useLookupPerkiraan(q: string, kelompokKas: boolean = false) {
   });
 }
 
+// useLookupPerkiraanShared uses the shared FilterService which is the
+// canonical Perkiraan lookup endpoint (POSTHUTPIUT/Kelompok aware).
+// Prefer this over the legacy kasbank-specific lookup for new code.
+export function useLookupPerkiraanShared(q: string, posthutpiut: string = 'Y') {
+  return useQuery({
+    queryKey: ['shared', 'perkiraan', q, posthutpiut] as const,
+    queryFn: () => sharedFilterService.getPerkiraan(q, undefined, posthutpiut),
+    enabled: q.length >= 2,
+  });
+}
+
 export function useDownloadKasBankPdf(noBukti: string) {
   return useMutation({
     mutationFn: () => kasbankService.downloadPdf(noBukti),
@@ -128,6 +140,27 @@ export function useDownloadKasBankPdf(noBukti: string) {
       a.download = `${noBukti}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+    },
+  });
+}
+export function useResolveSubTransaction(perkiraan: string, dk: string) {
+  return useQuery({
+    queryKey: ["kasbank", "resolve-subtrans", perkiraan, dk],
+    queryFn: async () => {
+      if (!perkiraan || !dk) return null;
+      const res = await kasbankService.resolveSubTransaction(perkiraan, dk);
+      return res.data;
+    },
+    enabled: !!perkiraan && !!dk,
+  });
+}
+
+export function useLookupDevisi() {
+  return useQuery({
+    queryKey: ['devisi', 'lookup'],
+    queryFn: async () => {
+      const res = await kasbankService.lookupDevisi();
+      return res.data;
     },
   });
 }

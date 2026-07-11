@@ -8,12 +8,15 @@
 package kasbank
 
 import (
+	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
+
 	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -72,8 +75,14 @@ type IKasBankRepository interface {
 	// single query, avoiding N+1 when listing a page of kasbank headers.
 	// The returned map only contains entries for NoBukti values that have
 	// at least one DBTRANSAKSI row; callers must treat a missing key as
-	// the zero-value SAggregateTotals (all fields 0), not an error.
 	GetAggregateTotals(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error)
+
+	InsertGiro(ctx context.Context, g *models.SDBGIRO) error
+	UpdateGiro(ctx context.Context, g *models.SDBGIRO) error
+	DeleteGiro(ctx context.Context, noGiro string) error
+	InsertDeposito(ctx context.Context, d *models.SDBDEPOSITO) error
+	UpdateDeposito(ctx context.Context, d *models.SDBDEPOSITO) error
+	DeleteDeposito(ctx context.Context, noDeposito string) error
 }
 
 // SAggregateTotals holds per-NoBukti aggregated totals computed from
@@ -113,60 +122,72 @@ func NewSKasBankRepository(db *gorm.DB) *SKasBankRepository {
 // dateTo are both blank, the result defaults to the caller's active
 // accounting period (DBPERIODE), resolved via q.UserID. Sort: Tanggal DESC,
 // NoBukti DESC (stable across pages).
+//
+// Implementation note: this method uses raw SQL + ROW_NUMBER() pagination
+// (via pagination.PaginatedFind) instead of GORM's chained builder. The
+// SQL Server 2008 R2 driver that this project depends on does NOT support
+// OFFSET ... FETCH NEXT (SQL Server 2012+), so any chain that includes
+// .Limit()/.Offset()/.First()/.Preload() would crash with "Invalid usage
+// of the option NEXT in the FETCH statement".
 func (r *SKasBankRepository) List(ctx context.Context, q SListKasBankQuery) ([]SDbTrans, int64, error) {
+	var items []SDbTrans
+
+	// Build baseSQL + args. Args are passed positionally via Raw() and bound
+	// by the sqlserver driver.
 	var (
-		items []SDbTrans
-		total int64
+		baseSQL  string
+		whereSQL string
+		args     []any
 	)
-	query := r.db.WithContext(ctx).Model(&SDbTrans{})
 
 	if q.Tipe != "" {
-		query = query.Where("TipeTransHd = ?", q.Tipe)
+		whereSQL += " AND TipeTransHd = ?"
+		args = append(args, q.Tipe)
 	} else {
 		// No specific tipe requested: still restrict to the 4 kasbank
 		// discriminators so this list never leaks unrelated DBTRANS rows
 		// (e.g. other journal types stored in the same legacy table).
-		query = query.Where("TipeTransHd IN ?", []string{TipeBKM, TipeBKK, TipeBBM, TipeBBK})
+		whereSQL += " AND TipeTransHd IN (?, ?, ?, ?)"
+		args = append(args, TipeBKM, TipeBKK, TipeBBM, TipeBBK)
 	}
 	if q.Search != "" {
 		searchPattern := "%" + q.Search + "%"
-		query = query.Where("NoBukti LIKE ? OR Note LIKE ?", searchPattern, searchPattern)
+		whereSQL += " AND (NoBukti LIKE ? OR Note LIKE ?)"
+		args = append(args, searchPattern, searchPattern)
 	}
 	hasExplicitDate := false
 	if q.DateFrom != "" {
 		if from, err := parseDateFlexible(q.DateFrom); err == nil {
-			query = query.Where("Tanggal >= ?", from)
+			whereSQL += " AND Tanggal >= ?"
+			args = append(args, from)
 			hasExplicitDate = true
 		}
 	}
 	if q.DateTo != "" {
 		if to, err := parseDateFlexible(q.DateTo); err == nil {
-			query = query.Where("Tanggal <= ?", to)
+			whereSQL += " AND Tanggal <= ?"
+			args = append(args, to)
 			hasExplicitDate = true
 		}
 	}
 
 	// Default period restriction: when the caller did not pass an explicit
 	// date range, mirror trade-exchange's behaviour and scope the list to
-	// the user's active accounting period (DBPERIODE). This is what makes
-	// DAPEN's default kasbank view match trade-exchange's reference
-	// implementation instead of showing every transaction ever recorded.
+	// the user's active accounting period (DBPERIODE).
 	if !hasExplicitDate && q.UserID != "" {
 		bulan, tahun, err := r.GetPeriode(ctx, q.UserID)
 		if err != nil {
 			return nil, 0, fmt.Errorf("resolving active period for user %q: %w", q.UserID, err)
 		}
-		// (0, 0) means the user has no DBPERIODE row (e.g. brand new user).
-		// We deliberately fall back to no period restriction rather than
-		// guessing a period — the same "no row = no enforced filter"
-		// semantics already used by GetCurrentPeriode elsewhere.
 		if bulan != 0 && tahun != 0 {
-			query = query.Where("YEAR(Tanggal) = ? AND MONTH(Tanggal) = ?", tahun, bulan)
+			whereSQL += " AND YEAR(Tanggal) = ? AND MONTH(Tanggal) = ?"
+			args = append(args, tahun, bulan)
 		}
 	}
 
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("counting kasbank headers: %w", err)
+	baseSQL = "SELECT * FROM DBTRANS"
+	if whereSQL != "" {
+		baseSQL += " WHERE " + whereSQL[5:]
 	}
 
 	page := q.Page
@@ -177,10 +198,10 @@ func (r *SKasBankRepository) List(ctx context.Context, q SListKasBankQuery) ([]S
 	if perPage < 1 {
 		perPage = 10
 	}
-	offset := (page - 1) * perPage
 
 	orderBy := buildOrderBy(q.SortBy, q.SortDir)
-	if err := query.Order(orderBy).Offset(offset).Limit(perPage).Find(&items).Error; err != nil {
+	total, err := pagination.PaginatedFind(r.db.WithContext(ctx), &items, baseSQL, orderBy, page, perPage, args...)
+	if err != nil {
 		return nil, 0, fmt.Errorf("listing kasbank headers: %w", err)
 	}
 	return items, total, nil
@@ -190,7 +211,9 @@ func (r *SKasBankRepository) List(ctx context.Context, q SListKasBankQuery) ([]S
 // the service can map that to a 404 without leaking GORM's error type.
 func (r *SKasBankRepository) GetByNoBukti(ctx context.Context, noBukti string) (*SDbTrans, error) {
 	var h SDbTrans
-	err := r.db.WithContext(ctx).Where("NoBukti = ?", noBukti).First(&h).Error
+	err := pagination.First2008(r.db.WithContext(ctx), &h, "[NoBukti]", func(q *gorm.DB) *gorm.DB {
+		return q.Where("NoBukti = ?", noBukti)
+	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -244,7 +267,9 @@ func (r *SKasBankRepository) ListDetail(ctx context.Context, noBukti string) ([]
 // GetDetail fetches a single detail row by composite PK.
 func (r *SKasBankRepository) GetDetail(ctx context.Context, noBukti string, urut int) (*SDbTransaksi, error) {
 	var d SDbTransaksi
-	err := r.db.WithContext(ctx).Where("NoBukti = ? AND Urut = ?", noBukti, urut).First(&d).Error
+	err := pagination.First2008(r.db.WithContext(ctx), &d, "[NoBukti] ASC, [Urut] ASC", func(q *gorm.DB) *gorm.DB {
+		return q.Where("NoBukti = ? AND Urut = ?", noBukti, urut)
+	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -321,7 +346,13 @@ func (r *SKasBankRepository) CancelOtorisasi(ctx context.Context, noBukti string
 func (r *SKasBankRepository) GenerateNoBukti(ctx context.Context, tipe string) (string, error) {
 	var generated string
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		v, errGen := GenerateNoBukti(tx, tipe)
+		// Read pemisah from DBNOMOR
+		var pemisahVal *int
+		sql := `SELECT [PEMISAH] FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)`
+		if err := tx.Raw(sql).Scan(&pemisahVal).Error; err != nil {
+			return err
+		}
+		v, errGen := GenerateNoBukti(tx, tipe, pemisahVal)
 		if errGen != nil {
 			return errGen
 		}
@@ -338,20 +369,43 @@ func (r *SKasBankRepository) GenerateNoBukti(ctx context.Context, tipe string) (
 // When kelompokKas is true the result is restricted to Kelompok in ("1", "2")
 // — the cash/bank groups in the legacy chart-of-accounts. limit caps the
 // result count; 0 means "no cap" (we use 50 as a sane default).
+//
+// Implementation note: SQL Server 2008-compatible TOP-N via raw SQL.
+// .Limit() on GORM's chained builder emits OFFSET ... FETCH NEXT (SQL Server
+// 2012+), which the project database rejects.
 func (r *SKasBankRepository) LookupPerkiraan(ctx context.Context, query string, kelompokKas bool, limit int) ([]SDbPerkiraan, error) {
-	q := r.db.WithContext(ctx).Model(&SDbPerkiraan{})
-	if query != "" {
-		pattern := "%" + query + "%"
-		q = q.Where("Perkiraan LIKE ? OR Keterangan LIKE ?", pattern, pattern)
-	}
-	if kelompokKas {
-		q = q.Where("Kelompok IN ?", []string{"1", "2"})
-	}
 	if limit <= 0 {
 		limit = 50
 	}
+
+	var (
+		whereSQL string
+		args     []any
+	)
+	if query != "" {
+		pattern := "%" + query + "%"
+		whereSQL += " AND (Perkiraan LIKE ? OR Keterangan LIKE ?)"
+		args = append(args, pattern, pattern)
+	}
+	if kelompokKas {
+		whereSQL += " AND Kelompok IN (?, ?)"
+		args = append(args, "1", "2")
+	}
+
+	// Explicit column list (instead of SELECT *) so that the int-typed legacy
+	// columns FlagCashFlow / IsPPN never reach GORM's scanner as a raw string.
+	// SQL Server stores empty-string ('') values in some rows; COALESCE maps
+	// them to 0 which scans cleanly into Go int fields.
+	sql := `SELECT TOP (?) [Perkiraan], [Kelompok], [Tipe], [DK], [Valas], [KodeAK], [KodeSAK],
+		[Keterangan], [Simbol],
+		CAST(COALESCE(NULLIF(CAST([FlagCashFlow] AS VARCHAR(50)), ''), '0') AS INT) AS FlagCashFlow,
+		[Neraca],
+		CAST(COALESCE(NULLIF(CAST([IsPPN] AS VARCHAR(50)), ''), '0') AS INT) AS IsPPN,
+		[GroupPerkiraan], [Lokasi], [MyID] FROM DBPERKIRAAN` + whereSQL + " ORDER BY Perkiraan ASC"
+	args = append(args, limit)
+
 	var rows []SDbPerkiraan
-	if err := q.Order("Perkiraan ASC").Limit(limit).Find(&rows).Error; err != nil {
+	if err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("looking up perkiraan (query=%q, kelompokKas=%v): %w", query, kelompokKas, err)
 	}
 	return rows, nil
@@ -463,4 +517,28 @@ func buildOrderBy(sortBy, sortDir string) string {
 		dir = "ASC"
 	}
 	return fmt.Sprintf("%s %s, NoBukti DESC", col, dir)
+}
+
+func (r *SKasBankRepository) InsertGiro(ctx context.Context, g *models.SDBGIRO) error {
+	return r.db.WithContext(ctx).Create(g).Error
+}
+
+func (r *SKasBankRepository) UpdateGiro(ctx context.Context, g *models.SDBGIRO) error {
+	return r.db.WithContext(ctx).Save(g).Error
+}
+
+func (r *SKasBankRepository) DeleteGiro(ctx context.Context, noGiro string) error {
+	return r.db.WithContext(ctx).Where("NoGiro = ?", noGiro).Delete(&models.SDBGIRO{}).Error
+}
+
+func (r *SKasBankRepository) InsertDeposito(ctx context.Context, d *models.SDBDEPOSITO) error {
+	return r.db.WithContext(ctx).Create(d).Error
+}
+
+func (r *SKasBankRepository) UpdateDeposito(ctx context.Context, d *models.SDBDEPOSITO) error {
+	return r.db.WithContext(ctx).Save(d).Error
+}
+
+func (r *SKasBankRepository) DeleteDeposito(ctx context.Context, noDeposito string) error {
+	return r.db.WithContext(ctx).Where("NoDeposito = ?", noDeposito).Delete(&models.SDBDEPOSITO{}).Error
 }

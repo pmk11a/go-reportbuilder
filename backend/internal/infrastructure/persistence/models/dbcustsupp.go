@@ -6,7 +6,7 @@ type SDbCustSupp struct {
 	Alamat1      string `gorm:"column:ALAMAT1"`
 	Kota         string `gorm:"column:Kota"`
 	Jenis        int    `gorm:"column:JENIS"`
-	MyID         *string `gorm:"column:MyID" json:"-"`
+	MyID         *string `gorm:"column:MyID;->;<-:false" json:"-"`
 }
 
 func (SDbCustSupp) TableName() string {

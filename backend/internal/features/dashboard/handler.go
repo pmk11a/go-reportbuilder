@@ -50,7 +50,14 @@ func (h *SDashboardHandler) GetSidebarMenu(c *gin.Context) {
 	userID := uint(userIDVal)
 
 	var fetchedUser userdomain.SUser
-	if err := h.db.Preload("SDBFLPASS").First(&fetchedUser, userID).Error; err != nil {
+	// NOTE: .Preload("SDBFLPASS") intentionally removed — the SQL Server 2008
+	// driver emits OFFSET ... FETCH NEXT for the relation subquery, which
+	// this project database rejects. Downstream code (UserInfo below) only
+	// reads fetchedUser.UserID and fetchedUser.FullName, so the preload is
+	// not needed in this endpoint.
+	if err := pagination.First2008(h.db, &fetchedUser, "id", func(q *gorm.DB) *gorm.DB {
+		return q.Where("id = ?", userID)
+	}); err != nil {
 		response.BadRequest(c, "SUser not found")
 		return
 	}

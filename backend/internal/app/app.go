@@ -7,6 +7,8 @@ import (
 	"github.com/masza1/dapen-backend/internal/features/activity"
 	"github.com/masza1/dapen-backend/internal/app/routes"
 	"github.com/masza1/dapen-backend/internal/features/accounting/kasbank"
+	"github.com/masza1/dapen-backend/internal/features/browse"
+	"github.com/masza1/dapen-backend/internal/features/settings"
 	"github.com/masza1/dapen-backend/internal/features/dashboard"
 	"github.com/masza1/dapen-backend/internal/features/filters"
 	"github.com/masza1/dapen-backend/internal/legacy/handlers"
@@ -70,14 +72,23 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	periodeService := services.NewPeriodeService(periodeRepo)
 	periodeHandler := handlers.NewPeriodeHandler(periodeService)
 	settingHandler := handlers.NewSettingHandler(dbConn)
+	settingsHandler := settings.NewSettingHandler(dbConn, cfg)
 
 	// 5.5 Initialize Accounting > Kas Bank domain (TASK-015). The
 	// permission middleware is shared so other accounting sub-domains
 	// (jurnal, periode migration, ...) can reuse it.
 	kasBankPermMW := middleware.NewPermissionMiddleware(dbConn)
 	kasBankRepo := kasbank.NewSKasBankRepository(dbConn)
-	kasBankService := kasbank.NewSKasBankService(kasBankRepo, dbConn)
+	kasBankService := kasbank.NewSKasBankService(kasBankRepo, dbConn, cfg)
 	kasBankHandler := kasbank.NewSKasBankHandler(kasBankService)
+
+	// 5.6 Initialize Browse domain. Browse is a generic lookup facility
+	// (Perkiraan, Customer/Supplier, Kas/Bank, etc.) driven by the
+	// dbbrowseconfigs table with a hardcoded fallback map. No menu-level
+	// permission is enforced at this layer — callers (e.g. kasbank's
+	// /lookup-perkiraan) gate access themselves.
+	browseResolver := browse.NewConfigResolver(dbConn)
+	browseHandler := browse.NewHandler(browseResolver)
 
 	// 6. Initialize the Gin engine and global middlewares.
 	engine := gin.Default()
@@ -104,11 +115,13 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 		SActivityLogHandler: activityLogHandler,
 		SPeriodeHandler:     periodeHandler,
 		SSettingHandler:     settingHandler,
+		SSettingsHandler:    settingsHandler,
 		SUserHandler:        userHandler,
 		SPermissionHandler:  permissionHandler,
 		SSessionHandler:     sessionHandler,
 		SKasBankHandler:     kasBankHandler,
 		SKasBankPermMW:      kasBankPermMW,
+		SBrowseHandler:      browseHandler,
 		SConfig:             cfg,
 	})
 

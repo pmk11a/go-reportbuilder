@@ -89,11 +89,11 @@ Setelah header diisi, klik tombol **Tambah** untuk memasukkan baris detail trans
 | Key Urut | String | Auto | Composite key: NoBukti + Tgl + Urut — untuk identifikasi unik per baris |
 
 **Aturan Nominal:**
-- Field input di grid adalah **Jumlah** (bilangan positif). Jangan input negatif.
-- Penentuan sisi Debet/Kredit dilakukan oleh field `TipeDK` (StatusDK di .pas) yang nilainya diisi otomatis oleh `TampilanStatusDK()` (FrmKasBank.pas baris 474) sesuai jenis transaksi.
-- **BKM (Masuk):** kolom Debet terisi, Kredit kosong → mengartikan kas/bank bertambah
-- **BKK (Keluar):** kolom Kredit terisi, Debet kosong → mengartikan kas/bank berkurang
-- Jenis BBM/BBK mengikuti logika yang sama (D/K convention, bukan tanda minus)
+- Field input di grid adalah **Jumlah** (selalu bilangan positif).
+- Penentuan sisi Debet/Kredit dilakukan otomatis oleh sistem berdasarkan jenis transaksi:
+  - **BKM (Masuk):** kolom Debet terisi, Kredit kosong → kas/bank bertambah
+  - **BKK (Keluar):** kolom Kredit terisi, Debet kosong → kas/bank berkurang
+  - **BBM/BBK:** mengikuti logika D/K yang sama (konvensi Debet/Kredit terpisah, bukan tanda minus)
 
 ---
 
@@ -104,7 +104,7 @@ Modul ini juga menangani pelunasan utang dan piutang secara sub-detail.
 ### 8.4.1 Alur Bayar Utang (BKK — Bank Keluar)
 
 ```
-[Pilih BKK] --> [Input nominal MINUS] --> [Pilih Lawan = Perkiraan Utang Dagang]
+[Pilih BKK] --> [Input nominal (positif)] --> [Pilih Lawan = Perkiraan Utang Dagang]
                                                       --> [Muncul daftar supplier dengan sub-ledger terkait]
                                                               --> [Pilih Supplier]
                                                                       --> [Muncul daftar UTANG BELUM LUNAS]
@@ -273,7 +273,7 @@ Daftar rekening posting muncul di **Master Posting** (Bab 3). Setiap supplier/cu
 ## Validation Rules
 
 - **Periode kerja harus terbuka.** Transaksi ditolak jika periode sudah dikunci (lihat [Bab 2](02-setup.md)).
-- **Nominal harus sesuai jenis transaksi:** BKK menggunakan nilai negatif, BKM positif.
+- **Nominal selalu positif.** Sisi Debet/Kredit diisi otomatis oleh sistem berdasarkan jenis transaksi:
 - **Lawan harus dipilih** dan merujuk ke akun yang sesuai (kas/bank untuk BKM/BKK, utang/piutang untuk sub-ledger).
 - **Otorisasi berjenjang** berlaku sesuai level user (lihat [Bab 2](02-setup.md)) — Level 2 butuh otorisasi Level 1 terlebih dahulu.
 - Mata uang yang dipilih **mengikuti kurs otomatis** yang tersimpan di sistem.
@@ -358,7 +358,7 @@ Saat akun Lawan/Perkiraan terdaftar di `dbPostHutPiut` dengan kode **AKV** (Akti
 | Situasi | Pesan Sistem |
 |---------|--------------|
 | Periode sudah dikunci | "Periode tidak dapat dibuka. Hubungi administrator" |
-| Nominal BKK tidak negatif | "BKK harus menggunakan nilai negatif (uang keluar)" |
+| Nominal tidak terisi | "Masukkan jumlah nominal terlebih dahulu" |
 | Lawan tidak dipilih | "Pilih akun lawan (debit/credit partner) terlebih dahulu" |
 | User tanpa hak akses | "Anda tidak memiliki akses untuk modul Transaksi Kas Bank" |
 | Sub-ledger kosong (tidak ada utang terbuka) | "Tidak ditemukan tagihan terbuka untuk entitas ini" |

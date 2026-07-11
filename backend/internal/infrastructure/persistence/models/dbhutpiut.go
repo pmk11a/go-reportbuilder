@@ -27,7 +27,7 @@ type SDBHUTPIUT struct {
 	Tipe string `gorm:"column:Tipe;primaryKey;size:4" json:"tipe"`
 	Perkiraan string `gorm:"column:Perkiraan;primaryKey;size:25" json:"perkiraan"`
 	Catatan string `gorm:"column:Catatan;size:800" json:"catatan"`
-	MyID *string `gorm:"column:MyID" json:"-"`
+	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	NOINVOICE *string `gorm:"column:NOINVOICE;size:50" json:"noinvoice"`
 	TGLINVOICE *time.Time `gorm:"column:TGLINVOICE" json:"tglinvoice"`
 	NOPAJAK *string `gorm:"column:NOPAJAK;size:50" json:"nopajak"`

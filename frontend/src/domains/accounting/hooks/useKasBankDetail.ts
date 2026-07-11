@@ -6,7 +6,11 @@ import { kasbankKeys } from './useKasBank';
 export function useKasBankDetailList(noBukti: string) {
   return useQuery({
     queryKey: [...kasbankKeys.detail(noBukti), 'lines'] as const,
-    queryFn: () => kasbankService.getDetailList(noBukti),
+    queryFn: async () => {
+      const res = await kasbankService.getDetailList(noBukti);
+      // Unwrap IAPIResponse wrapper so callers get { header, details } directly
+      return (res as any).data as { header: any; details: any[] };
+    },
     enabled: !!noBukti,
   });
 }

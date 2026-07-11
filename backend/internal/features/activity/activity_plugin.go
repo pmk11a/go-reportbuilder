@@ -39,7 +39,7 @@ func LoadActivityLogConfig(db *gorm.DB) error {
 	}
 
 	var configs []SActivityLogConfig
-	if err := db.Preload("Fields").Find(&configs).Error; err != nil {
+	if err := db.Find(&configs).Error; err != nil {
 		// Defensive: if the query still fails (race, dropped table, etc.) do
 		// not propagate the error — keep the app running and let an explicit
 		// ReloadActivityLogConfig after migration fix things.
@@ -48,6 +48,25 @@ func LoadActivityLogConfig(db *gorm.DB) error {
 			return nil
 		}
 		return err
+	}
+
+	// Manual 2-step fetch for Fields — avoid GORM .Preload which may emit
+	// SQL Server 2012+ OFFSET/FETCH syntax under the hood on SQL Server 2008.
+	if len(configs) > 0 {
+		configIDs := make([]uint, len(configs))
+		for i, c := range configs {
+			configIDs[i] = c.ID
+		}
+		var allFields []SActivityLogField
+		if err := db.Where("config_id IN ?", configIDs).Find(&allFields).Error; err == nil {
+			fieldsByConfigID := make(map[uint][]SActivityLogField, len(configs))
+			for _, f := range allFields {
+				fieldsByConfigID[f.ConfigID] = append(fieldsByConfigID[f.ConfigID], f)
+			}
+			for i := range configs {
+				configs[i].Fields = fieldsByConfigID[configs[i].ID]
+			}
+		}
 	}
 
 	// Clear existing (optional, sync.Map doesn't have a clear, so we just overwrite)

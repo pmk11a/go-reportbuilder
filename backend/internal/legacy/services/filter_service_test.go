@@ -155,8 +155,8 @@ func TestFilterService_GetKelompokKas_WithDefaultType(t *testing.T) {
 		repo := filters.NewFilterRepository(tx)
 		svc := filters.NewFilterService(repo)
 
-		// Call with empty accountType; should default to "KAS"
-		res, err := svc.GetKelompokKas("", "Kas")
+		// Call with empty accountTypes; should default to "KAS"
+		res, err := svc.GetKelompokKas([]string{}, "Kas")
 		assert.NoError(t, err)
 		// The result depends on whether the DB has matching records
 		_ = res
@@ -178,7 +178,7 @@ func TestFilterService_GetKelompokKas_WithSpecificType(t *testing.T) {
 		repo := filters.NewFilterRepository(tx)
 		svc := filters.NewFilterService(repo)
 
-		res, err := svc.GetKelompokKas("HUTANG", "")
+		res, err := svc.GetKelompokKas([]string{"HUTANG"}, "")
 		assert.NoError(t, err)
 		// Verify it returns a slice (not error)
 		assert.IsType(t, []models.SDbPerkiraan{}, res)

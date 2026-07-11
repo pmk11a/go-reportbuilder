@@ -27,7 +27,7 @@ type SDBTempHUTPIUT struct {
 	Tipe string `gorm:"column:Tipe;size:4" json:"tipe"`
 	Perkiraan string `gorm:"column:Perkiraan;size:25" json:"perkiraan"`
 	Catatan string `gorm:"column:Catatan;size:800" json:"catatan"`
-	MyID *string `gorm:"column:MyID" json:"-"`
+	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	IDUser *string `gorm:"column:IDUser;size:30" json:"iduser"`
 	StatusUID *string `gorm:"column:StatusUID;size:1" json:"statusuid"`
 	JumlahSaldo *float64 `gorm:"column:JumlahSaldo" json:"jumlahsaldo"`

@@ -15,7 +15,6 @@ export interface IKasBankHeader {
   otorisasi3: boolean;
   otorisasi4: boolean;
   otorisasi5: boolean;
-  maxol: number;
   locked: boolean;
   jumlahvalas: number;
   jumlahrupiah: number;
@@ -29,6 +28,9 @@ export interface IKasBankHeader {
   tgloto3: string | null;
   tgloto4: string | null;
   tgloto5: string | null;
+  devisi?: string;
+  nobon?: string;
+  tphc?: string;
 }
 
 export interface IKasBankDetail {
@@ -49,10 +51,15 @@ export interface ICreateKasBankPayload {
   tipeTransHd: KasBankTipe;
   perkiraanHd: string;
   note: string;
-  batasWaktu?: string;
-  noOrder?: string;
-  noInvoice?: string;
+  tgljurnal?: string;      // Batas Waktu
+  noJurnal?: string;       // No. Order
+  noBuktiSem?: string;     // No. Invoice (not in DBTRANS, stored in detail)
+  noOrder?: string;        // alias kept for compatibility
+  noInvoice?: string;      // alias kept for compatibility
   kodeProject?: string;
+  devisi: string;
+  nobon: string;
+  tphc: string;
   details: Array<{
     perkiraan: string;
     lawan: string;
@@ -61,7 +68,17 @@ export interface ICreateKasBankPayload {
     keterangan: string;
     valas?: string;
     kurs?: number;
+    /** Sumber: C=Cash, T=Transfer, H=Hutang Giro, P=Piutang Giro */
+    tphc?: string;
+    /** SPK / project reference (KodeBag) */
+    kodebag?: string;
+    /** Customer/supplier code for pelunasan settlement */
+    kode_cust_supp?: string;
   }>;
+  giroList?: Array<any>;
+  depositoList?: Array<any>;
+  hutPiutList?: Array<any>; // Should map to SDBHUTPIUT structure
+  aktivaList?: Array<any>; // Should map to SDBAKTIVA structure
 }
 
 export interface IUpdateKasBankPayload {
@@ -73,6 +90,9 @@ export interface IUpdateKasBankPayload {
   noOrder?: string;
   noInvoice?: string;
   kodeProject?: string;
+  devisi?: string;
+  nobon?: string;
+  tphc?: string;
   details?: Array<{
     perkiraan: string;
     lawan: string;
@@ -82,6 +102,8 @@ export interface IUpdateKasBankPayload {
     valas?: string;
     kurs?: number;
   }>;
+  giroList?: IGiro[];
+  depositoList?: IDeposito[];
 }
 
 export interface IAddDetailPayload {
@@ -92,6 +114,12 @@ export interface IAddDetailPayload {
   keterangan: string;
   valas?: string;
   kurs?: number;
+  /** Sumber: C=Cash, T=Transfer, H=Hutang Giro, P=Piutang Giro */
+  tphc?: string;
+  /** SPK / project reference (KodeBag) */
+  kodebag?: string;
+  /** Customer/supplier code for pelunasan settlement */
+  kode_cust_supp?: string;
 }
 
 export interface IUpdateDetailPayload extends IAddDetailPayload {
@@ -132,4 +160,34 @@ export interface IGenerateNoBuktiResponse {
   tipe: string;
   nobukti: string;
   generatedAt: string;
+}
+export interface IGiro {
+  nogiro: string;
+  bank: string;
+  nominal: number;
+  tglterbit: string | null;
+  tgljatuhtempo: string | null;
+  statusgiro: string;
+  tipe: string;
+  nobukti: string;
+  keterangan: string;
+}
+
+export interface IDeposito {
+  nodeposito: string;
+  bank: string;
+  nominal: number;
+  bunga: number;
+  tglbuka: string | null;
+  tgljatuhtempo: string | null;
+  statusdeposito: string;
+  nobukti: string;
+  keterangan: string;
+}
+
+export interface ISubTransactionResult {
+  trigger: 'giro' | 'deposito' | 'hutpiut' | 'aktiva' | '';
+  kode: string;
+  statusP: string;
+  statusL: string;
 }

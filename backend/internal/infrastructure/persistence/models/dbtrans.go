@@ -11,7 +11,7 @@ type SDBTRANS struct {
 	Tanggal *time.Time `gorm:"column:Tanggal" json:"tanggal"`
 	Note string `gorm:"column:Note;size:500" json:"note"`
 	Lampiran int `gorm:"column:Lampiran" json:"lampiran"`
-	MyID *string `gorm:"column:MyID" json:"-"`
+	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	IsOtorisasi1 bool `gorm:"column:IsOtorisasi1" json:"isotorisasi1"`
 	OtoUser1 string `gorm:"column:OtoUser1;size:15" json:"otouser1"`
 	TglOto1 *time.Time `gorm:"column:TglOto1" json:"tgloto1"`
@@ -36,9 +36,6 @@ type SDBTRANS struct {
 	NoUrutJurnal *string `gorm:"column:NoUrutJurnal;size:5" json:"nourutjurnal"`
 	TglJurnal *time.Time `gorm:"column:TglJurnal" json:"tgljurnal"`
 	Flagtipe *int `gorm:"column:Flagtipe" json:"flagtipe"`
-	Jenis *int `gorm:"column:Jenis" json:"jenis"`
-	NoBuktiSem *string `gorm:"column:NoBuktiSem;size:30" json:"nobuktisem"`
-	Devisi string `gorm:"column:Devisi;size:15" json:"devisi"`
 }
 
 // TableName overrides the default table name for SDBTRANS

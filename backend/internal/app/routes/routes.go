@@ -5,6 +5,7 @@ import (
 	"github.com/masza1/dapen-backend/internal/features/accounting/kasbank"
 	"github.com/masza1/dapen-backend/internal/features/accounting/periode"
 	"github.com/masza1/dapen-backend/internal/features/activity"
+	"github.com/masza1/dapen-backend/internal/features/browse"
 	"github.com/masza1/dapen-backend/internal/features/dashboard"
 	"github.com/masza1/dapen-backend/internal/features/filters"
 	"github.com/masza1/dapen-backend/internal/legacy/handlers"
@@ -34,11 +35,13 @@ type SRouterConfig struct {
 	SActivityLogHandler *activity.SActivityLogHandler
 	SPeriodeHandler     *handlers.SPeriodeHandler
 	SSettingHandler     *handlers.SSettingHandler
+	SSettingsHandler    *settings.SSettingHandler
 	SUserHandler        *user.SUserHandler
 	SPermissionHandler  *permission.SPermissionHandler
 	SSessionHandler     *session.SSessionHandler
 	SKasBankHandler     *kasbank.SKasBankHandler
 	SKasBankPermMW      *middleware.PermissionMiddleware
+	SBrowseHandler      *browse.Handler
 	SConfig             *config.SConfig
 }
 
@@ -99,7 +102,7 @@ func SetupRoutes(rc SRouterConfig) {
 				user.RegisterRoutes(admin, rc.SUserHandler, nil)
 				permission.RegisterRoutes(admin, rc.SPermissionHandler, nil)
 				session.RegisterRoutes(admin, rc.SSessionHandler)
-				settings.RegisterRoutes(admin, rc.SSettingHandler)
+				settings.RegisterRoutes(admin, rc.SSettingHandler, rc.SSettingsHandler)
 			}
 
 			// Accounting domain routes (kasbank is mounted under /api/accounting).
@@ -112,6 +115,17 @@ func SetupRoutes(rc SRouterConfig) {
 				if rc.SKasBankHandler != nil && rc.SKasBankPermMW != nil {
 					kasbank.RegisterKasBankRoutes(accounting, rc.SKasBankHandler, rc.SKasBankPermMW)
 				}
+			}
+
+			// Browse domain (mounted at /api/browse). Browse is a
+			// cross-cutting lookup facility used by every feature (e.g.
+			// kasbank's /lookup-perkiraan). It lives outside /admin and
+			// outside /accounting because it is not feature-specific.
+			// Authentication is required (already enforced by protected
+			// group); per-use-case permission gating is applied by the
+			// calling endpoint (e.g. /lookup-perkiraan gates by 02001).
+			if rc.SBrowseHandler != nil {
+				browse.RegisterBrowseRoutes(protected, rc.SBrowseHandler)
 			}
 		}
 	}

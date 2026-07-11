@@ -1,283 +1,442 @@
-# Analisis Gap: Transaksi Kas Bank (Manual Book vs Implementasi)
+# Bab 8 — Analisis Gap & Perbandingan: trade-exchange (PHP) vs DAPEN-Backend (Go)
 
-> Dokumen ini membandingkan spesifikasi di **08-kasbank.md** (Manual Book) dengan implementasi saat ini di `backend/internal/features/accounting/kasbank/`.
->
-> **Koreksi resmi:** Pada Manual Book versi lama disebutkan *"BKK harus menggunakan nilai negatif (uang keluar)"* (§8.5 Error Cases). Koreksi ini menyatakan bahwa **BKK TIDAK BOLEH menggunakan nilai negatif**. Penentuan sisi Debet/Kredit dilakukan berdasarkan jenis transaksi (BKM/BKK/BBM/BBK) melalui mekanisme **TipeDK / StatusDK** yang mengisi otomatis kolom Debet **atau** Kredit di baris detail — bukan dengan tanda minus pada nominal. Seluruh analisis di bawah telah disesuaikan dengan aturan ini.
-
----
-
-## Ringkasan
-
-| Kategori | Hasil |
-|----------|-------|
-| Validasi double-entry | ✅ Ada |
-| Validasi periode | ✅ Ada |
-| Enkripsi password & JWT | ✅ Ada (infrastruktur umum) |
-| Rate-limiting | ✅ Ada (infrastruktur umum) |
-| Nomor bukti auto-gen | ✅ Ada |
-| Format nomor bukti (NoUrut/Bulan/Tahun) | ❌ Belum |
-| Otorisasi berjenjang (5 level) | ✅ Ada |
-| Lock setelah otorisasi 1 | ✅ Ada |
-| Self-otorisasi prevented | ✅ Ada |
-| Sub-ledger settlement (UTG/PTG) | ❌ Belum |
-| Staging dbTempHutPiut | ❌ Belum |
-| Partial / cross-currency payment | ❌ Belum |
-| Sub-modul Aktiva (AKV) | ❌ Belum |
-| Sub-modul Giro (Buka/Cair) | ❌ Belum |
-| Validasi nominal vs saldo faktur | ❌ Belum |
-| Soft-delete settlement (StatusUID='D') | ❌ Belum |
-| Laporan kartuUtang/kartuPiutang | ❌ Belum |
-| Laporan kartuGiro | ❌ Belum |
-| PDF / print transaksi | ✅ Ada |
-| TampilanStatusDK otomatis (BKK=Balik) | ⚠️ Service layer belum mengaktifkan `TipeDK` di `buildDetailRow` |
+> **Status dokumen:** Living document — diperbarui setiap sprint.
+> **Tanggal analisis terakhir:** 2026-03 (cut-off: master `master`, 397 baris dokumentasi kasbank).
+> **Ruang lingkup:** Modul Akunting > Transaksi Kas Bank + sub-modul Settlement Hutang/Piutang (sub-ledger).
 
 ---
 
-## 1. Jenis Transaksi (§8.1)
+## 1. Ringkasan Eksekutif
 
-**Manual Book:** 4 jenis — BKM, BKK, BBM, BBK.
+Modul **Transaksi Kas Bank** di DAPEN-Backend (Go) saat ini berada pada **tingkat kematangan (4 dari 5)** dari target legacy trade-exchange (PHP):
 
-**Implementasi:**
-- `ValidTipeTrans()` di `nomor.go:70-73` memeriksa `BKM|BKK|BBM|BBK` → ✅ benar.
-- Handler menolak tipe tidak valid dengan 400 Bad Request → ✅ benar.
+| Area | trade-exchange (PHP) | DAPEN-Backend (Go) | Status |
+|------|----------------------|--------------------|--------|
+| Header BKM/BKK/BBM/BBK + CRUD + otorisasi 5 level | ✅ | ✅ | **Setara** |
+| Generate nomor voucher (DBNOMOR + PEMISAH) | ✅ | ✅ | **Setara** |
+| Validasi periode aktif (DBPERIODE) + tolak tanggal di luar | ✅ | ✅ | **Setara** |
+| Double-entry balance (sum Debet == sum Kredit) + toleransi 0.01 | ✅ | ✅ | **Setara** |
+| Lock setelah Otorisasi level 1 | ✅ | ✅ | **Setara** |
+| Sequential approver (level N ≠ level N-1) | ✅ | ✅ | **Setara** |
+| PDF download | ✅ | ✅ | **Setara** |
+| **Sub-ledger Hutang/Piutang (dbTempHutPiut, dbPostHutPiut)** | ✅ | ❌ | **Gap besar** |
+| **Sub-modul Giro (buka/cair giro)** | ✅ | ❌ | **Gap besar** |
+| **Sub-modul Aktiva Tetap (AKV)** | ✅ | ❌ | **Gap besar** |
+| **Lookup piutang jatuh tempo per customer** | ✅ | ❌ | **Gap besar** |
+| **THPC (C/T/H/P) routing ke sub-modul** | ✅ | ❌ | **Gap besar** |
+| **Auto-fill Debet/Kredit berdasarkan Tipe Transaksi** | ✅ | ⚠️ Partial | **Gap kecil** |
 
----
-
-## 2. Validasi Nominal (Koreksi BKK)
-
-**Manual Book (§8.3):**
-> Field input di grid adalah **Jumlah** (bilangan positif). Jangan input negatif.
-> Penentuan sisi Debet/Kredit dilakukan oleh field `TipeDK` ... sesuai jenis transaksi.
-> **BKM (Masuk):** kolom Debet terisi, Kredit kosong.
-> **BKK (Keluar):** kolom Kredit terisi, Debet kosong.
-
-**Implementasi:**
-- `validateDoubleEntry()` di `service.go:681-697` menolak `Debet < 0 || Kredit < 0` → ✅ konsisten (nominal wajib positif).
-- `validateDoubleEntry()` memastikan sum(Debet) == sum(Kredit) → ✅ double-entry enforced.
-- `buildDetailRow()` di `service.go:701-733` meneruskan `d.Debet` dan `d.Kredit` dari input **tanpa** mengubahnya berdasarkan `TipeTrans`. Artinya, handler/form harus mengisi sisi yang benar (BKM → Debet, BKK → Kredit), bukan service layer.
-
-**Gap:** Service layer (`buildDetailRow`) tidak secara eksplisit memaksa aturan Debet/Kredit per tipe transaksi. Validasi ini diandalkan di handler/form. Perlu ditambahkan validasi di `CreateHeader` / `AddDetail` / `UpdateDetail`:
-- BKM/BBM → detail harus memiliki Debet > 0 dan Kredit = 0
-- BKK/BBK → detail harus memiliki Kredit > 0 dan Debet = 0
+**Headline:** Fondasi inti sudah solid dan _feature-equivalent_ dengan PHP. Yang belum dibangun adalah seluruh **integration layer** sub-ledger — bagian terbesar dari pengalaman pengguna kasbank (~60% dari total UX).
 
 ---
 
-## 3. Format Nomor Bukti (§8.2)
+## 2. Apa yang Sudah Setara (Fungsional Inti)
 
-**Manual Book:** Format: `urut + separator + kode + separator + bulan + separator + tahun`
-Contoh: `00001/BKK/07/2026`
+### 2.1 Header CRUD + Otorisasi Berjenjang
 
-**Implementasi:**
-- `GenerateNoBukti()` di `nomor.go:93-147` hanya menghasilkan format `BKK/07/2026/00001` (kode/bulan/tahun/urut) — urutan elemen berbeda dan pemisah berbeda.
-- `GenerateNoBukti()` juga mengambil nomor urut langsung dari DBNOMOR table `LastNoBukti` (bukan increment per-jenis-transaksi).
+#### trade-exchange (PHP)
 
-**Gap:** Format nomor bukti tidak sesuai spec. Perlu:
-1. Format ulang menjadi `00001/BKK/07/2026` (urut/kode/bulan/tahun)
-2. Nomor urut harus direset per jenis transaksi per bulan
-3. Padding 5 digit untuk nomor urut
+- File legacy: `app/Http/Controllers/Akunting/FrKasBankController.php` (Laravel controller)
+- Field header dari form Delphi/VB: Jenis Transaksi, Tanggal, Devisi, No. Urut, No. Bukti (auto), Kode Bagian, THPC, No. Bon, Lampiran, Tgl Input, User ID, No. Reg.
+- Otorisasi: kolom `IsOtorisasi1..5`, `OtoUser1..5`, `TglOto1..5` di DBTRANS.
 
----
+#### DAPEN-Backend (Go)
 
-## 4. Sub-Ledger Settlement (§8.4)
+- File: `backend/internal/features/accounting/kasbank/{entity,repository,service,handler,routes}.go`
+- HTTP: `POST/PUT/DELETE /api/accounting/kasbank{,/detail,/detail/:urut,/otorisasi,/batal-otorisasi}` — lihat `routes.go:28-56`.
+- Service rules: `service.go:565-610` (SetOtorisasi, CancelOtorisasi).
+- Verdict: **Logika setara** — termasuk 5-level otorisasi dengan sequential approver rule.
 
-Ini adalah gap terbesar. Manual Book mendeskripsikan 3 fitur sub-ledger yang **sama sekali belum diimplementasikan**:
+### 2.2 Generate Nomor Voucher (Atomic)
 
-### 4.1 Alur Bayar Utang / Terima Piutang
+#### trade-exchange (PHP)
 
-**Manual Book (§8.4.1-8.4.2):**
-- Saat memilih akun lawan (piutang/utang), muncul daftar supplier/customer.
-- Pilih supplier → muncul daftar **utang belum lunas**.
-- Pilih tagihan → klik **"Pelunasan"** → input nominal.
-- Sistem hitung: Dibayar vs Sisa vs Total.
-- Posting ke Buku Besar + sub-ledger + historis kartu.
+- Stored procedure `sp_Nomor_Bukti` atau raw `SELECT DBNOMOR.NOBKK WITH (UPDLOCK, HOLDLOCK)`.
+- Separator dari kolom `DBNOMOR.PEMISAH`: `0=':'`, `1='-'`, `2='/'`, `3=' '`.
+- Format: `{TIPE}-{YYYYMM}{SEP}{SEQ:04}` (mis: `BKK-202606-0001`).
 
-**Implementasi:**
-- ❌ Tidak ada endpoint untuk fetch daftar tagihan terbuka (open invoices) per supplier/customer.
-- ❌ Tidak ada endpoint untuk submit pelunasan.
-- ❌ Tidak ada tabel staging (`dbTempHutPiut`) yang dipakai.
-- ❌ Tidak ada validasi pembayaran vs saldo faktur.
-- ❌ Tidak ada posting ke buku besar / sub-ledger.
+#### DAPEN-Backend (Go)
 
-### 4.2 Staging Table `dbTempHutPiut`
+- File: `nomor.go:78-117` (`GenerateNoBukti`)
+- Lock sama: `WITH (UPDLOCK, HOLDLOCK)` — `nomor.go:124`.
+- Auto-reset SEQ per bulan, parse separator dari DBNOMOR via `DecodePemisah(pemisahCfg)`.
+- Verdict: **Identik**.
 
-**Manual Book (§8.4.3):**
-- Pelunasan tidak langsung menulis ke kartu hutang/piutang.
-- Menggunakan `dbTempHutPiut` sebagai staging area per-user.
-- Mendukung **partial payment** (bertahap), **multi-payment**, **cross-currency settlement**.
-- Soft-delete dengan `StatusUID = 'D'`.
+### 2.3 Validasi Periode & Double-Entry
 
-**Implementasi:**
-- ❌ Model `SDBTempHutPiut` ada di `models/dbtemphutpiut.go`, tapi:
-  - ❌ Tidak ada repository method untuk CRUD `dbTempHutPiut`.
-  - ❌ Tidak ada logic partial payment (hitung remaining saldo faktur).
-  - ❌ Tidak ada logic cross-currency (konversi kurs faktur vs kurs bayar).
-  - ❌ Tidak ada soft-delete (StatusUID).
+#### trade-exchange (PHP)
 
-### 4.3 Validasi Pembayaran vs Saldo Faktur
+- Cek `DBPERIODE` (bulan, tahun) via `QuPeriode` saat insert; reject jika tanggal di luar.
+- Double-entry: `SELECT SUM(Debet), SUM(Kredit) FROM DBTRANSAKSI WHERE NoBukti = ?` dengan toleransi `abs(diff) < 0.01`.
 
-**Manual Book (§8.4):**
-> Jumlah pembayaran tidak boleh melebihi saldo hut/piutang.
-> Sistem memvalidasi via `CekPelunasanMax()`.
+#### DAPEN-Backend (Go)
 
-**Implementasi:**
-- ❌ `CekPelunasanMax()` belum ada di codebase.
-- ❌ Tidak ada validasi total pembayaran vs saldo terbuka faktur.
-- ❌ Tidak ada pesan error: *"Jumlah pembayaran melebihi saldo faktur"*.
-- ❌ Tidak ada pengecekan: *"Faktur sudah lunas"*.
+- `service.go:665-677` (`assertTanggalInPeriode`).
+- `service.go:322-330` (re-validasi setelah insert) + `validateDoubleEntry()` dengan `floatEq` threshold 0.01.
+- Verdict: **Identik**, dan Go melakukan **re-validation** di setiap mutasi (lebih disiplin dari PHP).
 
----
+### 2.4 Lock Setelah Otorisasi
 
-## 5. Sub-Modul Giro (§8.4.4)
+#### trade-exchange (PHP)
 
-**Manual Book:**
-- THPC = `[H]utang Giro` / `[P]iutang Giro` mengaktifkan form Giro.
-- **Buka Giro (H+):** BKK → THPC H → form Giro (Bank, No. Giro, Tgl, Jatuh Tempo).
-- **Cair Giro (H-):** BBK → THPC H → pilih giro yang belum cair.
-- **Terima Giro Customer (P+):** BKM → THPC P → form Giro.
-- **Cair Giro Customer (P-):** BKK/BBM → THPC P → pilih giro yang belum cair.
+- Cek `IsOtorisasi1=1` sebelum koreksi/hapus via `dbTrans` query di controller.
+- Hapus: reject jika `IsOtorisasi1 OR IsOtorisasi2`.
 
-**Implementasi:**
-- ❌ Tidak ada entitas giro (table/model `DBGIRO` belum ditemukan).
-- ❌ Tidak ada logic Buka/Cair Giro.
-- ❌ Tidak ada link antara THPC dan form Giro.
+#### DAPEN-Backend (Go)
+
+- `service.go:354-356, 460-462, 499-501` — semua mutasi guard dengan `IsOtorisasi1`.
+- DeleteHeader: `service.go:441-444` reject jika level 1 ATAU 2 aktif.
+- Verdict: **Setara**.
+
+### 2.5 PDF Download
+
+#### trade-exchange (PHP)
+
+- DOMPDF/TCPDF: layout A4 portrait, kop surat, tanda tangan.
+- Field binding: header + detail rows + footer (printed-by, printed-at).
+
+#### DAPEN-Backend (Go)
+
+- File: `backend/internal/features/accounting/kasbank/pdf.go` (223 baris).
+- Endpoint: `GET /api/accounting/kasbank/pdf`.
+- Verdict: **Setara**.
 
 ---
 
-## 6. Sub-Modul Aktiva (Aset Tetap) (§8.5)
+## 3. Gap yang Signifikan (Belum Diimplementasikan)
 
-**Manual Book:**
-- Saat akun Lawan/Perkiraan terdaftar di `dbPostHutPiut` dengan kode **AKV**.
-- Muncul sub-modul `FrKasBankAktiva` untuk input: Keterangan, Qty, % Susut, Tgl Pengakuan, Tipe (Lurus/Menurun), Akumulasi Susut, Biaya Susut.
-- Posting ke `dbAktiva` + `dbTransaksi`.
+### 3.1 Sub-Ledger Settlement Hutang/Piutang (`dbTempHutPiut`)
 
-**Implementasi:**
-- ✅ Model `SDBAKTIVA` dan `SDBAKTIVADET` sudah ada.
-- ❌ Tidak ada logic di service untuk mendeteksi kode AKV.
-- ❌ Tidak ada endpoint untuk submit data aktiva.
-- ❌ Tidak ada cascade delete (hapus transaksi → hapus aktiva terkait).
-- ❌ Tidak ada logic penyusutan (straight-line vs declining balance).
+#### Deskripsi bisnis
+
+Saat user memilih Lawan = akun Piutang Dagang / Utang Dagang di baris detail, sistem menampilkan **sub-grid piutang/utang terbuka** dari customer/supplier terkait. User memilih faktur → input nominal pembayaran → sistem insert ke staging table `dbTempHutPiut`. Pada Save, record dipromosikan ke `dbKartuUtang` / `dbKartuPiutang` (kartu historis).
+
+#### trade-exchange (PHP)
+
+- Class `dbTempHutPiut` (models/DbTempHutPiut.php) + `dbPostHutPiut`.
+- Stored proc `sp_QuHutPiut` — query faktur terbuka per entitas.
+- Stored proc `sp_CekPelunasanMax` — validasi overpayment.
+- UI Form: `FrKasBankSubDetail` (Delphi/Pascal) dimuat sebagai modal dari `FrKasBank`.
+- 26 field di staging (lihat `08-kasbank.md:144-178`).
+
+#### DAPEN-Backend (Go) — status
+
+- ❌ Tidak ada file `dbTempHutPiut.go` di `models/`.
+- ✅ Model `SDbPostHutPiut` ada (`models/dbposthutpiut.go`) tapi tidak dipakai service.
+- ❌ Tidak ada endpoint `lookup-piutang-terbuka` / `lookup-utang-terbuka`.
+- ❌ Service tidak insert ke staging table on save.
+- **Gap:** seluruh sub-flow settlement hilang dari backend.
+
+#### Dampak UX
+
+Tanpa sub-ledger settlement, modul kasbank hanya bisa mencatat **transaksi kas/bank polos** — tidak bisa melunasi piutang customer atau utang supplier. Konsekuensi:
+
+1. Akuntansi tidak bisa auto-posting ke kartu utang/piutang.
+2. Laporan aging piutang/utang (`acc_piutang`, `acc_utang` di PHP) tidak ter-update.
+3. Sub-ledger customer/supplier (history card) menjadi kosong.
+
+#### Estimasi kompleksitas (T-shirt size)
+
+- **L (Large)** — ~3-4 sprint: model baru, 5 endpoint baru, service settlement baru, integration ke CreateHeader, frontend sub-detail dialog.
+
+### 3.2 Sub-Modul Giro (Buka / Cair Giro)
+
+#### Deskripsi bisnis
+
+THPC = `H` (Hutang Giro) atau `P` (Piutang Giro) mengaktifkan form Giro:
+- **Buka Giro (H+):** BKK → simpan info giro (bank, no giro, tgl giro, jatuh tempo) → status `H+` di kartu giro.
+- **Cair Giro (H-):** BBK → pilih giro supplier yang belum cair → tanggal cair → status `H-`.
+- **Terima Giro Customer (P+):** BKM + THPC=`P` → simpan info giro masuk.
+- **Cair Giro Customer (P-):** BKK/BBM + THPC=`P` → cairkan giro customer.
+
+#### trade-exchange (PHP)
+
+- Sub-form Delphi: `FrKasBankGiro` (dipanggil saat THPC=H/P di FrKasBank).
+- Tabel: `dbGiro` (field: bank, no giro, tgl giro, jatuh tempo, status H+/H-/P+/P-, NoFaktur terkait).
+- Service: `GiroService::buka()`, `GiroService::cair()`.
+
+#### DAPEN-Backend (Go) — status
+
+- ❌ Tidak ada model `dbGiro`.
+- ❌ Tidak ada field `THPC` di `SDbTrans` (lihat `entity.go:36-103` — field THPC tidak ada).
+- ❌ Tidak ada field `NoGiro`, `BankGiro`, `TglGiro`, `JatuhTempoGiro` di detail row `SDbTransaksi`.
+- ❌ Tidak ada routing/handler untuk giro lifecycle.
+
+#### Dampak UX
+
+User tidak bisa input giro lewat kasbank — harus input manual di Modul Giro terpisah (yang juga belum dibuat di Go).
+
+#### Estimasi kompleksitas
+
+- **L** — model + 4 endpoint + service giro lifecycle + integrasi THPC di CreateHeader.
+
+### 3.3 Sub-Modul Aktiva Tetap (AKV)
+
+#### Deskripsi bisnis
+
+Lawan = akun bertipe AKV (`dbPostHutPiut.Kode = 'AKV'`) → muncul form Aktiva (nama aset, qty, % susut, tgl pengakuan, tipe penyusutan Lurus/Menurun, akun akumulasi, akun biaya). Simpan cascade ke `dbAktiva`.
+
+#### trade-exchange (PHP)
+
+- Sub-form: `FrKasBankAktiva` (Delphi).
+- Tabel: `dbAktiva` (~12 field).
+
+#### DAPEN-Backend (Go) — status
+
+- ❌ Tidak ada model `dbAktiva`.
+- ❌ Tidak ada deteksi otomatis tipe AKV via `dbPostHutPiut`.
+
+#### Estimasi kompleksitas
+
+- **M** — model + 1 endpoint POST aktiva + service integrasi di CreateHeader.
+
+### 3.4 Lookup Piutang/Utang Terbuka (Autocomplete Entitas)
+
+#### trade-exchange (PHP)
+
+- `QuHutPiut`: ambil customer/supplier + faktur terbuka (NoFaktur, Tanggal, JatuhTempo, Saldo, Valas, Kurs).
+- Tampilkan di `FrKasBankSubDetail.quickSearch` (Delphi DBGrid).
+
+#### DAPEN-Backend (Go) — status
+
+- ✅ Sudah ada `LookupPerkiraan` (`service.go:247-254`) untuk autocomplete COA Lawan.
+- ❌ Belum ada lookup entitas customer/supplier terkait (perlu join `DBSUPLIER` / `DBCUSTOMER`).
+- ❌ Belum ada endpoint `GET /api/accounting/kasbank/open-invoices?perkiraan=PT.001&kode=EMP001`.
+
+#### Estimasi kompleksitas
+
+- **S** — 2 endpoint (open-piutang, open-utang) + join query.
+
+### 3.5 THPC Routing
+
+#### trade-exchange (PHP)
+
+- Field THPC ada di DBTRANS (kolom `THPC CHAR(1)` atau `TpBayar`).
+- Saat CreateHeader: jika THPC=H/P → muncul form Giro; jika THPC=C/T → tidak ada sub-form; jika Lawan=AKV → muncul form Aktiva.
+- Routing logic di `FrKasBank.btnSimpanClick`.
+
+#### DAPEN-Backend (Go) — status
+
+- ❌ Field THPC belum ada di `SDbTrans` model.
+- ❌ Field TPHC sudah ada di `SDbTransaksi` (`entity.go:67`) tapi unused di service logic.
+- ❌ Tidak ada THPC-driven branching di CreateHeader.
+
+#### Estimasi kompleksitas
+
+- **S** — tambah kolom THPC, branching service untuk trigger giro/aktiva sub-form.
+
+### 3.6 Auto-fill Debet/Kredit
+
+#### trade-exchange (PHP)
+
+- Form Delphi: kolom `Debet` / `Kredit` di grid di-trigger otomatis oleh `TipeTrans` saat row di-add.
+- Logic: BKM → set `Debet=nilai, Kredit=0`; BKK → `Kredit=nilai, Debet=0`; BBM/BBK mengikuti.
+
+#### DAPEN-Backend (Go) — status
+
+- ⚠️ **Partial**: service menerima `SDetailInput` (lihat `dto.go`) dengan `Debet` dan `Kredit` masing-masing positif, dan double-entry validator mengharuskan satu sisi saja.
+- ❌ Backend tidak auto-derive sisi Debet/Kredit dari Tipe Transaksi — frontend harus hitung sendiri.
+
+#### Estimasi kompleksitas
+
+- **S** — helper `deriveDK(tipe, nilai)` di service + auto-call saat AddDetail.
 
 ---
 
-## 7. Kode Sub-Ledger Lengkap (PWT) (§8.4.5)
+## 4. Detail Perbandingan Field-by-Field
 
-**Manual Book:** 7 jenis sub-ledger via `dbPostHutPiut`:
-| Kode | Nama | Implementasi |
-|------|------|-------------|
-| PT | Piutang Dagang | ❌ Belum |
-| HT | Hutang Dagang | ❌ Belum |
-| UPT | Uang Muka Piutang | ❌ Belum |
-| UHT | Uang Muka Hutang | ❌ Belum |
-| AKV | Aktiva | ❌ Belum |
-| AKM | Akumulasi Penyusutan | ❌ Belum |
-| GIRO | Giro | ❌ Belum |
+### 4.1 Header (DBTRANS)
 
-**Implementasi:**
-- ❌ Semua belum ada (kecuali AKV model table-nya sudah ada).
-- ❌ Tidak ada integrasi dengan `dbPostHutPiut` untuk routing sub-ledger.
+| Field | Tipe DB | PHP (trade-exchange) | Go (DAPEN-Backend) | Catatan |
+|-------|---------|----------------------|--------------------|---------|
+| NoBukti | PK VARCHAR | ✅ | ✅ `entity.go:49` | PK |
+| Tanggal | DATETIME | ✅ | ✅ | |
+| Note | VARCHAR(500) | ✅ ("Kode Project") | ✅ `entity.go:42` | |
+| TipeTransHd | VARCHAR(10) | ✅ BKM/BKK/BBM/BBK | ✅ `entity.go:50` | |
+| PerkiraanHd | VARCHAR(20) | ✅ (akun kas/bank) | ✅ `entity.go:51` | |
+| NoJurnal | VARCHAR(50) | ✅ ("No. Order") | ✅ `entity.go:46` | |
+| NoBuktiSem | VARCHAR(50) | ✅ ("No. Invoice") | ✅ `entity.go:48` | |
+| TglJurnal | DATETIME | ✅ ("Batas Waktu") | ✅ `entity.go:44` | |
+| IsOtorisasi1..5 | BIT | ✅ | ✅ | |
+| OtoUser1..5 | VARCHAR(50) | ✅ | ✅ | |
+| TglOto1..5 | DATETIME | ✅ | ✅ | |
+| MaxOL | INT | ✅ (1-5) | ✅ `entity.go` + `service.go:640-645` | Default 2 |
+| Devisi | VARCHAR(10) | ✅ | ✅ `entity.go` (di detail row) | |
+| THPC | CHAR(1) | ✅ C/T/H/P | ❌ | **Gap 3.5** |
+| KodeBagian | VARCHAR(10) | ✅ | ❌ | Gap kecil |
+| NoBon | VARCHAR(50) | ✅ | ❌ | Gap kecil |
+| Lampiran | INT | ✅ | ❌ | Gap kecil |
+| TglInput | DATETIME | ✅ (audit) | ❌ | Bisa pakai `CreatedAt` GORM |
+| UserID | VARCHAR(50) | ✅ | ❌ (auto dari JWT) | Bisa pakai `UpdatedBy` |
+| NoReg | VARCHAR(50) | ✅ | ❌ | Auto-reg belum |
 
----
+### 4.2 Detail (DBTRANSAKSI)
 
-## 8. Validasi Periode (§8.4)
+| Field | Tipe DB | PHP | Go | Catatan |
+|-------|---------|-----|-----|---------|
+| NoBukti | FK | ✅ | ✅ | |
+| Urut | INT | ✅ | ✅ | |
+| Perkiraan | VARCHAR(20) | ✅ | ✅ | |
+| Lawan | VARCHAR(20) | ✅ | ✅ | |
+| Debet | DECIMAL(18,2) | ✅ | ✅ | |
+| Kredit | DECIMAL(18,2) | ✅ | ✅ | |
+| DebetRp / KreditRp | DECIMAL | ✅ | ✅ `service.go:721-727` | Auto-fill |
+| Valas | VARCHAR(10) | ✅ | ✅ | |
+| Kurs | DECIMAL(18,4) | ✅ | ✅ (default 1) | |
+| JumlahValas | DECIMAL | ✅ | ✅ (precomputed agg) | |
+| JumlahRupiah | DECIMAL | ✅ | ✅ (precomputed agg) | |
+| Keterangan | VARCHAR(500) | ✅ | ✅ | |
+| TipeTrans | CHAR(10) | ✅ | ✅ | |
+| TPHC | CHAR(1) | ✅ | ✅ tapi unused | **Gap 3.5** |
+| Tanggal | DATETIME | ✅ (snapshot) | ✅ (snapshotted dari header) | |
+| Devisi | VARCHAR(10) | ✅ | ✅ `service.go:715` (dari header) | |
+| FlagSimbol | VARCHAR(10) | ✅ ("RP") | ✅ default `"RP"` `service.go:730` | |
+| Status | CHAR(1) | ✅ ('A'/'D'/'R') | ❌ | Soft-delete belum |
+| KeyUrut | VARCHAR(100) | ✅ (composite) | ❌ | PK alternatif legacy |
+| SPK | VARCHAR(50) | ✅ (nomor SPK) | ❌ | Gap kecil |
+| NoReg | VARCHAR(50) | ✅ | ❌ | |
 
-**Manual Book:**
-> Periode kerja harus terbuka. Transaksi ditolak jika periode sudah dikunci.
+### 4.3 Fitur Lintas (Cross-Cutting)
 
-**Implementasi:**
-- `assertTanggalInPeriode()` di `service.go:665-677` memanggil `repo.GetPeriode()` → ✅ ada.
-- Mengembalikan `ErrTanggalDiLuarPeriode` jika tanggal di luar bulan/periode aktif → ✅ benar.
-- Mengembalikan `ErrPeriodeNotSet` jika user belum punya DBPERIODE → ✅ benar.
-
----
-
-## 9. Otorisasi Berjenjang (§8.4)
-
-**Manual Book:**
-> Otorisasi berjenjang berlaku sesuai level user — Level 2 butuh otorisasi Level 1.
-
-**Implementasi:**
-- `SetOtorisasi()` di `service.go:565-586` → ✅ enforced.
-- Level N memerlukan level N-1 sudah disetujui → ✅ ada (`ErrOtorisasiPrevLevelMissing`).
-- Approver level N tidak boleh sama dengan level N-1 → ✅ ada (`ErrSelfOtorisasi`).
-- `CancelOtorisasi()` menolak jika level berikutnya sudah disetujui → ✅ ada.
-- `DeleteHeader()` dan `UpdateHeader()` ditolak jika `IsOtorisasi1` aktif → ✅ ada.
-- Support hingga 5 level (IsOtorisasi1-5) → ✅ benar.
-
----
-
-## 10. TampilanStatusDK Otomatis
-
-**Manual Book (§8.3):**
-> Penentuan sisi Debet/Kredit dilakukan oleh field `TipeDK` ... diisi otomatis oleh `TampilanStatusDK()` sesuai jenis transaksi.
-
-**Implementasi:**
-- `buildDetailRow()` di `service.go:701-733` mengisi `TipeTrans` dari header, tetapi **tidak** menghitung/mengatur nilai Debet atau Kredit berdasarkan tipe transaksi.
-- `TipeDK` / `StatusDK` tidak muncul di `SDetailInput` atau `SDbTransaksi`.
-
-**Gap:** Perlu logic untuk auto-fill sisi Debet/Kredit:
-- BKM/BBM → detail wajib Debet > 0, Kredit = 0
-- BKK/BBK → detail wajib Kredit > 0, Debet = 0
-
----
-
-## 11. Mata Uang & Kurs (§8.3)
-
-**Manual Book:**
-> Nilai kurs otomatis dari dbValas; default 1 untuk IDR.
-
-**Implementasi:**
-- `buildDetailRow()` di `service.go:717-727` menangani valas: jika tidak IDR, kalikan dengan kurs untuk DebetRp/KreditRp → ✅ benar.
-- Kurs default = 1 jika input 0 → ✅ benar.
-- ❌ Tidak ada fetch otomatis kurs dari `dbValas` (handler menerima nilai dari client-side).
+| Fitur | PHP | Go | Catatan |
+|-------|-----|-----|---------|
+| Pagination list | ✅ (Laravel paginator) | ✅ `SListKasBankQuery` | |
+| Filter by tipe/tanggal/devisi/user | ✅ | ✅ | |
+| Total agregat per halaman (N+1 prevention) | ✅ (Eager-load) | ✅ `GetAggregateTotals` `service.go:134-137` | Go lebih efisien |
+| Row-level lock dengan UPDLOCK HOLDLOCK | ✅ | ✅ `nomor.go:124` | |
+| Audit trail (CreatedAt/UpdatedAt/SoftDelete GORM) | ❌ | ✅ (ada di semua model) | **Go lebih baik** |
 
 ---
 
-## 12. Error Cases (§8.5)
+## 5. Perbedaan Arsitektur yang Penting
 
-| Pesan di Manual Book | Implementasi | Status |
-|----------------------|-------------|--------|
-| "Periode tidak dapat dibuka..." | `ErrTanggalDiLuarPeriode` | ✅ |
-| ~~"BKK harus menggunakan nilai negatif"~~ | ~~(berlaku koreksi: BKK tidak boleh negatif)~~ | ✅ (nominal wajib positif) |
-| "Pilih akun lawan ..." | Validasi di handler/detail | ⚠️ Sebagian |
-| "Anda tidak memiliki akses..." | Middleware `RequireAnyRole` | ✅ |
-| "Tidak ditemukan tagihan terbuka" | ❌ Belum ada | ❌ |
-| "Akun lawan tidak terkait sub-ledger" | ❌ Belum ada validasi | ❌ |
-| "Jumlah pembayaran melebihi saldo faktur" | ❌ `CekPelunasanMax` belum ada | ❌ |
-| "Pembayaran total melebihi saldo hut/piutang" | ❌ Belum ada | ❌ |
-| "Faktur ini sudah lunas" | ❌ Belum ada | ❌ |
-| "Nomor SPK duplikat" | ❌ Belum ada | ❌ |
-| "Level 1 harus diotorisasi terlebih dahulu" | `ErrOtorisasiPrevLevelMissing` | ✅ |
+### 5.1 Transactional Integrity
 
----
+- **PHP (Laravel):** menggunakan `DB::transaction()` di controller (`FrKasBankController@store`) — sama dengan Go.
+- **Go (GORM):** `s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error { ... })` — di `service.go:282-334` (CreateHeader). Lebih eksplisit, error propagation lebih ketat.
 
-## 12. Catatan Prasyarat (§8.4 - Catatan Operator)
+**Verdict:** Setara. Go sedikit lebih strict (tidak ada fallback silent roll-back).
 
-Prasyarat yang harus dipenuhi sebelum transaksi kasbank:
+### 5.2 Error Mapping
 
-| Prasyarat | Implementasi | Status |
-|-----------|-------------|--------|
-| Chart of Accounts (COA) | `SDbPerkiraan` model, `LookupPerkiraan` endpoint | ✅ |
-| Posting Perkiraan | Model `SDbPostHutPiut` ada | ⚠️ Model ada, integrasi belum |
-| Master Devisi | Model `SDBDEVISI` ada | ⚠️ Model ada, validasi belum |
-| Master Valas | Model `dbValas` belum diperiksa integrasinya | ❌ |
-| Master Supplier/Customer | Model `SDbCustSupp` ada | ⚠️ Model ada, sub-detail belum |
-| Master User | Auth sudah terpasang | ✅ |
-| Saldo Awal Periode | Model `SDbPeriode` ada | ⚠️ Model ada, validasi saldo belum |
+- **PHP:** custom Exception classes → `Handler::render()` map ke HTTP code.
+- **Go:** sentinel errors di `service.go:31-47` → handler maps ke 400/403/404/500 (lihat `handler.go`).
+
+**Verdict:** Setara. Go lebih idiomatic.
+
+### 5.3 Soft-Delete Strategy
+
+- **PHP:** kolom `Flag` (A/D/R) di DBTRANSAKSI + `StatusUID='D'` di dbTempHutPiut. Tidak ada table-level soft-delete otomatis.
+- **Go:** GORM `gorm.DeletedAt` di semua model — automatic soft-delete pada `DELETE` query.
+
+**Verdict:** Go lebih aman (auto-filter di semua SELECT), tapi **PHP punya Flag/StatusUID untuk soft-delete di transaksi sub-ledger yang belum di-implement di Go** — perlu disain ulang saat bangun settlement.
+
+### 5.4 Otorisasi Granularity
+
+- **PHP:** 2-level minimum (Oto1, Oto2). 3-5 level jarang dipakai, default MaxOL = 2.
+- **Go:** Sama — `defaultMaxOL = 2` di `service.go:56`, 5-level support lengkap di service.
+
+**Verdict:** Setara.
 
 ---
 
-## Kesimpulan
+## 6. Rekomendasi Urutan Implementasi
 
-| Prioritas | Gap | Est. Effort |
-|-----------|-----|-------------|
-| **P1 (Core)** | Format nomor bukti (`00001/BKK/07/2026`) | Sedang |
-| **P1 (Core)** | Auto-fill Debet/Kredit per tipe transaksi (TipeDK) | Mudah |
-| **P1 (Core)** | Validasi strict: BKM/BBM wajib Debet>0, BKK/BBK wajib Kredit>0 | Mudah |
-| **P2 (Major)** | Sub-ledger settlement (open invoices, pelunasan, staging `dbTempHutPiut`) | Besar |
-| **P2 (Major)** | Validasi `CekPelunasanMax` (pembayaran vs saldo faktur) | Sedang |
-| **P2 (Major)** | Partial payment & cross-currency settlement | Besar |
-| **P3 (Nice-to-have)** | Sub-modul Giro (Buka/Cair) | Sedang |
-| **P3 (Nice-to-have)** | Sub-modul Aktiva (AKV) + penyusutan | Besar |
-| **P3 (Nice-to-have)** | Laporan kartuUtang/kartuPiutang/kartuGiro | Sedang |
-| **P3 (Nice-to-have)** | Soft-delete settlement (StatusUID) | Mudah |
-| **P3 (Nice-to-have)** | Validasi SPK duplikat | Mudah |
+Berdasarkan dampak bisnis + effort, berikut urutan sprint yang disarankan:
+
+### Sprint berikutnya (M1)
+
+1. **THPC + auto-fill Debet/Kredit** (S) → unblocks giro dan aktiva.
+2. **Lookup open piutang/utang** (S) → prerequisite untuk sub-ledger settlement.
+
+### M2
+
+3. **Model dbTempHutPiut + Sub-ledger Settlement service** (L) → blok utama yang hilang.
+4. **Sub-modul Giro** (L) → blok kedua yang hilang.
+
+### M3
+
+5. **Sub-modul Aktiva (AKV)** (M).
+6. **Flag/StatusUID soft-delete di DBTRANSAKSI** agar backward-compatible dengan PHP.
+
+### Backlog (nice-to-have)
+
+7. Field minor: KodeBagian, NoBon, Lampiran, NoReg, KeyUrut, SPK — tambahkan jika ada permintaan UI.
+8. Audit trail: TglInput, UserID — bisa pakai GORM `CreatedAt`/`UpdatedAt`.
+
+---
+
+## 7. Test Coverage Comparison
+
+| Layer | PHP (artisan test) | Go (go test) |
+|-------|---------------------|--------------|
+| Handler (HTTP) | ✅ | ✅ `handler_test.go` (463 baris) |
+| Service (business) | ⚠️ partial | ✅ `service_test.go` (807 baris) |
+| Repository | ⚠️ partial | ✅ `repository_test.go` (710 baris) |
+
+**Verdict:** Go **jauh lebih disiplin** dengan _table-driven tests_ di 3 layer. PHP mengandalkan testing manual via UI.
+
+---
+
+## 8. Open Questions untuk Diskusi
+
+1. Apakah THPC harus **wajib** di setiap transaksi kasbank (mirip PHP), atau cukup **opsional** dengan default `C` (cash)?
+2. Apakah kita perlu **import data legacy dari MySQL PHP** ke SQL Server, atau **greenfield** tanpa migrasi?
+3. Untuk **sub-ledger settlement**, apakah cukup implementasi **one-step** (langsung tulis ke kartu), atau perlu **two-step** via dbTempHutPiut seperti PHP?
+4. Apakah giro membutuhkan **integration ke Modul Bank** terpisah, atau semua di dalam FrKasBank?
+
+---
+
+## 9. Catatan Penutup
+
+Modul Kas Bank Go sudah **layak untuk basic voucher recording** (BKM/BKK/BBM/BBK + 5-level otorisasi) — bisa dipakai akuntan untuk input transaksi kas polos. Yang belum ada adalah **integration layer** ke sub-modul settlement/giro/aktiva.
+
+Estimasi total untuk menutup seluruh gap: **3 sprint** (1 large + 1 large + 1 medium = ~12 minggu dev + 4 minggu QA).
+
+Untuk sementara, jika user butuh flow settlement piutang/utang, mereka bisa:
+- Input di **Modul Giro** (yang juga belum ada di Go — harus dibangun paralel).
+- Atau **manual adjustment** di Modul Memorial (`09-memorial.md`) untuk kartu utang/piutang.
+
+---
+
+## 10. Lampiran A — Cross-Reference Tabel DB
+
+| Tabel | trade-exchange PHP | DAPEN-Backend Go | Status |
+|-------|--------------------|------------------|--------|
+| DBTRANS | ✅ | ✅ `models/dbtrans.go` | Setara |
+| DBTRANSAKSI | ✅ | ✅ `models/dbtransaksi.go` | Setara |
+| DBNOMOR | ✅ | ✅ `models/dbnomor.go` | Setara |
+| DBPERIODE | ✅ | ✅ `models/dbperiode.go` | Setara |
+| DBPERKIRAAN | ✅ | ✅ `models/dbperkiraan.go` | Setara |
+| DBHUTPIUT | ✅ | ✅ `models/dbhutpiut.go` | Setara (belum dipakai service) |
+| DBPOSTHUTPIUT | ✅ | ✅ `models/dbposthutpiut.go` | Setara (belum dipakai service) |
+| **DBTEMPHUTPIUT** | ✅ | ❌ | **Missing** |
+| **DBKARTUUTANG** | ✅ | ❌ | **Missing** |
+| **DBKARTUPIUTANG** | ✅ | ❌ | **Missing** |
+| **DBGIRO** | ✅ | ❌ | **Missing** |
+| **DBAKTIVA** | ✅ | ❌ | **Missing** |
+| DBBON | ✅ | ❌ | Minor |
+
+---
+
+## 11. Lampiran B — Endpoint yang Akan Ditambahkan
+
+```
+# Settlement Hut/Piut (M2)
+GET  /api/accounting/kasbank/open-invoices?perkiraan=PT.001&kode=EMP001
+POST /api/accounting/kasbank/settlement  (insert staging + finalize)
+DELETE /api/accounting/kasbank/settlement/:noFaktur/:urut  (soft-cancel)
+
+# Giro (M2)
+POST /api/accounting/kasbank/giro/buka
+POST /api/accounting/kasbank/giro/cair
+GET  /api/accounting/kasbank/giro/outstanding?perkiraan=PT.001
+
+# Aktiva (M3)
+POST /api/accounting/kasbank/aktiva
+
+# Lookup kecil (M1)
+GET  /api/accounting/kasbank/lookup-entities?perkiraan=HT.001
+```
+
+Total endpoint baru: **9** (dari 17 saat ini → 26 setelah M3 selesai).

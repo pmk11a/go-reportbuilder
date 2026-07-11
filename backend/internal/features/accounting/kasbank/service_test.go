@@ -261,7 +261,7 @@ func TestService_GetByNoBukti_Found(t *testing.T) {
 	now := time.Now()
 	repo := &mockRepo{
 		getByNoBuktiFn: func(ctx context.Context, noBukti string) (*SDbTrans, error) {
-			return &SDbTrans{NoBukti: noBukti, Tanggal: &now, IsOtorisasi1: true}, nil
+			return &SDbTrans{NoBukti: noBukti, Tanggal: &now, IsOtorisasi1: true, IsOtorisasi2: true}, nil
 		},
 		listDetailFn: func(ctx context.Context, noBukti string) ([]SDbTransaksi, error) {
 			return []SDbTransaksi{{NoBukti: noBukti, Urut: 1, Debet: 1000}}, nil

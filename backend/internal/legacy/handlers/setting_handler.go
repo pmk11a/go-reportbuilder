@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"errors"
+
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"github.com/masza1/dapen-backend/internal/infrastructure/response"
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -24,8 +27,8 @@ func NewSettingHandler(db *gorm.DB) *SSettingHandler {
 // @Router /api/admin/settings/company [get]
 func (h *SSettingHandler) GetCompany(c *gin.Context) {
 	var company models.SDBPERUSAHAAN
-	if err := h.db.First(&company).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := pagination.First2008(h.db, &company, "[KODEUSAHA]", nil); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			response.Success(c, "Success", models.SDBPERUSAHAAN{})
 			return
 		}
@@ -57,8 +60,8 @@ func (h *SSettingHandler) UpdateCompany(c *gin.Context) {
 	}
 
 	var existing models.SDBPERUSAHAAN
-	if err := h.db.First(&existing).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := pagination.First2008(h.db, &existing, "[KODEUSAHA]", nil); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Insert new
 			if err := h.db.Create(&payload).Error; err != nil {
 				response.InternalError(c, "Failed to create company data")
@@ -89,8 +92,8 @@ func (h *SSettingHandler) UpdateCompany(c *gin.Context) {
 // @Router /api/admin/settings/numbers [get]
 func (h *SSettingHandler) GetNumbers(c *gin.Context) {
 	var numbers models.SDBNOMOR
-	if err := h.db.First(&numbers).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := pagination.First2008(h.db, &numbers, "[ALIAS]", nil); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			response.Success(c, "Success", models.SDBNOMOR{})
 			return
 		}
@@ -117,8 +120,8 @@ func (h *SSettingHandler) UpdateNumbers(c *gin.Context) {
 	}
 
 	var existing models.SDBNOMOR
-	if err := h.db.First(&existing).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := pagination.First2008(h.db, &existing, "[ALIAS]", nil); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Insert new
 			if err := h.db.Create(&payload).Error; err != nil {
 				response.InternalError(c, "Failed to create numbering data")

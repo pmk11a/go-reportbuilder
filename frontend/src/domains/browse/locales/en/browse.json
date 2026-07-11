@@ -1,0 +1,49 @@
+{
+  "search": {
+    "placeholder": "Type to search...",
+    "minChars": "Type at least {{count}} characters",
+    "noResults": "No matching records",
+    "loading": "Loading..."
+  },
+  "errors": {
+    "loadFailed": "Failed to load options",
+    "validateFailed": "Validation failed",
+    "notFound": "Code not found",
+    "noAccess": "You don't have access to this lookup"
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "clear": "Clear"
+  },
+  "groups": {
+    "perkiraan": "Chart of Accounts",
+    "customer": "Customer / Supplier",
+    "supplier": "Supplier",
+    "customerSupplier": "Customer / Supplier",
+    "kasbank": "Cash / Bank",
+    "departemen": "Department",
+    "barang": "Items",
+    "aktiva": "Fixed Assets",
+    "aktivaDet": "Asset Detail",
+    "giro": "Giro",
+    "periode": "Period",
+    "user": "User",
+    "subtrans": "Sub Transaction",
+    "aruskas": "Cash Flow",
+    "transaksi": "Transaction"
+  },
+  "pickers": {
+    "perkiraan": {
+      "placeholder": "Select Perkiraan...",
+      "searchPlaceholder": "Search by code or description..."
+    },
+    "customer": {
+      "placeholder": "Select Customer / Supplier...",
+      "searchPlaceholder": "Search by name or code..."
+    },
+    "kasbank": {
+      "placeholder": "Select Cash / Bank...",
+      "searchPlaceholder": "Search by code or name..."
+    }
+  }
+}

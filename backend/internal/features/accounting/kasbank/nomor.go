@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -35,37 +36,67 @@ var nomorFieldByTipe = map[string]string{
 // this to a 400 Bad Request at the HTTP boundary.
 var ErrUnknownTipe = errors.New("unknown tipe voucher")
 
-// GenerateNoBukti atomically increments the per-tipe counter in DBNOMOR and
-// returns the formatted voucher number: "{TIPE}-{YYYYMM}-{SEQ:04}".
+// PemisahChar decodes the integer separator code from DBNOMOR.PEMISAH into
+// its corresponding character.
 //
-// The increment runs inside the caller's transaction (tx) so the same
-// counter can be reused for batch inserts. We rely on the SQL Server
-// `UPDLOCK, HOLDLOCK` hint via `db.Set("gorm:query_option", ...)` to
-// serialise concurrent calls. Falls back to `FOR UPDATE` style on other
-// drivers when the option is not honoured.
+// Pemisah codes match trade-exchange Laravel:
+//
+//	0 → ':' | 1 → '-' | 2 → '/' | 3 → ' ' (space)
+func PemisahChar(code int) string {
+	switch code {
+	case 0:
+		return ":"
+	case 1:
+		return "-"
+	case 2:
+		return "/"
+	case 3:
+		return " "
+	default:
+		return "-"
+	}
+}
+
+// DecodePemisah returns the separator character for a given *int pemisah value.
+// If the pointer is nil (no DBNOMOR row yet), defaults to '-' (code 1).
+func DecodePemisah(p *int) string {
+	if p == nil {
+		return "-"
+	}
+	return PemisahChar(*p)
+}
+
+// GenerateNoBukti reads the per-tipe counter from DBNOMOR, increments it, and
+// returns a formatted voucher number such as "BKK/202606/0001".
+//
+// The separator between YYYYMM and SEQ is taken from DBNOMOR.PEMISAH
+// (decoded to ':', '-', '/', ' '). The separator between TIPE and YYYYMM is
+// always '-'. The increment runs inside the caller's transaction (tx) so the
+// same counter can be reused for batch inserts.
 //
 // Caller is responsible for normalising tipe to uppercase before passing in.
-func GenerateNoBukti(tx *gorm.DB, tipe string) (string, error) {
+func GenerateNoBukti(tx *gorm.DB, tipe string, pemisahCfg *int) (string, error) {
 	col, ok := nomorFieldByTipe[tipe]
 	if !ok {
 		return "", fmt.Errorf("%w: %q", ErrUnknownTipe, tipe)
 	}
 
-	// 1. Read current counter inside the transaction. The UPDLOCK hint keeps
-	// other transactions from reading the row until we commit. This is a
-	// SQL Server idiom; on other drivers GORM simply ignores the option.
+	sep := DecodePemisah(pemisahCfg)
+
+	// 1. Read current counter inside the transaction.
 	current, err := readNomorField(tx, col)
 	if err != nil {
 		return "", fmt.Errorf("read current %s: %w", col, err)
 	}
 
-	// 2. Compute next SEQ. The DBNOMOR column stores YYYYMM-SEQ as one
-	// string (e.g. "202606-0001"). Reset SEQ to 1 when the month rolls over.
+	// 2. Compute next SEQ. The DBNOMOR column stores YYYYMM<SEP>SEQ as one
+	// string (e.g. "202606-0001" or "202606/0001"). Reset SEQ to 1 when the
+	// month rolls over.
 	now := time.Now()
 	yearMonth := now.Format("200601")
 	nextSeq := 1
 	if current != nil && *current != "" {
-		parts := strings.SplitN(*current, "-", 2)
+		parts := strings.SplitN(*current, sep, 2)
 		if len(parts) == 2 && parts[0] == yearMonth {
 			if n, errConv := strconv.Atoi(parts[1]); errConv == nil {
 				nextSeq = n + 1
@@ -73,17 +104,16 @@ func GenerateNoBukti(tx *gorm.DB, tipe string) (string, error) {
 		}
 	}
 
-	newVal := fmt.Sprintf("%s-%04d", yearMonth, nextSeq)
+	newVal := fmt.Sprintf("%s%s%04d", yearMonth, sep, nextSeq)
 
-	// 3. Write the incremented counter back. We use Exec with a literal
-	// column name interpolated via a switch instead of a fmt.Sprintf so
-	// the column name cannot be confused with a parameter placeholder.
+	// 3. Write the incremented counter back.
 	if err := writeNomorField(tx, col, newVal); err != nil {
 		return "", fmt.Errorf("write %s = %q: %w", col, newVal, err)
 	}
 
-	// 4. Compose the formatted voucher number: "BKK-202606-0001".
-	return fmt.Sprintf("%s-%s-%04d", tipe, yearMonth, nextSeq), nil
+	// 4. Compose the formatted voucher number: "BKK/202606/0001"
+	//    TIPE uses '-' as a fixed prefix separator for backward compat.
+	return fmt.Sprintf("%s%s%s%s%04d", tipe, sep, yearMonth, sep, nextSeq), nil
 }
 
 // readNomorField returns the current string value of a DBNOMOR column.
@@ -114,7 +144,9 @@ func writeNomorField(tx *gorm.DB, column, value string) error {
 // "no period set" → reject all journal postings).
 func GetCurrentPeriode(ctx context.Context, db *gorm.DB, userID string) (bulan int, tahun int, err error) {
 	var p SDbPeriode
-	if err := db.WithContext(ctx).Where("USERID = ?", userID).First(&p).Error; err != nil {
+	if err := pagination.First2008(db.WithContext(ctx), &p, "[USERID]", func(q *gorm.DB) *gorm.DB {
+		return q.Where("USERID = ?", userID)
+	}); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return 0, 0, nil
 		}

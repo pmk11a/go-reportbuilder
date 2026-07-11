@@ -1,9 +1,11 @@
 package repositories
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -40,18 +42,44 @@ func NewUserRepository(db *gorm.DB) IUserRepository {
 
 func (r *userRepository) GetByUsername(username string) (*models.SUser, error) {
 	var user models.SUser
-	err := r.db.Preload("SDBFLPASS").Where("username = ?", username).First(&user).Error
+	err := pagination.First2008(r.db, &user, "id", func(q *gorm.DB) *gorm.DB {
+		return q.Where("username = ?", username)
+	})
 	if err != nil {
 		return nil, err
+	}
+	// Step 2: manually fetch the optional SDBFLPASS relation (SQL Server 2008-compatible).
+	if user.UserID != "" {
+		var sdbflpass models.SDBFLPASS
+		if errRel := pagination.First2008(r.db, &sdbflpass, "[USERID]", func(q *gorm.DB) *gorm.DB {
+			return q.Where("USERID = ?", user.UserID)
+		}); errRel == nil {
+			user.SDBFLPASS = &sdbflpass
+		} else if !errors.Is(errRel, gorm.ErrRecordNotFound) {
+			return nil, errRel
+		}
 	}
 	return &user, nil
 }
 
 func (r *userRepository) GetByID(id uint) (*models.SUser, error) {
 	var user models.SUser
-	err := r.db.Preload("SDBFLPASS").First(&user, id).Error
+	err := pagination.First2008(r.db, &user, "id", func(q *gorm.DB) *gorm.DB {
+		return q.Where("id = ?", id)
+	})
 	if err != nil {
 		return nil, err
+	}
+	// Step 2: manually fetch the optional SDBFLPASS relation (SQL Server 2008-compatible).
+	if user.UserID != "" {
+		var sdbflpass models.SDBFLPASS
+		if errRel := pagination.First2008(r.db, &sdbflpass, "[USERID]", func(q *gorm.DB) *gorm.DB {
+			return q.Where("USERID = ?", user.UserID)
+		}); errRel == nil {
+			user.SDBFLPASS = &sdbflpass
+		} else if !errors.Is(errRel, gorm.ErrRecordNotFound) {
+			return nil, errRel
+		}
 	}
 	return &user, nil
 }
@@ -82,7 +110,9 @@ func (r *userRepository) Delete(id uint) error {
 
 func (r *userRepository) GetByUserIDDBFLPASS(userID string) (*models.SDBFLPASS, error) {
 	var user models.SDBFLPASS
-	err := r.db.Where("USERID = ?", userID).First(&user).Error
+	err := pagination.First2008(r.db, &user, "[USERID]", func(q *gorm.DB) *gorm.DB {
+		return q.Where("USERID = ?", userID)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -126,30 +156,33 @@ func (r *userRepository) UpdateDBFLPASS(user *models.SDBFLPASS) error {
 }
 
 func (r *userRepository) GetPaginatedDBFLPASS(page, pageSize int, search string, status string) ([]models.SDBFLPASS, int64, error) {
+	// SQL Server 2008-compatible path: build baseSQL + args, then delegate to
+	// pagination.PaginatedFind which wraps a ROW_NUMBER() CTE.
+	//
+	// Placeholders use `?` rather than SQL Server native `@pN` — see
+	// menu repository for the rationale (mssql driver doesn't bind `@p`
+	// through db.Raw reliably).
 	var users []models.SDBFLPASS
-	var total int64
-
-	query := r.db.Model(&models.SDBFLPASS{})
+	baseSQL := "SELECT * FROM DBFLPASS"
+	var args []any
 	if search != "" {
-		searchTerm := "%" + strings.ToUpper(search) + "%"
-		query = query.Where("USERID LIKE ? OR FullName LIKE ?", searchTerm, searchTerm)
-	}
-	if status != "" {
-		query = query.Where("STATUS = ?", status)
+		searchTerm := "%" + strings.ToUpper(strings.TrimSpace(search)) + "%"
+		baseSQL += " WHERE (USERID LIKE ? OR FullName LIKE ?)"
+		args = append(args, searchTerm, searchTerm)
+		if status != "" {
+			baseSQL += " AND STATUS = ?"
+			args = append(args, status)
+		}
+	} else if status != "" {
+		baseSQL += " WHERE STATUS = ?"
+		args = append(args, status)
 	}
 
-	err := query.Count(&total).Error
+	total, err := pagination.PaginatedFind(r.db, &users, baseSQL, "[USERID] ASC", page, pageSize, args...)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	offset := (page - 1) * pageSize
-	err = query.Offset(offset).Limit(pageSize).Find(&users).Error
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return users, total, nil
+	return users, total, err
 }
 
 func (r *userRepository) DeleteDBFLPASS(userID string) error {

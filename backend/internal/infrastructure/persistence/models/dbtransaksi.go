@@ -35,19 +35,8 @@ type SDBTRANSAKSI struct {
 	Nobon string `gorm:"column:Nobon;size:20" json:"nobon"`
 	KodeBag string `gorm:"column:KodeBag;size:15" json:"kodebag"`
 	StatusGiro string `gorm:"column:StatusGiro;size:2" json:"statusgiro"`
-	MyID *string `gorm:"column:MyID" json:"-"`
+	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	FlagSimbol string `gorm:"column:FlagSimbol;primaryKey;size:2" json:"flagsimbol"`
-	KODECOST *string `gorm:"column:KODECOST;size:30" json:"kodecost"`
-	KODESUBCOST *string `gorm:"column:KODESUBCOST;size:30" json:"kodesubcost"`
-	DK *string `gorm:"column:DK;size:10" json:"dk"`
-	Nomer *int `gorm:"column:Nomer" json:"nomer"`
-	IsPasang *int `gorm:"column:IsPasang" json:"ispasang"`
-	NilaiNominal *float64 `gorm:"column:NilaiNominal" json:"nilainominal"`
-	KodeAK *string `gorm:"column:KodeAK;size:15" json:"kodeak"`
-	KodeSAK *string `gorm:"column:KodeSAK;size:15" json:"kodesak"`
-	JnsTransInvestasi *int `gorm:"column:JnsTransInvestasi" json:"jnstransinvestasi"`
-	Lot *float64 `gorm:"column:Lot" json:"lot"`
-	Harga *float64 `gorm:"column:Harga" json:"harga"`
 }
 
 // TableName overrides the default table name for SDBTRANSAKSI

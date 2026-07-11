@@ -1,7 +1,10 @@
 package repositories
 
 import (
+	"errors"
+
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
+	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
@@ -20,9 +23,11 @@ func NewPeriodeRepository(db *gorm.DB) IPeriodeRepository {
 
 func (r *SPeriodeRepository) GetPeriodeByUserID(userID string) (*models.DBPeriode, error) {
 	var periode models.DBPeriode
-	err := r.db.Where("USERID = ?", userID).First(&periode).Error
+	err := pagination.First2008(r.db, &periode, "[USERID]", func(q *gorm.DB) *gorm.DB {
+		return q.Where("USERID = ?", userID)
+	})
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil // Return nil if not found, it's not a fatal error
 		}
 		return nil, err
@@ -32,9 +37,11 @@ func (r *SPeriodeRepository) GetPeriodeByUserID(userID string) (*models.DBPeriod
 
 func (r *SPeriodeRepository) UpsertPeriode(periode *models.DBPeriode) error {
 	var existing models.DBPeriode
-	err := r.db.Where("USERID = ?", periode.USERID).First(&existing).Error
+	err := pagination.First2008(r.db, &existing, "[USERID]", func(q *gorm.DB) *gorm.DB {
+		return q.Where("USERID = ?", periode.USERID)
+	})
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// Create
 			return r.db.Create(periode).Error
 		}

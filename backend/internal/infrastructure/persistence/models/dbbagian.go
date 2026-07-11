@@ -8,7 +8,7 @@ type SDBBAGIAN struct {
 	Biaya string `gorm:"column:Biaya;size:25" json:"biaya"`
 	BiayaJasaKom string `gorm:"column:BiayaJasaKom;size:25" json:"biayajasakom"`
 	BiayaJasaAlat string `gorm:"column:BiayaJasaAlat;size:25" json:"biayajasaalat"`
-	MyID *string `gorm:"column:MyID" json:"-"`
+	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 }
 
 // TableName overrides the default table name for SDBBAGIAN

@@ -19,6 +19,10 @@ export interface PerkiraanData {
   text: string
   Kode?: string
   Description?: string
+  perkiraan?: string
+  keterangan?: string
+  kelompok?: number
+  l0?: number
 }
 
 export const sharedFilterService = {
@@ -34,6 +38,16 @@ export const sharedFilterService = {
 
   async getKelompokKas(type: string = 'KAS', query: string = ''): Promise<PerkiraanData[]> {
     const result = await getKelompokKasFn({ data: { type, query } })
+    return result as any
+  },
+
+  // Get Kelompok Kas filtered by multiple DBPOSTHUTPIUT.Kode values (e.g. "KAS,BANK").
+  // Falls back to single-type for backward-compatibility.
+  async getKelompokKasMulti(types: string[], query: string = ''): Promise<PerkiraanData[]> {
+    if (types.length === 0) {
+      types = ['KAS']
+    }
+    const result = await getKelompokKasFn({ data: { types: types.join(','), query } })
     return result as any
   },
 }

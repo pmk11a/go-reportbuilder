@@ -15,7 +15,7 @@ type SDbPerkiraan struct {
 	IsPPN          int    `gorm:"column:IsPPN"`
 	GroupPerkiraan string `gorm:"column:GroupPerkiraan"`
 	Lokasi         string `gorm:"column:Lokasi"`
-	MyID           *string `gorm:"column:MyID" json:"-"`
+	MyID           *string `gorm:"column:MyID;->;<-:false" json:"-"`
 
 	// Relasi
 	AksesPerkiraan []SDBFLPASS     `gorm:"many2many:DBAKSESPERKIRAAN;foreignKey:Perkiraan;joinForeignKey:Perkiraan;References:USERID;joinReferences:UserID"`

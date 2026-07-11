@@ -101,7 +101,7 @@ const SearchableSelect = React.forwardRef<
     ).slice(0, 50);
 
     // Get selected option label
-    const selectedLabel = options.find((opt) => opt.value === internalValue)?.label;
+    const selectedLabel = options.find((opt) => opt.value === internalValue)?.label || internalValue;
 
     // Close on click outside
     React.useEffect(() => {

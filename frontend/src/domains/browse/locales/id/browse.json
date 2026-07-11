@@ -1,0 +1,49 @@
+{
+  "search": {
+    "placeholder": "Ketik untuk mencari...",
+    "minChars": "Ketik minimal {{count}} karakter",
+    "noResults": "Tidak ada data yang cocok",
+    "loading": "Memuat..."
+  },
+  "errors": {
+    "loadFailed": "Gagal memuat data",
+    "validateFailed": "Validasi gagal",
+    "notFound": "Kode tidak ditemukan",
+    "noAccess": "Anda tidak memiliki akses ke lookup ini"
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "clear": "Hapus"
+  },
+  "groups": {
+    "perkiraan": "Perkiraan",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "customerSupplier": "Customer / Supplier",
+    "kasbank": "Kas / Bank",
+    "departemen": "Departemen",
+    "barang": "Barang",
+    "aktiva": "Aktiva Tetap",
+    "aktivaDet": "Detail Aktiva",
+    "giro": "Giro",
+    "periode": "Periode",
+    "user": "User",
+    "subtrans": "Sub Transaksi",
+    "aruskas": "Arus Kas",
+    "transaksi": "Transaksi"
+  },
+  "pickers": {
+    "perkiraan": {
+      "placeholder": "Pilih Perkiraan...",
+      "searchPlaceholder": "Cari keterangan atau kode perkiraan..."
+    },
+    "customer": {
+      "placeholder": "Pilih Customer / Supplier...",
+      "searchPlaceholder": "Cari nama atau kode customer..."
+    },
+    "kasbank": {
+      "placeholder": "Pilih Kas / Bank...",
+      "searchPlaceholder": "Cari nama atau kode kas/bank..."
+    }
+  }
+}

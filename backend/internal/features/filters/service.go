@@ -15,8 +15,9 @@ type IFilterService interface {
 	// excluding one code (withoutUserAccess) and/or scoped to post-hutang-piut.
 	GetPerkiraan(search string, withoutUserAccess string, onlyPostHutPiut string) ([]models.SDbPerkiraan, error)
 	// GetKelompokKas returns perkiraan rows joined to DBPOSTHUTPIUT for the
-	// given account type (defaults to "KAS" if empty).
-	GetKelompokKas(accountType string, search string) ([]models.SDbPerkiraan, error)
+	// given account types. Pass one or more codes ("KAS", "BANK", ...).
+	// An empty slice falls back to []string{"KAS"} for backward-compatibility.
+	GetKelompokKas(accountTypes []string, search string) ([]models.SDbPerkiraan, error)
 }
 
 type filterService struct {
@@ -43,9 +44,27 @@ func (s *filterService) GetPerkiraan(search string, withoutUserAccess string, on
 	return s.repo.GetPerkiraan(search, withoutUserAccess, onlyPostHutPiut)
 }
 
-func (s *filterService) GetKelompokKas(accountType string, search string) ([]models.SDbPerkiraan, error) {
-	if accountType == "" {
-		accountType = "KAS"
+// GetAccountTypesForKasBankTipe maps a Bukti Kas/Bank type code to the set of
+// DBPOSTHUTPIUT.Kode values that should appear in the Kas/Bank dropdown.
+//
+//	BKM/BKK (Kas Masuk/Keluar) → Kas + Bank
+//	BBM/BBK (Bank Masuk/Keluar) → Bank only
+//
+// Unknown tipeTrans falls back to []string{"KAS"}.
+func GetAccountTypesForKasBankTipe(tipeTrans string) []string {
+	switch tipeTrans {
+	case "BKM", "BKK":
+		return []string{"KAS", "BANK"}
+	case "BBM", "BBK":
+		return []string{"BANK"}
+	default:
+		return []string{"KAS"}
 	}
-	return s.repo.GetKelompokKas(accountType, search)
+}
+
+func (s *filterService) GetKelompokKas(accountTypes []string, search string) ([]models.SDbPerkiraan, error) {
+	if len(accountTypes) == 0 {
+		accountTypes = []string{"KAS"}
+	}
+	return s.repo.GetKelompokKas(accountTypes, search)
 }

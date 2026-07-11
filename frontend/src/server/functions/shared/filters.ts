@@ -41,11 +41,11 @@ export const getPerkiraanFn = createServerFn({ method: 'GET' })
 
 export const getKelompokKasFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .validator((data: { type?: string; query?: string }) => data)
+  .validator((data: { type?: string; types?: string; query?: string }) => data)
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
     const sp = new URLSearchParams({
-      type: data.type || 'KAS',
+      ...(data.types ? { types: data.types } : { type: data.type || 'KAS' }),
       query: data.query || '',
     })
     const result = await makeBackendRequest(

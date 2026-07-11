@@ -166,4 +166,52 @@ func seedDBMenu(database *gorm.DB) {
 	}
 
 	log.Printf("DBMENU seed complete: %d created, %d updated", created, updated)
+
+	// ensureDynamicBrowseMenu inserts the "Dynamic Browse" entry under
+	// Berkas (parent KODEMENU "00") if it isn't already present. This
+	// runs after the CSV-driven seed so existing deployments that
+	// already seeded an older DBMENU.csv still get the new menu entry.
+	ensureDynamicBrowseMenu(database)
+}
+
+// dynamicBrowseMenu is the catalogue row for the generic browse page
+// rendered at /admin/berkas/browse. Defined separately so it can be
+// re-used as a programmatic ensure in addition to the CSV entry.
+var dynamicBrowseMenu = menu.SDbMenu{
+	KODEMENU:   "0009",
+	Keterangan: "Dynamic Browse",
+	L0:         1,
+	ACCESS:     9,
+	OL:         0,
+	TipeTrans:  func() *string { s := ""; return &s }(),
+	Routename:  func() *string { s := "/admin/berkas/browse"; return &s }(),
+	Icon:       "Search",
+}
+
+func ensureDynamicBrowseMenu(database *gorm.DB) {
+	var existing menu.SDbMenu
+	err := database.Where("KODEMENU = ?", dynamicBrowseMenu.KODEMENU).First(&existing).Error
+	switch {
+	case err == gorm.ErrRecordNotFound:
+		if err := database.Create(&dynamicBrowseMenu).Error; err != nil {
+			log.Printf("Failed to ensure Dynamic Browse menu: %v", err)
+			return
+		}
+		log.Printf("Ensured Dynamic Browse menu (KODEMENU=%s, routename=%q)",
+			dynamicBrowseMenu.KODEMENU, *dynamicBrowseMenu.Routename)
+	case err != nil:
+		log.Printf("Failed to look up Dynamic Browse menu: %v", err)
+	default:
+		// Row exists: make sure routename/icon match in case the
+		// existing row predates the new contract.
+		if existing.Routename == nil || *existing.Routename != *dynamicBrowseMenu.Routename {
+			existing.Routename = dynamicBrowseMenu.Routename
+			if err := database.Save(&existing).Error; err != nil {
+				log.Printf("Failed to update Dynamic Browse routename: %v", err)
+				return
+			}
+			log.Printf("Updated Dynamic Browse menu routename to %q",
+				*dynamicBrowseMenu.Routename)
+		}
+	}
 }

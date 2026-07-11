@@ -25,6 +25,9 @@ type SConfig struct {
 	RefreshTokenExpiry  string
 
 	RedisURL string
+
+	EnableGiroFeature     bool
+	EnableDepositoFeature bool
 }
 
 func LoadConfig() *SConfig {
@@ -56,6 +59,9 @@ func LoadConfig() *SConfig {
 		RefreshTokenExpiry: getEnv("REFRESH_TOKEN_EXPIRY", "168h"),
 
 		RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
+
+		EnableGiroFeature:     getEnv("ENABLE_GIRO_FEATURE", "false") == "true",
+		EnableDepositoFeature: getEnv("ENABLE_DEPOSITO_FEATURE", "false") == "true",
 	}
 }
 

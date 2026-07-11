@@ -94,6 +94,8 @@ type SKasBankHeader struct {
 	// edits/deletes are rejected once IsOtorisasi1=1 regardless of Locked
 	// (see ErrLockedByOtorisasi1 in service.go — a separate, stricter rule).
 	Locked bool `json:"locked"`
+	// Cetak is the print status of the voucher (1 = printed)
+	Cetak int `json:"cetak"`
 }
 
 // SKasBankDetail is a domain view-model for a single journal line, exposing

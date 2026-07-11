@@ -1,8 +1,7 @@
 package models
 
 type SDbPostHutPiut struct {
-	NoFaktur  string `gorm:"column:NoFaktur;primaryKey"`
-	Perkiraan string `gorm:"column:Perkiraan"`
+	Perkiraan string `gorm:"column:Perkiraan;primaryKey"`
 	Kode      string `gorm:"column:Kode"`
 }
 

@@ -32,6 +32,7 @@ import { Route as AdminLayoutBerkasPerusahaanRouteImport } from './routes/admin/
 import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layout/berkas/menu'
 import { Route as AdminLayoutReportsPermissionReportIndexRouteImport } from './routes/admin/_layout/reports/permission-report/index'
 import { Route as AdminLayoutMasterDataUsersIndexRouteImport } from './routes/admin/_layout/master-data/users/index'
+import { Route as AdminLayoutMasterDataDynamicBrowseIndexRouteImport } from './routes/admin/_layout/master-data/dynamic-browse/index'
 import { Route as AdminLayoutMasterDataConfigLogsIndexRouteImport } from './routes/admin/_layout/master-data/config-logs/index'
 import { Route as AdminLayoutMasterDataActivityLogsIndexRouteImport } from './routes/admin/_layout/master-data/activity-logs/index'
 import { Route as AdminLayoutAccountingKasbankIndexRouteImport } from './routes/admin/_layout/accounting/kasbank/index'
@@ -161,6 +162,12 @@ const AdminLayoutMasterDataUsersIndexRoute =
     path: '/master-data/users/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
+const AdminLayoutMasterDataDynamicBrowseIndexRoute =
+  AdminLayoutMasterDataDynamicBrowseIndexRouteImport.update({
+    id: '/master-data/dynamic-browse/',
+    path: '/master-data/dynamic-browse/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
 const AdminLayoutMasterDataConfigLogsIndexRoute =
   AdminLayoutMasterDataConfigLogsIndexRouteImport.update({
     id: '/master-data/config-logs/',
@@ -230,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/admin/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/master-data/dynamic-browse/': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   '/admin/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
   '/admin/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
   '/admin/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/admin/accounting/kasbank': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/master-data/dynamic-browse': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   '/admin/master-data/users': typeof AdminLayoutMasterDataUsersIndexRoute
   '/admin/reports/permission-report': typeof AdminLayoutReportsPermissionReportIndexRoute
   '/admin/master-data/users/$id': typeof AdminLayoutMasterDataUsersIdIndexRoute
@@ -294,6 +303,7 @@ export interface FileRoutesById {
   '/admin/_layout/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/_layout/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/_layout/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  '/admin/_layout/master-data/dynamic-browse/': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   '/admin/_layout/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
   '/admin/_layout/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
   '/admin/_layout/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/admin/accounting/kasbank/'
     | '/admin/master-data/activity-logs/'
     | '/admin/master-data/config-logs/'
+    | '/admin/master-data/dynamic-browse/'
     | '/admin/master-data/users/'
     | '/admin/reports/permission-report/'
     | '/admin/master-data/users/$id/'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/admin/accounting/kasbank'
     | '/admin/master-data/activity-logs'
     | '/admin/master-data/config-logs'
+    | '/admin/master-data/dynamic-browse'
     | '/admin/master-data/users'
     | '/admin/reports/permission-report'
     | '/admin/master-data/users/$id'
@@ -391,6 +403,7 @@ export interface FileRouteTypes {
     | '/admin/_layout/accounting/kasbank/'
     | '/admin/_layout/master-data/activity-logs/'
     | '/admin/_layout/master-data/config-logs/'
+    | '/admin/_layout/master-data/dynamic-browse/'
     | '/admin/_layout/master-data/users/'
     | '/admin/_layout/reports/permission-report/'
     | '/admin/_layout/master-data/users/$id/'
@@ -571,6 +584,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutMasterDataUsersIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/master-data/dynamic-browse/': {
+      id: '/admin/_layout/master-data/dynamic-browse/'
+      path: '/master-data/dynamic-browse'
+      fullPath: '/admin/master-data/dynamic-browse/'
+      preLoaderRoute: typeof AdminLayoutMasterDataDynamicBrowseIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/admin/_layout/master-data/config-logs/': {
       id: '/admin/_layout/master-data/config-logs/'
       path: '/master-data/config-logs'
@@ -659,6 +679,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutAccountingKasbankIndexRoute: typeof AdminLayoutAccountingKasbankIndexRoute
   AdminLayoutMasterDataActivityLogsIndexRoute: typeof AdminLayoutMasterDataActivityLogsIndexRoute
   AdminLayoutMasterDataConfigLogsIndexRoute: typeof AdminLayoutMasterDataConfigLogsIndexRoute
+  AdminLayoutMasterDataDynamicBrowseIndexRoute: typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   AdminLayoutMasterDataUsersIndexRoute: typeof AdminLayoutMasterDataUsersIndexRoute
   AdminLayoutReportsPermissionReportIndexRoute: typeof AdminLayoutReportsPermissionReportIndexRoute
   AdminLayoutMasterDataUsersIdIndexRoute: typeof AdminLayoutMasterDataUsersIdIndexRoute
@@ -680,6 +701,8 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
     AdminLayoutMasterDataActivityLogsIndexRoute,
   AdminLayoutMasterDataConfigLogsIndexRoute:
     AdminLayoutMasterDataConfigLogsIndexRoute,
+  AdminLayoutMasterDataDynamicBrowseIndexRoute:
+    AdminLayoutMasterDataDynamicBrowseIndexRoute,
   AdminLayoutMasterDataUsersIndexRoute: AdminLayoutMasterDataUsersIndexRoute,
   AdminLayoutReportsPermissionReportIndexRoute:
     AdminLayoutReportsPermissionReportIndexRoute,

@@ -3,9 +3,10 @@ package filters
 import (
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
-		responsepkg "github.com/masza1/dapen-backend/internal/infrastructure/response"
+	responsepkg "github.com/masza1/dapen-backend/internal/infrastructure/response"
 )
 
 type SFilterHandler struct {
@@ -102,21 +103,36 @@ func (h *SFilterHandler) GetPerkiraan(c *gin.Context) {
 
 // GetKelompokKas godoc
 // @Summary Get Kelompok Kas
-// @Description Fetch kelompok kas data with pagination and search
+// @Description Fetch kelompok kas data filtered by one or more DBPOSTHUTPIUT
+// @Description codes. Pass `type` (single, legacy) or `types` (comma-separated,
+// @Description preferred) — `types=KAS,BANK` returns accounts in either category.
 // @Tags Filter
 // @Produce json
-// @Param search query string false "Search query"
-// @Param page query int false "Page Number" default(1)
-// @Param limit query int false "Limit per page" default(10)
+// @Param type query string false "Single DBPOSTHUTPIUT.Kode (e.g. KAS, BANK)" default(KAS)
+// @Param types query string false "Comma-separated DBPOSTHUTPIUT.Kode list (e.g. KAS,BANK)"
+// @Param query query string false "Search query"
 // @Success 200 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
 // @Security BearerAuth
 // @Router /perkiraan/kelompok-kas [get]
 func (h *SFilterHandler) GetKelompokKas(c *gin.Context) {
-	accountType := c.DefaultQuery("type", "KAS")
+	// Prefer the `types` (comma-separated) param for multi-category lookup;
+	// fall back to the single-value `type` for backward compatibility.
+	typesParam := c.Query("types")
+	var accountTypes []string
+	if typesParam != "" {
+		for _, t := range strings.Split(typesParam, ",") {
+			if v := strings.TrimSpace(t); v != "" {
+				accountTypes = append(accountTypes, v)
+			}
+		}
+	}
+	if len(accountTypes) == 0 {
+		accountTypes = []string{c.DefaultQuery("type", "KAS")}
+	}
 	search := c.Query("query")
 
-	data, err := h.service.GetKelompokKas(accountType, search)
+	data, err := h.service.GetKelompokKas(accountTypes, search)
 	if err != nil {
 		responsepkg.InternalError(c, err.Error())
 		return

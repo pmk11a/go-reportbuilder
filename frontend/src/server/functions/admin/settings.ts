@@ -45,3 +45,12 @@ export const updateNumberSettingsFn = createServerFn({ method: 'POST' })
     if (!result.success) throw new Error(result.message)
     return result.data
   })
+
+export const getFeaturesSettingsFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const result = await makeBackendRequest('/api/admin/settings/features', { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })

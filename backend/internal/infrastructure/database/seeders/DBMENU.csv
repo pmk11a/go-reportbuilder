@@ -9,6 +9,7 @@
 "0006","Kalkulator","1","6","0","","","calculator"
 "0007","Log off","1","7","0","","","log-out"
 "0008","Keluar","1","8","0","","","log-out"
+"0009","Dynamic Browse","1","9","0","","/admin/berkas/browse","Search"
 "01","Master Data","0","0","0","","",""
 "010010001","Daftar Devisi","1","10040081","0","","","list"
 "01001001","Perkiraan","1","1001001","0","","","receipt"
