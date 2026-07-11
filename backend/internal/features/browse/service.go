@@ -214,6 +214,12 @@ func (r *SConfigResolver) getAllDBTypes() []BrowseType {
 	types := make([]BrowseType, 0, len(configs))
 	for _, c := range configs {
 		group := BrowseGroups[c.KodeBrowse]
+		if group == "" {
+			group = stringPtrToStr(c.LabelField)
+		}
+		if group == "" {
+			group = c.KodeBrowse
+		}
 		types = append(types, BrowseType{
 			KodeBrowse: c.KodeBrowse,
 			KeyField:   stringPtrToStr(c.KeyField),

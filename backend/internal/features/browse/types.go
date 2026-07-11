@@ -25,6 +25,7 @@ type BrowseType struct {
 	LabelField string `json:"labelField"`
 	Group      string `json:"group"`
 	Source     string `json:"source"` // "hardcoded" | "database"
+	Label      string `json:"label"`      // display name for dropdown
 }
 
 // SearchResult is a generic row returned by Search/Validate.
