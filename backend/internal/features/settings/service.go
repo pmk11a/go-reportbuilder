@@ -118,22 +118,34 @@ func renderFormat(slot int, n *models.SDBNOMOR, t time.Time, seqStr string, code
 	case FormatKodeTransaksi:
 		return codeTransaksi
 	case FormatMMYY:
-		return t.Format("my")
+		// Delphi's `FormatDateTime('MMYY', xDate)` → always 2-digit month +
+		// 2-digit year (e.g. "0726" for July 2026). Go's reference time
+		// pattern is "Mon Jan 2 15:04:05 MST 2006"; the only spec Go
+		// recognises for month-with-leading-zero is "01" and for
+		// 2-digit-year is "06", so the right combination is "0106".
+		return t.Format("0106")
 	case FormatMMYYYY:
-		return t.Format("mY")
+		// Delphi `MMYYYY` → "012023" for Jan 2023, "072026" for Jul 2026.
+		// "012006" parses as "01" (month-leading) + "2006" (4-digit-year).
+		return t.Format("012006")
 	case FormatNomorUrut:
 		return seqStr
 	case FormatYYMM:
-		return t.Format("ym")
+		// Delphi `YYMM` → "2301" for Jan 2023, "2607" for Jul 2026.
+		// "06" alone is 2-digit-year, "01" is month-leading. "0601" is
+		// therefore YYMM.
+		return t.Format("0601")
 	case FormatYYYYMM:
-		return t.Format("Ym")
+		// Delphi `YYYYMM` → "202301" / "202607".
+		// "2006" is 4-digit-year, "01" is month-leading → "200601".
+		return t.Format("200601")
 	default:
 		return ""
 	}
 }
 
-// nextSequence parses the legacy counter string (e.g. "202607/0009") and
-// returns the next 4-digit padded sequence number along with the YYYYMM it
+// nextSequence parses the legacy counter string (e.g. "202607/00009") and
+// returns the next padded sequence number along with the YYYYMM it
 // belongs to. The "current" counter is the *last issued* number, so the
 // next one is current+1. If `current` is empty, the counter starts at 1.
 //
@@ -141,26 +153,31 @@ func renderFormat(slot int, n *models.SDBNOMOR, t time.Time, seqStr string, code
 // `resetMode` follows DBNOMOR.Reset: 0=Bulan → sequence resets to 1 when
 // the period's year+month differs from the counter's year+month; 1=Tahun
 // → resets only when the year differs.
-func nextSequence(current string, tahun int, bulan int, resetMode int) (string, int, int) {
+//
+// `width` is the DBNOMOR.DigitNomor value (number of zero-padded digits,
+// e.g. 5 → "00001"). When <= 0 we default to 5 to match the legacy Delphi
+// `FormatFloat('00000', ...)` behaviour, which is also what the existing
+// data in the database was written with.
+func nextSequence(current string, tahun int, bulan int, resetMode int, width int) (string, int, int) {
 	periodMM := bulan
 	periodYYYY := tahun
 
 	// No current counter → start fresh.
 	if current == "" {
-		return "0001", periodYYYY, periodMM
+		return padN(1, width), periodYYYY, periodMM
 	}
 
-	// Counter format is "<YYYYMM><sep><NNNN>" — split at the first
+	// Counter format is "<YYYYMM><sep><NNNN...>" — split at the first
 	// non-digit following the leading 6 digits.
 	if len(current) < 7 {
-		return "0001", periodYYYY, periodMM
+		return padN(1, width), periodYYYY, periodMM
 	}
 	y := atoiSafe(current[0:4])
 	m := atoiSafe(current[4:6])
 	seq := atoiSafe(trimLeadingNonDigits(current[6:]))
 
 	if y == 0 || m == 0 {
-		return "0001", periodYYYY, periodMM
+		return padN(1, width), periodYYYY, periodMM
 	}
 
 	switch resetMode {
@@ -178,7 +195,7 @@ func nextSequence(current string, tahun int, bulan int, resetMode int) (string, 
 	if next < 1 {
 		next = 1
 	}
-	return pad4(next), periodYYYY, periodMM
+	return padN(next, width), periodYYYY, periodMM
 }
 
 func atoiSafe(s string) int {
@@ -201,13 +218,38 @@ func trimLeadingNonDigits(s string) string {
 	return ""
 }
 
-func pad4(n int) string {
-	const max = 9999
-	if n > max {
-		// Fall back to wider padding rather than wrap or panic.
-		return fmt.Sprintf("%d", n)
+// defaultSeqWidth is the zero-padding width used when DBNOMOR.DigitNomor is
+// not set (NULL or empty). It matches the legacy Delphi default of 5,
+// which is what existing data in the database was generated with.
+const defaultSeqWidth = 5
+
+// parseDigitWidth interprets the DBNOMOR.DigitNomor column. Delphi stores
+// it as a Delphi-style format string such as "00000" — we just count the
+// zeroes (the only meaningful character for FormatFloat input). When the
+// column is missing/blank we fall back to defaultSeqWidth.
+func parseDigitWidth(s string) int {
+	if s == "" {
+		return defaultSeqWidth
 	}
-	return fmt.Sprintf("%04d", n)
+	n := 0
+	for _, r := range s {
+		if r == '0' {
+			n++
+		}
+	}
+	if n == 0 {
+		return defaultSeqWidth
+	}
+	return n
+}
+
+func padN(n int, width int) string {
+	if width < 1 {
+		width = defaultSeqWidth
+	}
+	// Build format string like "%0Nd" so very large sequences fall back
+	// to wider padding rather than wrap or panic.
+	return fmt.Sprintf("%0*d", width, n)
 }
 
 // GenerateNoBuktiResult is what the API returns when previewing the next
@@ -258,7 +300,8 @@ func (s *Service) GenerateNoBukti(jns string, tahun int, bulan int) (*GenerateNo
 	currentCounter := readStringField(&nomor, field.CounterField)
 
 	t := time.Date(tahun, time.Month(bulan), 1, 0, 0, 0, 0, time.UTC)
-	seq, y, m := nextSequence(currentCounter, tahun, bulan, derefInt(nomor.Reset))
+	width := parseDigitWidth(derefStr(nomor.DigitNomor))
+	seq, y, m := nextSequence(currentCounter, tahun, bulan, derefInt(nomor.Reset), width)
 
 	formats := []int{
 		derefInt(nomor.FORMAT1),
@@ -304,7 +347,10 @@ func (s *Service) CommitCounter(jns string, newCounter string) error {
 	if !ok {
 		return fmt.Errorf("unknown transaction type: %s", jns)
 	}
+	// DBNOMOR is a single-row settings table and the model declares no
+	// primary key; see CommitCounterTx for the rationale.
 	res := s.db.Model(&models.SDBNOMOR{}).
+		Session(&gorm.Session{AllowGlobalUpdate: true}).
 		Update(field.CounterField, newCounter)
 	if res.Error != nil {
 		return res.Error
@@ -317,6 +363,108 @@ func (s *Service) CommitCounter(jns string, newCounter string) error {
 			field.PrefixField:  "",
 		}
 		return s.db.Model(&models.SDBNOMOR{}).Create(insert).Error
+	}
+	return nil
+}
+
+// GenerateNoBuktiTx is the transaction-aware variant of GenerateNoBukti.
+//
+// It exists so callers (e.g. kasbank.Repo) can compose "render the next
+// voucher number" + "persist the new counter" + "insert DBTRANS row" all
+// inside a single atomic transaction. Without this, a crash between the
+// render step and the persist step would leave the counter drifted from
+// the actual rows in DBTRANS.
+//
+// The returned `NewCounter` is what the caller should pass to
+// CommitCounterTx inside the same transaction.
+func (s *Service) GenerateNoBuktiTx(tx *gorm.DB, jns string, tahun int, bulan int) (*GenerateNoBuktiResult, error) {
+	if jns == "" {
+		return nil, errors.New("jns is required")
+	}
+	field, ok := lookupNomorField(jns)
+	if !ok {
+		return nil, fmt.Errorf("unknown transaction type: %s", jns)
+	}
+
+	var nomor models.SDBNOMOR
+	if err := tx.First(&nomor).Error; err != nil {
+		return nil, fmt.Errorf("failed to load DBNOMOR: %w", err)
+	}
+
+	kodeTrans := readStringField(&nomor, field.PrefixField)
+	currentCounter := readStringField(&nomor, field.CounterField)
+
+	t := time.Date(tahun, time.Month(bulan), 1, 0, 0, 0, 0, time.UTC)
+	width := parseDigitWidth(derefStr(nomor.DigitNomor))
+	seq, y, m := nextSequence(currentCounter, tahun, bulan, derefInt(nomor.Reset), width)
+
+	formats := []int{
+		derefInt(nomor.FORMAT1),
+		derefInt(nomor.FORMAT2),
+		derefInt(nomor.FORMAT3),
+		derefInt(nomor.FORMAT4),
+	}
+
+	sep := pemisah(derefInt(nomor.PEMISAH))
+
+	var parts []string
+	for i, f := range formats {
+		slot := renderFormat(f, &nomor, t, seq, kodeTrans)
+		if slot == "" {
+			continue
+		}
+		if i > 0 {
+			parts = append(parts, sep)
+		}
+		parts = append(parts, slot)
+	}
+	noBukti := strings.Join(parts, "")
+	newCounter := fmt.Sprintf("%04d%02d%s%s", y, m, sep, seq)
+
+	return &GenerateNoBuktiResult{
+		Jns:        jns,
+		NoBukti:    noBukti,
+		KodeTrans:  kodeTrans,
+		NewCounter: newCounter,
+		Seq:        seq,
+		Tahun:      tahun,
+		Bulan:      bulan,
+		Format:     describeFormats(formats),
+	}, nil
+}
+
+// CommitCounterTx is the transaction-aware variant of CommitCounter. It
+// must be called from inside the same transaction that called
+// GenerateNoBuktiTx so that the counter write is atomic with the row
+// insert that consumed the number.
+//
+// The column name is whitelisted via lookupNomorField so dynamic-SQL
+// injection is not possible (the jns→column mapping is a build-time constant).
+func (s *Service) CommitCounterTx(tx *gorm.DB, jns string, newCounter string) error {
+	field, ok := lookupNomorField(jns)
+	if !ok {
+		return fmt.Errorf("unknown transaction type: %s", jns)
+	}
+	// DBNOMOR is a single-row settings table and the model declares no
+	// primary key (every column is a nullable pointer because the legacy
+	// Delphi schema made every column optional). GORM's safety check
+	// refuses UPDATE-without-WHERE on a model with no PK, so we explicitly
+	// allow the global update — the table physically holds exactly one row
+	// by design (read by `tx.First(&nomor)` in GenerateNoBuktiTx).
+	res := tx.Model(&models.SDBNOMOR{}).
+		Session(&gorm.Session{AllowGlobalUpdate: true}).
+		Update(field.CounterField, newCounter)
+	if res.Error != nil {
+		return fmt.Errorf("commit counter to DBNOMOR.%s: %w", field.CounterField, res.Error)
+	}
+	if res.RowsAffected == 0 {
+		insert := map[string]interface{}{
+			field.CounterField: newCounter,
+			field.PrefixField:  "",
+		}
+		if err := tx.Model(&models.SDBNOMOR{}).Create(insert).Error; err != nil {
+			return fmt.Errorf("insert DBNOMOR.%s: %w", field.CounterField, err)
+		}
 	}
 	return nil
 }
