@@ -186,7 +186,13 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
     }
     // Default: show search results; if user hasn't typed, prepend the
     // currently-validated row (if any) so the dropdown displays the label.
-    const items = [...searchResults]
+    // Guard: searchResults must be an array — TanStack Query can briefly
+    // surface non-array shapes during transitions (e.g. placeholderData
+    // unwrapping a wrapper object), so we coerce defensively.
+    const safeResults: IBrowseRow[] = Array.isArray(searchResults)
+      ? searchResults
+      : []
+    const items = [...safeResults]
     const present = items.some(
       (r) => String(r[effKeyField] ?? '') === String(value ?? '')
     )

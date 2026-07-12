@@ -103,8 +103,16 @@ export function useBrowseSearch(opts: UseBrowseSearchOptions): UseBrowseSearchRe
     staleTime: 30 * 1000,
   })
 
+  // Coerce query.data to an array. TanStack Query's typing of query.data is
+  // `unknown` and a misbehaving queryFn (or a wrapper object surviving through
+  // a cache) could surface a non-array here. Belt-and-suspenders against
+  // "X is not iterable" crashes downstream.
+  const options: IBrowseRow[] = Array.isArray(query.data)
+    ? (query.data as IBrowseRow[])
+    : []
+
   return {
-    options: (query.data ?? []) as IBrowseRow[],
+    options,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error as Error | null,

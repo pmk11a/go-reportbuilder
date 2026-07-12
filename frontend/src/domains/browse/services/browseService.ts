@@ -105,12 +105,10 @@ export const browseService = {
   /** GET /api/browse/types */
   async listTypes(): Promise<IBrowseType[]> {
     const result = (await listBrowseTypesFn()) as IBrowseType[] | null | undefined
-    // The backend returns {"data": [...]} wrapped in the response envelope.
-    // If result is not already an array, unwrap the inner data field.
-    if (!Array.isArray(result)) {
-      return (result as any)?.data ?? []
-    }
-    return result
+    // Defensive: backend may return either an array or a wrapper
+    // {data: [...]} depending on response envelope. Unwrap if needed.
+    if (Array.isArray(result)) return result
+    return ((result as any)?.data as IBrowseType[] | undefined) ?? []
   },
 
   /** GET /api/browse/search?kodeBrowse=...&q=...&parent_<col>=... */
@@ -118,7 +116,9 @@ export const browseService = {
     const result = (await searchBrowseFn({
       data: { query: buildSearchQuery(params) },
     })) as IBrowseRow[] | null | undefined
-    return result ?? []
+    // Defensive: same as listTypes — unwrap wrapper if present.
+    if (Array.isArray(result)) return result
+    return ((result as any)?.data as IBrowseRow[] | undefined) ?? []
   },
 
   /**
@@ -143,15 +143,22 @@ export const browseService = {
     const result = (await getAllBrowseFn({
       data: { query: buildAllQuery(kodeBrowse, limit, userMode) },
     })) as IBrowseRow[] | null | undefined
-    return result ?? []
+    // Defensive: unwrap wrapper if backend returned {data:[...]}.
+    if (Array.isArray(result)) return result
+    return ((result as any)?.data as IBrowseRow[] | undefined) ?? []
   },
 
   /** POST /api/browse/validate */
   async validate(req: IBrowseValidateRequest): Promise<IBrowseRow | null> {
     const result = (await validateBrowseFn({
       data: req,
-    })) as IBrowseRow | null | undefined
-    return result ?? null
+    })) as IBrowseRow | { data?: IBrowseRow | null } | null | undefined
+    // validate returns a single row (or null). Backend may wrap it.
+    if (result == null) return null
+    if (typeof result === 'object' && 'Perkiraan' in (result as object)) {
+      return result as IBrowseRow
+    }
+    return ((result as any)?.data as IBrowseRow | null | undefined) ?? null
   },
 
   /** POST /api/browse/validate-batch */
@@ -160,7 +167,10 @@ export const browseService = {
   ): Promise<IBrowseValidateBatchResponse> {
     const result = (await validateBrowseBatchFn({
       data: req,
-    })) as IBrowseValidateBatchResponse | null | undefined
-    return result ?? {}
+    })) as IBrowseValidateBatchResponse | { data?: IBrowseValidateBatchResponse } | null | undefined
+    if (result && typeof result === 'object' && 'results' in (result as object)) {
+      return result as IBrowseValidateBatchResponse
+    }
+    return ((result as any)?.data as IBrowseValidateBatchResponse | undefined) ?? {}
   },
 }
