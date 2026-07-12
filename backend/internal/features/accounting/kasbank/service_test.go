@@ -134,6 +134,7 @@ func (m *mockRepo) RecalcTotals(ctx context.Context, noBukti string) (float64, f
 	}
 	return 0, 0, nil
 }
+func (m *mockRepo) DeleteDeposito(ctx context.Context, noBukti string) error { return nil }
 func (m *mockRepo) GetAggregateTotals(ctx context.Context, noBuktis []string) (map[string]SAggregateTotals, error) {
 	m.aggregateTotalsCalls++
 	if m.getAggregateTotalsFn != nil {

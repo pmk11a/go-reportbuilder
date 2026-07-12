@@ -177,11 +177,14 @@ export const batalOtorisasiFn = createServerFn({ method: 'POST' })
 
 export const generateNoBuktiFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .validator((data: { tipe: string }) => data)
+  .validator((data: { tipe: string; devisi?: string }) => data)
   .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
+    const params = new URLSearchParams()
+    params.set('tipe', data.tipe)
+    if (data.devisi) params.set('devisi', data.devisi)
     const result = await makeBackendRequest(
-      `/api/accounting/kasbank/generate-no-bukti?tipe=${encodeURIComponent(data.tipe)}`,
+      `/api/accounting/kasbank/generate-no-bukti?${params.toString()}`,
       { method: 'GET' },
       accessToken
     )

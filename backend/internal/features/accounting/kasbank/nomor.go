@@ -1,13 +1,23 @@
 // Package kasbank — voucher-number generation and per-user active period lookup.
 //
-// The legacy schema stores per-document-type counters in DBNOMOR: a single
-// row that has many NOxxx string fields (NOBKM, NOBKK, NOBBM, NOBBK, ...).
-// Each field holds the last-used sequence number for that document type.
+// The voucher number is delegated to settings.NumberingService so the
+// algorithm (FORMAT1..4 / PEMISAH / Reset / ALIAS / counter increment) is
+// shared with any other feature that needs auto-numbered documents
+// (procurement, production, util, etc.) — see SGenerateNoBukti at the
+// bottom of this file for the kasbank-specific transaction wrapper.
 //
-// GenerateNoBukti takes a writer transaction and a tipe, locks the DBNOMOR row,
-// reads + increments the relevant column, and returns a formatted voucher
-// number like "BKK-202606-0001". The "0001" suffix is the per-month sequence
-// reset — we always read+write the full YYYYMM+SEQ string instead of an int.
+// Numbering model (shared, lives in internal/features/settings):
+//
+//   - 4-slot template (FORMAT1..4) with codes
+//     {ALIAS, KODE_TRANSAKSI, MMYY, MMYYYY, NOMOR_URUT, YYMM, YYYYMM}.
+//   - Separator between slots (PEMISAH): ':' / '-' / '/' / ' ' / '.'.
+//   - Counter: DBNOMOR.NOB{jns} per transaction type (NOBKK, NOBKM,
+//     NOBBM, NOBBK, …) stored as "<YYYYMM><sep><NNNN>".
+//   - Reset (Reset column): 0 = monthly, 1 = yearly, anything else = never.
+//
+// bulan/tahun come from DBPERIODE (the user's active accounting period),
+// NOT time.Now() — the user may post journals dated in their active period
+// even on a different calendar day.
 package kasbank
 
 import (
@@ -18,30 +28,92 @@ import (
 	"strings"
 	"time"
 
+	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
 )
 
-// Field mapping from discriminator to DBNOMOR column name. Adding a new
-// voucher type means adding a new column to DBNOMOR (and a new case here).
-var nomorFieldByTipe = map[string]string{
-	TipeBKM: "NOBKM",
-	TipeBKK: "NOBKK",
-	TipeBBM: "NOBBM",
-	TipeBBK: "NOBBK",
-}
-
-// ErrUnknownTipe is returned by GenerateNoBukti when the discriminator is
+// ErrUnknownTipe is returned by SGenerateNoBukti when the discriminator is
 // not one of the four accepted values. The caller is expected to translate
 // this to a 400 Bad Request at the HTTP boundary.
 var ErrUnknownTipe = errors.New("unknown tipe voucher")
 
+// SDBNomorConfig is the subset of DBNOMOR used by the voucher-number generator.
+//
+// Deprecated: prefer settings.NumberingService / SGenerateNoBukti for new
+// code. Kept for backward-compat with callers that only need the
+// non-counter settings (PEMISAH/Reset/DigitNomor).
+type SDBNomorConfig struct {
+	Pemisah    *int
+	DigitNomor *string
+	Reset      *int
+}
+
+// ReadDBNomorConfig loads the (single-row) DBNOMOR settings table. Returns
+// a value with all-nil fields when the table has no row, leaving the
+// caller to apply defaults (separator='/', digit="00000", reset=monthly).
+//
+// Deprecated: prefer settings.NumberingService.ReadNomorFull for new code.
+func ReadDBNomorConfig(tx *gorm.DB) (SDBNomorConfig, error) {
+	var cfg SDBNomorConfig
+	querySQL := `SELECT [PEMISAH], [DigitNomor], [Reset] FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)`
+	row := tx.Raw(querySQL).Row()
+	if row == nil {
+		return cfg, nil
+	}
+	var digitNomor *string
+	if err := row.Scan(&cfg.Pemisah, &digitNomor, &cfg.Reset); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(err.Error(), "no rows") {
+			return SDBNomorConfig{}, nil
+		}
+		return cfg, err
+	}
+	cfg.DigitNomor = digitNomor
+	return cfg, nil
+}
+
+// ReadDBNomorFull loads the entire DBNOMOR row with a UPDLOCK/HOLDLOCK so
+// concurrent callers cannot read a stale counter / format layout. Returns
+// (nil, nil) when DBNOMOR has no row — callers must apply defaults.
+//
+// Deprecated: prefer settings.NumberingService.ReadNomorFull for new code.
+func ReadDBNomorFull(tx *gorm.DB) (*models.SDBNOMOR, error) {
+	var n models.SDBNOMOR
+	err := tx.Raw(`SELECT * FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)`).Scan(&n).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(err.Error(), "no rows") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &n, nil
+}
+
+// ResetMonthly reports whether the sequence should reset every month.
+// Defaults to true (Reset=0) when the column is nil.
+func (c SDBNomorConfig) ResetMonthly() bool {
+	if c.Reset == nil {
+		return true
+	}
+	return *c.Reset == 0
+}
+
+// DigitNomorStr returns the DigitNomor string with a "00000" fallback.
+func (c SDBNomorConfig) DigitNomorStr() string {
+	if c.DigitNomor == nil || strings.TrimSpace(*c.DigitNomor) == "" {
+		return "00000"
+	}
+	return *c.DigitNomor
+}
+
 // PemisahChar decodes the integer separator code from DBNOMOR.PEMISAH into
 // its corresponding character.
 //
-// Pemisah codes match trade-exchange Laravel:
+// Pemisah codes match trade-exchange Laravel + the DAPEN extension:
 //
-//	0 → ':' | 1 → '-' | 2 → '/' | 3 → ' ' (space)
+//	0 → ':' | 1 → '-' | 2 → '/' | 3 → ' ' | 4 → '.' (DAPEN extension)
+//
+// Deprecated: prefer settings.NumberingService.PemisahChar for new code.
 func PemisahChar(code int) string {
 	switch code {
 	case 0:
@@ -52,90 +124,99 @@ func PemisahChar(code int) string {
 		return "/"
 	case 3:
 		return " "
+	case 4:
+		return "."
 	default:
-		return "-"
+		return "/"
 	}
 }
 
 // DecodePemisah returns the separator character for a given *int pemisah value.
-// If the pointer is nil (no DBNOMOR row yet), defaults to '-' (code 1).
+// If the pointer is nil (no DBNOMOR row yet), defaults to '/' (code 2 —
+// the legacy KasBank default).
 func DecodePemisah(p *int) string {
 	if p == nil {
-		return "-"
+		return "/"
 	}
 	return PemisahChar(*p)
 }
 
-// GenerateNoBukti reads the per-tipe counter from DBNOMOR, increments it, and
-// returns a formatted voucher number such as "BKK/202606/0001".
+// tipeKasGroup returns the SQL fragment matching the Kas vs Bank group:
+// BKM/BKK → ('BKK','BKM'), BBM/BBK → ('BBK','BBM').
 //
-// The separator between YYYYMM and SEQ is taken from DBNOMOR.PEMISAH
-// (decoded to ':', '-', '/', ' '). The separator between TIPE and YYYYMM is
-// always '-'. The increment runs inside the caller's transaction (tx) so the
-// same counter can be reused for batch inserts.
-//
-// Caller is responsible for normalising tipe to uppercase before passing in.
-func GenerateNoBukti(tx *gorm.DB, tipe string, pemisahCfg *int) (string, error) {
-	col, ok := nomorFieldByTipe[tipe]
-	if !ok {
+// Deprecated: kept only for the test mock expectations on DBTRANS-style
+// sequencing, which the new algorithm no longer uses.
+func tipeKasGroup(tipe string) (string, error) {
+	switch tipe {
+	case TipeBKM, TipeBKK:
+		return "TipeTransHd IN ('BKK','BKM')", nil
+	case TipeBBM, TipeBBK:
+		return "TipeTransHd IN ('BBK','BBM')", nil
+	default:
 		return "", fmt.Errorf("%w: %q", ErrUnknownTipe, tipe)
 	}
-
-	sep := DecodePemisah(pemisahCfg)
-
-	// 1. Read current counter inside the transaction.
-	current, err := readNomorField(tx, col)
-	if err != nil {
-		return "", fmt.Errorf("read current %s: %w", col, err)
-	}
-
-	// 2. Compute next SEQ. The DBNOMOR column stores YYYYMM<SEP>SEQ as one
-	// string (e.g. "202606-0001" or "202606/0001"). Reset SEQ to 1 when the
-	// month rolls over.
-	now := time.Now()
-	yearMonth := now.Format("200601")
-	nextSeq := 1
-	if current != nil && *current != "" {
-		parts := strings.SplitN(*current, sep, 2)
-		if len(parts) == 2 && parts[0] == yearMonth {
-			if n, errConv := strconv.Atoi(parts[1]); errConv == nil {
-				nextSeq = n + 1
-			}
-		}
-	}
-
-	newVal := fmt.Sprintf("%s%s%04d", yearMonth, sep, nextSeq)
-
-	// 3. Write the incremented counter back.
-	if err := writeNomorField(tx, col, newVal); err != nil {
-		return "", fmt.Errorf("write %s = %q: %w", col, newVal, err)
-	}
-
-	// 4. Compose the formatted voucher number: "BKK/202606/0001"
-	//    TIPE uses '-' as a fixed prefix separator for backward compat.
-	return fmt.Sprintf("%s%s%s%s%04d", tipe, sep, yearMonth, sep, nextSeq), nil
 }
 
-// readNomorField returns the current string value of a DBNOMOR column.
-// On an empty/nil column the pointer is nil and the caller treats it as 0.
-func readNomorField(tx *gorm.DB, column string) (*string, error) {
+// counterColumnForTipe returns the DBNOMOR column name that stores the
+// running counter for the given transaction type. The columns are
+// NOBKK, NOBKM, NOBBM, NOBBK (one per tipe).
+func counterColumnForTipe(tipe string) (string, error) {
+	switch tipe {
+	case TipeBKK:
+		return "NOBKK", nil
+	case TipeBKM:
+		return "NOBKM", nil
+	case TipeBBM:
+		return "NOBBM", nil
+	case TipeBBK:
+		return "NOBBK", nil
+	default:
+		return "", fmt.Errorf("%w: %q", ErrUnknownTipe, tipe)
+	}
+}
+
+// PersistCounter writes the new counter back to DBNOMOR.NOB{jns}. The
+// caller MUST hold the transaction's UPDLOCK on DBNOMOR (acquired via
+// ReadDBNomorFull) so concurrent calls serialise correctly.
+//
+// The UPDATE is whitelisted on the column name to prevent SQL injection —
+// counterColumnForTipe returns one of {"NOBKK","NOBKM","NOBBM","NOBBK"}.
+//
+// Deprecated: prefer settings.NumberingService.PersistCounter for new code.
+func PersistCounter(tx *gorm.DB, tipe string, newCounter string) error {
+	col, errCol := counterColumnForTipe(tipe)
+	if errCol != nil {
+		return errCol
+	}
+	sql := fmt.Sprintf("UPDATE DBNOMOR SET [%s] = ?", col)
+	if err := tx.Exec(sql, newCounter).Error; err != nil {
+		return fmt.Errorf("persisting counter to DBNOMOR.%s: %w", col, err)
+	}
+	return nil
+}
+
+// ReadCounterColumn returns the current value of DBNOMOR.NOB{jns} as a
+// string. Returns "" when the column is NULL or DBNOMOR is empty.
+//
+// Deprecated: prefer settings.NumberingService.ReadCounter for new code.
+func ReadCounterColumn(tx *gorm.DB, tipe string) (string, error) {
+	col, errCol := counterColumnForTipe(tipe)
+	if errCol != nil {
+		return "", errCol
+	}
+	sql := fmt.Sprintf("SELECT [%s] FROM DBNOMOR", col)
 	var val *string
-	sql := fmt.Sprintf(
-		"SELECT [%s] FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)",
-		column,
-	)
-	if err := tx.Raw(sql).Scan(&val).Error; err != nil {
-		return nil, err
+	row := tx.Raw(sql).Row()
+	if row == nil {
+		return "", nil
 	}
-	return val, nil
-}
-
-// writeNomorField updates a single DBNOMOR column with a new string value.
-// DBNOMOR is keyed implicitly (single-row configuration), so the UPDATE has
-// no WHERE clause beyond "row exists".
-func writeNomorField(tx *gorm.DB, column, value string) error {
-	sql := fmt.Sprintf("UPDATE DBNOMOR SET [%s] = ?", column)
-	return tx.Exec(sql, value).Error
+	if err := row.Scan(&val); err != nil {
+		return "", fmt.Errorf("reading DBNOMOR.%s: %w", col, err)
+	}
+	if val == nil {
+		return "", nil
+	}
+	return *val, nil
 }
 
 // GetCurrentPeriode returns the active accounting period (BULAN, TAHUN) for
