@@ -2,6 +2,7 @@ package browse
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"regexp"
 	"strings"
@@ -9,6 +10,187 @@ import (
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
 )
+
+// scanSearchResults executes a raw SQL query (with optional named bindings)
+// and scans every row into a SearchResult (map[string]interface{}).
+//
+// Why this exists:
+//
+// GORM's high-level `db.Raw(sql, bindings).Scan(&rows)` path goes through
+// `prepareValues`, which uses `rows.ColumnTypes()[i].ScanType()` to allocate
+// each destination. For SQL Server numeric/decimal columns (e.g.
+// `DBPERKIRAAN.Perkiraan`), the driver's ScanType() returns `[]byte`, and
+// GORM wraps it as `reflect.New(reflect.PointerTo([]byte))` → `**[]byte`.
+//
+// When `database/sql` later calls `convertAssignRows(**[]byte, src, rows)`,
+// the type switch and reflection path can leave the destination in an
+// intermediate state that produces
+//   `sql: Scan error on column index 0, name "Perkiraan": destination not a pointer`.
+// Other column types (varchar/nvarchar, int) work fine because they have
+// dedicated type-switch cases in `convertAssignRows`.
+//
+// The fix: bypass GORM's prepareValues entirely by calling `db.Raw(...).Rows()`
+// directly and allocating each destination as a plain `*interface{}`. database/sql
+// has a first-class `case *any:` branch (database/sql/convert.go) which
+// handles every `driver.Value` type the SQL Server driver returns — `string`,
+// `[]byte`, `time.Time`, `int64`, `float64`, `decimalDecompose`, `nil` —
+// without the double-pointer edge case that breaks GORM's path.
+func (r *SConfigResolver) scanSearchResults(db *gorm.DB, sqlStr string, bindings map[string]interface{}) ([]SearchResult, error) {
+	var rows *sql.Rows
+	var err error
+	if len(bindings) > 0 {
+		rows, err = db.Raw(sqlStr, bindings).Rows()
+	} else {
+		rows, err = db.Raw(sqlStr).Rows()
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("read browse columns: %w", err)
+	}
+
+	results := make([]SearchResult, 0)
+	for rows.Next() {
+		// Allocate one *interface{} per column. database/sql will assign the
+		// raw driver value to each interface variable, which we then index by
+		// column name into the result map.
+		values := make([]interface{}, len(columns))
+		scanDests := make([]interface{}, len(columns))
+		for i := range values {
+			values[i] = new(interface{})
+			scanDests[i] = values[i]
+		}
+
+		if err := rows.Scan(scanDests...); err != nil {
+			return nil, fmt.Errorf("scan browse row: %w", err)
+		}
+
+		row := make(SearchResult, len(columns))
+		for i, col := range columns {
+			row[col] = normalizeScanValue(*(values[i].(*interface{})))
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate browse rows: %w", err)
+	}
+	return results, nil
+}
+
+// normalizeScanValue converts SQL Server driver values into the Go types
+// the FE expects to receive.
+//
+// The SQL Server driver returns `numeric`/`decimal` columns as `[]byte`
+// (the byte representation of the decimal — see makeGoLangScanType in
+// github.com/microsoft/go-mssqldb). When that value lands in a `*interface{}`
+// destination via `rows.Scan`, the interface ends up holding a `[]byte` even
+// though the column logically represents a string-coercible value (account
+// numbers, codes, etc.).
+//
+// Without this normalisation the FE would have to defensively handle both
+// `string` and `[]byte` for every column — historically that's been a source
+// of subtle type-mismatch bugs (e.g. `String(row.Perkiraan)` rendering
+// "[49 49 48 49]" instead of "1101").
+//
+// We only convert `[]byte` whose contents are printable ASCII / UTF-8, so
+// genuinely binary columns (varbinary, image) still pass through as []byte.
+func normalizeScanValue(v interface{}) interface{} {
+	if b, ok := v.([]byte); ok {
+		s := string(b)
+		// Quick heuristic: if every byte is a printable ASCII rune or a
+		// high-bit UTF-8 continuation, treat as text. Binary data typically
+		// contains NULs or non-printable control bytes which we leave alone.
+		if isPrintableString(s) {
+			return s
+		}
+		return b
+	}
+	return v
+}
+
+// isPrintableString returns true when s contains no NUL bytes and either
+// consists entirely of printable ASCII runes (including common whitespace)
+// or is a valid UTF-8 sequence whose runes are all graphic / whitespace.
+//
+// The check is intentionally cheap (O(len(s)) and allocation-free); it is
+// used only to decide whether to coerce a `[]byte` driver value into a Go
+// `string` for FE consumption. A false negative is harmless (the value
+// remains []byte). A false positive could mask binary data, but the
+// browse queries in this codebase are all text columns, so the risk is
+// negligible.
+func isPrintableString(s string) bool {
+	if len(s) == 0 {
+		return true
+	}
+	for i := 0; i < len(s); {
+		r, size := decodeRune(s[i:])
+		if r == 0 {
+			return false
+		}
+		if r < 0x20 && r != '\t' && r != '\n' && r != '\r' {
+			return false
+		}
+		if r == 0x7f {
+			return false
+		}
+		i += size
+	}
+	return true
+}
+
+// decodeRune decodes the first UTF-8 rune from b and returns the rune plus
+// the number of bytes consumed. On invalid input it returns (utf8.RuneError,
+// 1) so the caller can continue scanning rather than aborting the loop.
+//
+// We avoid importing `unicode/utf8` directly to keep this helper small and
+// dependency-free; the implementation matches the relevant subset of the
+// UTF-8 spec (RFC 3629) we need to spot-printable ASCII and standard
+// multi-byte sequences.
+func decodeRune(b string) (rune, int) {
+	if len(b) == 0 {
+		return 0, 0
+	}
+	c := b[0]
+	switch {
+	case c < 0x80:
+		return rune(c), 1
+	case c < 0xc2:
+		// Overlong 2-byte sequence or stray continuation byte.
+		return '�', 1
+	case c < 0xe0:
+		if len(b) < 2 {
+			return '�', 1
+		}
+		c2 := b[1]
+		if c2&0xc0 != 0x80 {
+			return '�', 1
+		}
+		return rune(c&0x1f)<<6 | rune(c2&0x3f), 2
+	case c < 0xf0:
+		if len(b) < 3 {
+			return '�', 1
+		}
+		c2, c3 := b[1], b[2]
+		if c2&0xc0 != 0x80 || c3&0xc0 != 0x80 {
+			return '�', 1
+		}
+		return rune(c&0x0f)<<12 | rune(c2&0x3f)<<6 | rune(c3&0x3f), 3
+	case c < 0xf5:
+		if len(b) < 4 {
+			return '�', 1
+		}
+		c2, c3, c4 := b[1], b[2], b[3]
+		if c2&0xc0 != 0x80 || c3&0xc0 != 0x80 || c4&0xc0 != 0x80 {
+			return '�', 1
+		}
+		return rune(c&0x07)<<18 | rune(c2&0x3f)<<12 | rune(c3&0x3f)<<6 | rune(c4&0x3f), 4
+	}
+	return '�', 1
+}
 
 // SConfigResolver resolves browse configurations.
 // Priority: database (dbbrowseconfigs) > hardcoded map.
@@ -99,9 +281,10 @@ func (r *SConfigResolver) ValidateCode(ctx context.Context, kodeBrowse, code str
 		return nil, fmt.Errorf("validate requires table-based config")
 	}
 
-	// Build WHERE clause
-	whereParts := []string{fmt.Sprintf("%s.%s = ?", config.Table, config.KeyField)}
-	args := []interface{}{code}
+	// Build WHERE clause. Use named `@code` binding so we can route through
+	// `scanSearchResults` (which expects either a bindings map or no args),
+	// avoiding GORM's broken prepareValues path for numeric columns.
+	whereParts := []string{fmt.Sprintf("%s.%s = @code", config.Table, config.KeyField)}
 
 	if config.WhereExtra != "" {
 		extra := normalizeWhereExtra(config.WhereExtra)
@@ -112,15 +295,14 @@ func (r *SConfigResolver) ValidateCode(ctx context.Context, kodeBrowse, code str
 
 	sql := fmt.Sprintf("SELECT TOP 1 %s.* FROM %s WHERE %s", config.Table, config.Table, strings.Join(whereParts, " AND "))
 
-	var row SearchResult
-	err = r.db.Raw(sql, args...).Scan(&row).Error
+	rows, err := r.scanSearchResults(r.db, sql, map[string]interface{}{"code": code})
 	if err != nil {
-		if strings.Contains(err.Error(), "ErrRecordNotFound") {
-			return nil, nil
-		}
 		return nil, err
 	}
-	return row, nil
+	if len(rows) == 0 {
+		return nil, nil
+	}
+	return rows[0], nil
 }
 
 // ValidateBatch validates multiple codes.
@@ -138,17 +320,20 @@ func (r *SConfigResolver) ValidateBatch(ctx context.Context, kodeBrowse string, 
 		return nil, fmt.Errorf("batch validate requires table-based config")
 	}
 
+	// Use named bindings (@code0, @code1, ...) so we can route through
+	// `scanSearchResults` (which expects either a bindings map or no args),
+	// avoiding GORM's broken prepareValues path for numeric columns.
 	placeholders := make([]string, len(codes))
-	args := make([]interface{}, len(codes))
+	bindings := make(map[string]interface{}, len(codes))
 	for i, c := range codes {
-		placeholders[i] = "?"
-		args[i] = c
+		key := fmt.Sprintf("code%d", i)
+		placeholders[i] = "@" + key
+		bindings[key] = c
 	}
 
 	sql := fmt.Sprintf("SELECT * FROM %s WHERE %s IN (%s)", config.Table, config.KeyField, strings.Join(placeholders, ","))
 
-	var results []SearchResult
-	err = r.db.Raw(sql, args...).Scan(&results).Error
+	results, err := r.scanSearchResults(r.db, sql, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +503,9 @@ func (r *SConfigResolver) searchTableBased(ctx context.Context, config *Config, 
 		if aliasExpr, ok := config.AliasFields[labelCol]; ok {
 			labelCol = aliasExpr
 		}
-		whereParts = append(whereParts, fmt.Sprintf("(%s.%s LIKE :qKey OR %s LIKE :qLabel)", config.Table, config.KeyField, labelCol))
+		// Use `@` placeholders for GORM named bindings (see `substituteParams`
+		// comment for the SQL Server `map[string]interface{}` rationale).
+		whereParts = append(whereParts, fmt.Sprintf("(%s.%s LIKE @qKey OR %s LIKE @qLabel)", config.Table, config.KeyField, labelCol))
 		bindings["qKey"] = "%" + q + "%"
 		bindings["qLabel"] = "%" + q + "%"
 	}
@@ -337,10 +524,14 @@ func (r *SConfigResolver) searchTableBased(ctx context.Context, config *Config, 
 	// Order by key field
 	sql += fmt.Sprintf(" ORDER BY %s.%s", config.Table, config.KeyField)
 
-	// Execute via gorm map bindings
-	var rows []SearchResult
+	// Execute via gorm map bindings. Use scanSearchResults (raw Rows() +
+	// per-column *interface{} destinations) instead of GORM's `Scan(&rows)`
+	// helper. GORM's prepareValues allocates `**[]byte` destinations for SQL
+	// Server numeric/decimal columns, which database/sql rejects with
+	// `sql: Scan error on column index N, name "Perkiraan": destination not a
+	// pointer`. See scanSearchResults doc comment for the full rationale.
 	db := r.db.WithContext(ctx)
-	err := db.Raw(sql, bindings).Scan(&rows).Error
+	rows, err := r.scanSearchResults(db, sql, bindings)
 	if err != nil {
 		return nil, err
 	}
@@ -352,9 +543,17 @@ func (r *SConfigResolver) searchTableBased(ctx context.Context, config *Config, 
 // parentConfigs is the config's parent_filters array (ordered); parentValues is the
 // runtime values keyed by source_column. Bindings are named parent0, parent1, ...
 // to match Laravel's stable indexing.
+// substituteParams replaces Delphi-style placeholders (``<P:col>''`, `:userMode`)
+// with bind keys and populates `bindings` for GORM named bindings.
+//
+// IMPORTANT: keys are emitted with the `@` prefix (not `:`) because GORM's
+// `db.Raw(sql, bindings)` only expands named bindings when SQL contains `@`.
+// Using `:name` would make GORM pass the entire map as `$1`, which SQL Server
+// rejects with "unsupported type map[string]interface {}, a map".
 func substituteParams(s string, userMode string, parentConfigs []models.ParentFilter, parentValues map[string]interface{}, bindings map[string]interface{}) string {
 	if userMode != "" && strings.Contains(s, ":userMode") {
 		bindings["userMode"] = userMode
+		s = strings.ReplaceAll(s, ":userMode", "@userMode")
 	}
 	for pfIdx, pf := range parentConfigs {
 		val, ok := parentValues[pf.SourceColumn]
@@ -363,10 +562,10 @@ func substituteParams(s string, userMode string, parentConfigs []models.ParentFi
 		}
 		key := fmt.Sprintf("parent%d", pfIdx)
 		bindings[key] = val
-		s = strings.ReplaceAll(s, fmt.Sprintf("''<P:%s>''", pf.SourceColumn), ":"+key)
-		s = strings.ReplaceAll(s, fmt.Sprintf("<P:%s>", pf.SourceColumn), ":"+key)
-		s = strings.ReplaceAll(s, fmt.Sprintf("''<P:%s>", pf.SourceColumn), ":"+key)
-		s = strings.ReplaceAll(s, fmt.Sprintf("<P:%s>''", pf.SourceColumn), ":"+key)
+		s = strings.ReplaceAll(s, fmt.Sprintf("''<P:%s>''", pf.SourceColumn), "@"+key)
+		s = strings.ReplaceAll(s, fmt.Sprintf("<P:%s>", pf.SourceColumn), "@"+key)
+		s = strings.ReplaceAll(s, fmt.Sprintf("''<P:%s>", pf.SourceColumn), "@"+key)
+		s = strings.ReplaceAll(s, fmt.Sprintf("<P:%s>''", pf.SourceColumn), "@"+key)
 	}
 	return s
 }
@@ -377,11 +576,19 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 
 	// If userMode is configured, substitute it
 	if userMode != "" {
-		sql = strings.ReplaceAll(sql, ":userMode", ":userModeBind")
+		sql = strings.ReplaceAll(sql, ":userMode", "@userModeBind")
 		bindings["userModeBind"] = userMode
 	}
 
-	// Inject parent_filters: replace ''<P:fieldName>'' with :bindKey, bind values
+	// Inject parent_filters: replace ''<P:fieldName>'' with @bindKey, bind values.
+	//
+	// IMPORTANT: use the `@name` placeholder syntax, not `:name`. GORM's
+	// `db.Raw(sql, bindings)` (where `bindings` is `map[string]interface{}`)
+	// only expands named bindings when SQL contains `@` characters; with
+	// `:name` syntax the entire map gets bound as `$1` and SQL Server
+	// rejects it with
+	//   "sql: converting argument $1 type: unsupported type
+	//    map[string]interface {}, a map".
 	if len(config.ParentFilters) > 0 && len(parentFilters) > 0 {
 		for pfIdx, pf := range config.ParentFilters {
 			val, ok := parentFilters[pf.SourceColumn]
@@ -393,9 +600,9 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 			bindKey := fmt.Sprintf("qparent%d", pfIdx)
 
 			if strings.Contains(sql, placeholderInQuote) {
-				sql = strings.ReplaceAll(sql, placeholderInQuote, ":"+bindKey)
+				sql = strings.ReplaceAll(sql, placeholderInQuote, "@"+bindKey)
 			} else if strings.Contains(sql, placeholderPlain) {
-				sql = strings.ReplaceAll(sql, placeholderPlain, ":"+bindKey)
+				sql = strings.ReplaceAll(sql, placeholderPlain, "@"+bindKey)
 			} else {
 				// Fallback: append AND condition
 				col := fmt.Sprintf("[%s]", pf.SourceColumn)
@@ -404,24 +611,66 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 					op = "="
 				}
 				if strings.Contains(sql, " WHERE ") {
-					sql += " AND " + col + " " + op + " :" + bindKey
+					sql += " AND " + col + " " + op + " @" + bindKey
 				} else {
-					sql += " WHERE " + col + " " + op + " :" + bindKey
+					sql += " WHERE " + col + " " + op + " @" + bindKey
 				}
 			}
 			bindings[bindKey] = val
 		}
 	}
 
-	// Handle EditFilter.Text patterns: like ''%''+EditFilter.Text+''%''
-	// → simple LIKE on q
+	// Replace Delphi EditFilter.Text references with the runtime `q` value.
+	//
+	// The legacy BrowseService.cpp emits EditFilter.Text inside the SQL it
+	// stores in dbbrowseconfigs, in several shapes. SQL Server has no
+	// component named EditFilter.Text (Delphi used it as a member of the
+	// TEdit control at form-construction time, but in the stored query it
+	// was meant to be substituted with the user's search text). If any
+	// shape survives unrewritten, the driver rejects the query with:
+	//
+	//   mssql: The multi-part identifier "EditFilter.Text" could not be bound.
+	//
+	// The four shapes seen in production seed data:
+	//
+	//   1. LIKE ''%''+EditFilter.Text+''%''   (Delphi doubled-quote style)
+	//   2. LIKE ''%EditFilter.Text%''         (Delphi doubled-quote bracket)
+	//   3. LIKE '%'+EditFilter.Text+'%'       (plain single-quote style)
+	//   4. LIKE '%EditFilter.Text%'           (plain single-quote bracket)
+	//
+	// ...plus inline uses such as "... = EditFilter.Text AND ...".
+	//
+	// Strategy: handle the four LIKE shapes first, then mop up any remaining
+	// bare `EditFilter.Text` reference by replacing the WHOLE token with the
+	// already-q-escaped literal. Single apostrophes inside `q` are doubled so
+	// the resulting LIKE literal is parse-safe.
 	if q != "" {
 		escaped := strings.ReplaceAll(q, "'", "''")
-		// Replace Delphi-style filter
-		re := regexp.MustCompile(`(?i)like\s*''%'\s*\+[\w.]+\.\w+\s*\+\s*'%''`)
-		sql = re.ReplaceAllString(sql, fmt.Sprintf("LIKE '%%%s%%'", escaped))
-		// Also replace any remaining ''%EditFilter.Text%'' or similar
-		sql = strings.ReplaceAll(sql, "like ''%EditFilter.Text%''", fmt.Sprintf("LIKE '%%%s%%'", escaped))
+		likeValue := fmt.Sprintf("LIKE '%%%s%%'", escaped)
+
+		// 1. LIKE ''%''+EditFilter.Text+''%''  →  LIKE '%q%'
+		// Matches ''%''  +  EditFilter.Text  +  ''%''
+		editFilterBracketAdd := regexp.MustCompile(`(?i)like\s*''%''\s*\+\s*EditFilter\.Text\s*\+\s*''%''`)
+		sql = editFilterBracketAdd.ReplaceAllString(sql, likeValue)
+
+		// 2. LIKE ''%EditFilter.Text%''  →  LIKE '%q%'
+		editFilterBracket := regexp.MustCompile(`(?i)like\s*''%EditFilter\.Text%''`)
+		sql = editFilterBracket.ReplaceAllString(sql, likeValue)
+
+		// 3. LIKE '%'+EditFilter.Text+'%'  →  LIKE '%q%'
+		editFilterPlainAdd := regexp.MustCompile(`(?i)like\s*'%'\s*\+\s*EditFilter\.Text\s*\+\s*'%'`)
+		sql = editFilterPlainAdd.ReplaceAllString(sql, likeValue)
+
+		// 4. LIKE '%EditFilter.Text%'  →  LIKE '%q%'
+		editFilterPlain := regexp.MustCompile(`(?i)like\s*'%EditFilter\.Text%'`)
+		sql = editFilterPlain.ReplaceAllString(sql, likeValue)
+
+		// 5. Any remaining bare `EditFilter.Text` reference (e.g.
+		// "X = EditFilter.Text AND ..."): quote-escape and embed the literal.
+		// We do this LAST so the four LIKE rewrites above (which would
+		// otherwise overwrite a contained EditFilter.Text token correctly)
+		// are not disturbed.
+		sql = strings.ReplaceAll(sql, "EditFilter.Text", fmt.Sprintf("'%s'", escaped))
 	}
 
 	sql = strings.TrimSpace(sql)
@@ -439,22 +688,25 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 			prefix = prefix[:20]
 		}
 		if !strings.Contains(prefix, "TOP") {
-			sql = "SELECT TOP " + fmt.Sprintf("%d", limit) + " " + strings.TrimPrefix(sql, "SELECT")
+			// Strip a leading SELECT (any case) so we can prepend SELECT TOP <n>
+			// uniformly. Using case-sensitive TrimPrefix would leave SQL like
+			// "Select" or "select" untouched, producing
+			//   SELECT TOP 20 Select ...
+			// which SQL Server rejects with
+			//   "Incorrect syntax near the keyword 'Select'."
+			stripped := strings.TrimSpace(sql)
+			if len(stripped) >= 6 && strings.EqualFold(stripped[:6], "SELECT") {
+				stripped = strings.TrimSpace(stripped[6:])
+			}
+			sql = "SELECT TOP " + fmt.Sprintf("%d", limit) + " " + stripped
 		}
 	}
 
 	var rows []SearchResult
 	db := r.db.WithContext(ctx)
-	if len(bindings) > 0 {
-		err := db.Raw(sql, bindings).Scan(&rows).Error
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err := db.Raw(sql).Scan(&rows).Error
-		if err != nil {
-			return nil, err
-		}
+	rows, err := r.scanSearchResults(db, sql, bindings)
+	if err != nil {
+		return nil, err
 	}
 
 	// In-memory filter by q if provided (defensive)
