@@ -19,7 +19,16 @@ const config = defineConfig({
     exclude: ['@tanstack/start-server-core'],
   },
   plugins: [
-    devtools(),
+    // Enhanced logs (the @tanstack/devtools source-injector) rewrite
+    // `console.log`/`console.error` arguments with extra strings that include
+    // a `Go to Source: http://localhost:PORT/__tsd/open-source?source=...`
+    // link. Clicking the link opens a separate `fetch(/__tsd/open-source)`
+    // round-trip that fails in the SSR sandbox with
+    //   "[Server] LOG ... → Error: fetch failed"
+    // because the SSR bundle has no network access to the user's browser
+    // localhost. Disable the source injection since we already have working
+    // source maps via TanStack Start's default error reporter.
+    devtools({ injectSource: { enabled: false } }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
