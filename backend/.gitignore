@@ -45,3 +45,5 @@ dist/
 build/
 tmp/
 logs/
+
+main
