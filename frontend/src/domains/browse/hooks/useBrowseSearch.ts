@@ -82,7 +82,12 @@ export function useBrowseSearch(opts: UseBrowseSearchOptions): UseBrowseSearchRe
     }
   }, [searchInput, debounceMs])
 
-  const hasSearched = debouncedSearch.length >= minChars
+  // Allow query to run when:
+  //  1. User has typed at least minChars (normal search), OR
+  //  2. User hasn't typed anything yet (show all results as initial list).
+  // This mirrors the Delphi browse behavior where the dropdown opens with
+  // data already visible instead of requiring the user to type first.
+  const hasSearched = debouncedSearch.length >= minChars || debouncedSearch === ''
 
   const params: IBrowseSearchParams = useMemo(
     () => ({
@@ -118,5 +123,6 @@ export function useBrowseSearch(opts: UseBrowseSearchOptions): UseBrowseSearchRe
     error: query.error as Error | null,
     onSearchChange: setSearchInput,
     hasSearched,
+    selectedRow: null,
   }
 }

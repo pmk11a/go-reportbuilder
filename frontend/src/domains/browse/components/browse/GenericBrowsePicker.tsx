@@ -142,7 +142,6 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
   const {
     options: searchResults,
     onSearchChange,
-    selectedRow: searchSelectedRow,
   } = useBrowseSearch({
     kodeBrowse,
     parentFilters,
@@ -171,6 +170,19 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
   // ----- Current value's row (validated) -----
   const { data: validatedRow } = useBrowseValidate(kodeBrowse, value ?? '')
 
+  // Find the selected row from search results or validatedRow
+  const selectedRowFromResults = useMemo(() => {
+    if (!value) return undefined
+    const safeResults = Array.isArray(searchResults) ? searchResults : []
+    // First, try to find in search results
+    const found = safeResults.find(
+      (r) => String(r[effKeyField] ?? '') === String(value ?? '')
+    )
+    if (found) return found
+    // Then, fall back to validatedRow
+    return validatedRow ?? undefined
+  }, [value, searchResults, validatedRow, effKeyField])
+
   // Build options from the active mode
   const options: SearchableSelectOption[] = useMemo(() => {
     const makeOpt = (row: IBrowseRow): SearchableSelectOption => ({
@@ -185,10 +197,9 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
       return items.map(makeOpt)
     }
     // Default: show search results; if user hasn't typed, prepend the
-    // currently-validated row (if any) so the dropdown displays the label.
-    // Guard: searchResults must be an array — TanStack Query can briefly
-    // surface non-array shapes during transitions (e.g. placeholderData
-    // unwrapping a wrapper object), so we coerce defensively.
+    // currently-selected row (by value) from search results so the
+    // dropdown displays the label. Also fall back to validatedRow when
+    // search results are empty but a value is selected.
     const safeResults: IBrowseRow[] = Array.isArray(searchResults)
       ? searchResults
       : []
@@ -196,16 +207,18 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
     const present = items.some(
       (r) => String(r[effKeyField] ?? '') === String(value ?? '')
     )
-    if (searchSelectedRow && !present) items.unshift(searchSelectedRow)
+    if (!present && value && selectedRowFromResults) {
+      items.unshift(selectedRowFromResults)
+    }
     return items.map(makeOpt)
   }, [
     usePaged,
     pagedQuery.data,
     searchResults,
-    searchSelectedRow,
+    value,
+    selectedRowFromResults,
     effKeyField,
     effLabelField,
-    value,
     renderLabel,
   ])
 
@@ -213,8 +226,8 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
   // or default-mode selectedRow) so we can capture the raw row in onChange.
   const resolvedSelectedRow = useMemo<IBrowseRow | undefined>(() => {
     if (usePaged) return (validatedRow ?? undefined) as IBrowseRow | undefined
-    return (searchSelectedRow ?? undefined) as IBrowseRow | undefined
-  }, [usePaged, validatedRow, searchSelectedRow])
+    return selectedRowFromResults
+  }, [usePaged, validatedRow, selectedRowFromResults])
 
   return (
     <SearchableSelect
