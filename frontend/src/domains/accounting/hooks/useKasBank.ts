@@ -16,7 +16,7 @@ export const kasbankKeys = {
   all: ['kasbank'] as const,
   paginated: (params: IKasBankListParams) => ['kasbank', 'list', params] as const,
   detail: (noBukti: string) => ['kasbank', 'detail', noBukti] as const,
-  noBukti: (tipe: string) => ['kasbank', 'nobukti', tipe] as const,
+  noBukti: (tipe: string, devisi: string) => ['kasbank', 'nobukti', tipe, devisi] as const,
 };
 
 export function useKasBankList(params: IKasBankListParams) {
@@ -103,11 +103,15 @@ export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onErr
   });
 }
 
-export function useGenerateNoBukti(tipe: string) {
+export function useGenerateNoBukti(tipe: string, devisi?: string) {
   return useQuery({
-    queryKey: kasbankKeys.noBukti(tipe),
-    queryFn: () => kasbankService.generateNoBukti(tipe),
-    enabled: !!tipe,
+    queryKey: kasbankKeys.noBukti(tipe, devisi ?? ''),
+    queryFn: () => kasbankService.generateNoBukti(tipe, devisi),
+    // Only fire the query once both tipe and devisi are known — the backend
+    // rejects empty devisi ("devisi wajib diisi"), so we gate on it to
+    // avoid a noisy failed request before the user picks the kas/bank
+    // account and the devisi.
+    enabled: !!tipe && !!devisi && devisi.trim().length > 0,
   });
 }
 

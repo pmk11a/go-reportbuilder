@@ -515,7 +515,10 @@ func seedDbBrowseConfigs(db *gorm.DB) {
 			TargetTable: strPtr("dbPerkiraan"),
 			KeyField: strPtr("Perkiraan"),
 			LabelField: strPtr("Keterangan"),
-			Query: strPtr("Select Perkiraan, Keterangan, Simbol from dbPerkiraan where Tipe=1 and Perkiraan in (select Perkiraan from dbPostHutPiut where Kode='0') and (Perkiraan like ''%0%'' or Keterangan like ''%0%'')"),
+			Query: strPtr("Select Perkiraan, Keterangan, Simbol from dbPerkiraan where Tipe=1 and Perkiraan in (select Perkiraan from dbPostHutPiut where Kode=''<P:NoKira1>'') and (Perkiraan like ''%''+EditFilter.Text+''%'' or Keterangan like ''%''+EditFilter.Text+''%'') order by Perkiraan"),
+			ParentFilters: models.JSONStringSlice{
+				{SourceColumn: "NoKira1"},
+			},
 			IsActive: 1,
 		},
 

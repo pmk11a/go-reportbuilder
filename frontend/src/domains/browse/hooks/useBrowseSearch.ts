@@ -82,7 +82,12 @@ export function useBrowseSearch(opts: UseBrowseSearchOptions): UseBrowseSearchRe
     }
   }, [searchInput, debounceMs])
 
-  const hasSearched = debouncedSearch.length >= minChars
+  // Allow query to run when:
+  //  1. User has typed at least minChars (normal search), OR
+  //  2. User hasn't typed anything yet (show all results as initial list).
+  // This mirrors the Delphi browse behavior where the dropdown opens with
+  // data already visible instead of requiring the user to type first.
+  const hasSearched = debouncedSearch.length >= minChars || debouncedSearch === ''
 
   const params: IBrowseSearchParams = useMemo(
     () => ({
@@ -103,12 +108,21 @@ export function useBrowseSearch(opts: UseBrowseSearchOptions): UseBrowseSearchRe
     staleTime: 30 * 1000,
   })
 
+  // Coerce query.data to an array. TanStack Query's typing of query.data is
+  // `unknown` and a misbehaving queryFn (or a wrapper object surviving through
+  // a cache) could surface a non-array here. Belt-and-suspenders against
+  // "X is not iterable" crashes downstream.
+  const options: IBrowseRow[] = Array.isArray(query.data)
+    ? (query.data as IBrowseRow[])
+    : []
+
   return {
-    options: (query.data ?? []) as IBrowseRow[],
+    options,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error as Error | null,
     onSearchChange: setSearchInput,
     hasSearched,
+    selectedRow: null,
   }
 }

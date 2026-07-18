@@ -76,10 +76,14 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 
 	// 5.5 Initialize Accounting > Kas Bank domain (TASK-015). The
 	// permission middleware is shared so other accounting sub-domains
-	// (jurnal, periode migration, ...) can reuse it.
+	// (jurnal, periode migration, ...) can reuse it. The settings.Service
+	// is passed through so kasbank can delegate voucher-number generation
+	// (FORMAT1..4 / PEMISAH / counter) to it instead of re-implementing
+	// the algorithm here.
 	kasBankPermMW := middleware.NewPermissionMiddleware(dbConn)
-	kasBankRepo := kasbank.NewSKasBankRepository(dbConn)
-	kasBankService := kasbank.NewSKasBankService(kasBankRepo, dbConn, cfg)
+	settingsSvc := settings.NewService(dbConn)
+	kasBankRepo := kasbank.NewSKasBankRepository(dbConn, settingsSvc)
+	kasBankService := kasbank.NewSKasBankService(kasBankRepo, dbConn, cfg, settingsSvc)
 	kasBankHandler := kasbank.NewSKasBankHandler(kasBankService)
 
 	// 5.6 Initialize Browse domain. Browse is a generic lookup facility

@@ -21,8 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
+	"github.com/masza1/dapen-backend/internal/features/settings"
 	"github.com/masza1/dapen-backend/internal/infrastructure/config"
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
@@ -67,8 +69,10 @@ type IKasBankService interface {
 	// detail page only needs one round-trip.
 	GetByNoBukti(ctx context.Context, noBukti string) (*SKasBankHeader, []SDbTransaksi, error)
 	// GenerateNoBukti returns a freshly formatted voucher number for the
-	// given tipe. The service decides whether the caller has access.
-	GenerateNoBukti(ctx context.Context, tipe, userID string) (*SGenerateNoBuktiResponse, error)
+	// given tipe and devisi, using the caller's active accounting period
+	// from DBPERIODE. The period's bulan/tahun drive the MMYYYY segment;
+	// devisi drives the third segment (legacy "Simbol" column on DBTRANS).
+	GenerateNoBukti(ctx context.Context, tipe, devisi, userID string) (*SGenerateNoBuktiResponse, error)
 	// LookupPerkiraan is a passthrough used by the autocomplete in the
 	// detail form.
 	LookupPerkiraan(ctx context.Context, q SLookupPerkiraanQuery) (*SKasBankLookupPerkiraanResponse, error)
@@ -110,19 +114,24 @@ type IKasBankService interface {
 
 // SKasBankService is the default GORM-backed implementation of IKasBankService.
 type SKasBankService struct {
-	repo IKasBankRepository
-	db   *gorm.DB
-	cfg  *config.SConfig
+	repo        IKasBankRepository
+	db          *gorm.DB
+	cfg         *config.SConfig
+	settingsSvc *settings.Service
 }
 
 // NewSKasBankService constructs the concrete service. The GORM handle is
 // passed alongside the repository so the service can open transactions
-// that span multiple repository calls.
-func NewSKasBankService(repo IKasBankRepository, db *gorm.DB, cfg *config.SConfig) *SKasBankService {
+// that span multiple repository calls. settingsSvc is required — the
+// voucher-number generation lives in features/settings so it can be reused
+// across procurement / production / util features without re-implementing
+// the FORMAT/PEMISAH/Reset algorithm here.
+func NewSKasBankService(repo IKasBankRepository, db *gorm.DB, cfg *config.SConfig, settingsSvc *settings.Service) *SKasBankService {
 	return &SKasBankService{
-		repo: repo,
-		db:   db,
-		cfg:  cfg,
+		repo:        repo,
+		db:          db,
+		cfg:         cfg,
+		settingsSvc: settingsSvc,
 	}
 }
 
@@ -247,19 +256,47 @@ func toKasBankHeader(h *SDbTrans, agg SAggregateTotals) SKasBankHeader {
 }
 
 // GenerateNoBukti returns a freshly formatted voucher number.
-func (s *SKasBankService) GenerateNoBukti(ctx context.Context, tipe, userID string) (*SGenerateNoBuktiResponse, error) {
+//
+// The voucher number format is composed from the user-configurable DBNOMOR
+// template (FORMAT1..4 + PEMISAH + Reset + ALIAS + per-tipe counter
+// NOBKK/NOBKM/NOBBM/NOBBK). See settings.Service.GenerateNoBukti for the
+// shared algorithm — this method is a thin wrapper that:
+//   1. Resolves the calling user's active accounting period from DBPERIODE.
+//   2. Delegates to the repository which renders the next voucher number
+//      inside a serialised transaction (UPDLOCK/HOLDLOCK on DBNOMOR).
+//
+// The `devisi` parameter is kept for API compatibility but is no longer
+// required — the user-configurable template doesn't include a hardcoded
+// Devisi slot (admins who want one can pick the KODE_TRANSAKSI slot).
+func (s *SKasBankService) GenerateNoBukti(ctx context.Context, tipe, devisi, userID string) (*SGenerateNoBuktiResponse, error) {
 	tipe = upper(tipe)
 	if !ValidTipeTrans(tipe) {
 		return nil, ErrTipeInvalid
 	}
-	v, err := s.repo.GenerateNoBukti(ctx, tipe)
+
+	bulan, tahun, errPeriode := GetCurrentPeriode(ctx, s.db, userID)
+	if errPeriode != nil {
+		return nil, errPeriode
+	}
+	if bulan == 0 || tahun == 0 {
+		return nil, ErrPeriodeNotSet
+	}
+
+	v, err := s.repo.GenerateNoBukti(ctx, tipe, strings.TrimSpace(devisi), bulan, tahun)
 	if err != nil {
 		return nil, err
 	}
+
+	// GeneratedAt mirrors the date that will be written into
+	// DBTRANS.Tanggal if the caller submits the voucher without overriding
+	// the date — the year/month come from DBPERIODE, the day is clamped
+	// to the last day of the period month (see defaultTanggal). This is
+	// what the legacy FrmKasBank.pas shows in dtTanggal.Date right after
+	// a "Generate NoBukti" click.
 	return &SGenerateNoBuktiResponse{
 		Tipe:        tipe,
 		NoBukti:     v,
-		GeneratedAt: time.Now(),
+		GeneratedAt: defaultTanggal(tahun, bulan, time.Now()),
 	}, nil
 }
 
@@ -279,13 +316,37 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 	if req.TipeTransHd == "" || !ValidTipeTrans(req.TipeTransHd) {
 		return nil, ErrTipeInvalid
 	}
-	tanggal, err := parseTanggal(req.Tanggal)
-	if err != nil {
-		return nil, ErrTanggalInvalid
+
+	// Resolve the active accounting period BEFORE parsing Tanggal. If the
+	// caller did not supply a date (or supplied one that is outside the
+	// period), we derive it from DBPERIODE rather than from `time.Now()` —
+	// this matches the legacy Delphi behaviour where dtTanggal.Date was
+	// always seeded from DBPERIODE (last day of the period month if today
+	// is past that month).
+	bulanPeriode, tahunPeriode, errPeriode := s.repo.GetPeriode(ctx, userID)
+	if errPeriode != nil {
+		return nil, errPeriode
 	}
-	if err := s.assertTanggalInPeriode(ctx, userID, tanggal); err != nil {
-		return nil, err
+	if bulanPeriode == 0 || tahunPeriode == 0 {
+		return nil, ErrPeriodeNotSet
 	}
+
+	var tanggal time.Time
+	if req.Tanggal == "" {
+		// No date supplied — fall back to the period-defaulted date (see
+		// defaultTanggal docstring for the clamp rules).
+		tanggal = defaultTanggal(tahunPeriode, bulanPeriode, time.Now())
+	} else {
+		t, err := parseTanggal(req.Tanggal)
+		if err != nil {
+			return nil, ErrTanggalInvalid
+		}
+		if !TanggalInPeriode(t, bulanPeriode, tahunPeriode) {
+			return nil, ErrTanggalDiLuarPeriode
+		}
+		tanggal = t
+	}
+
 	if err := s.assertPeriodeNotLocked(ctx, tanggal); err != nil {
 		return nil, err
 	}
@@ -302,13 +363,31 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 	}
 
 	var header *SDbTrans
+	var err error
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. Generate the voucher number. We do this inside the outer tx
-		// so a concurrent caller cannot claim the same number.
-		noBukti, errGen := GenerateNoBukti(tx, req.TipeTransHd, readNomorPemisah(tx))
+		// so a concurrent caller cannot claim the same number. The helper
+		// in nomor.go requires bulan/tahun from DBPERIODE plus the
+		// DBNOMOR config — read those first, then call GenerateNoBukti.
+		bulan, tahun, errPeriode := GetCurrentPeriode(ctx, tx, userID)
+		if errPeriode != nil {
+			return errPeriode
+		}
+		if bulan == 0 || tahun == 0 {
+			return ErrPeriodeNotSet
+		}
+		devisi := strings.TrimSpace(req.Devisi)
+		if devisi == "" {
+			return errors.New("devisi wajib diisi")
+		}
+		result, errGen := s.settingsSvc.GenerateNoBuktiTx(tx, req.TipeTransHd, tahun, bulan)
 		if errGen != nil {
 			return errGen
 		}
+		if errCommit := s.settingsSvc.CommitCounterTx(tx, req.TipeTransHd, result.NewCounter); errCommit != nil {
+			return errCommit
+		}
+		noBukti := result.NoBukti
 
 		// 2. Insert the header.
 		h := &SDbTrans{
@@ -924,21 +1003,41 @@ func parseTanggal(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unrecognised tanggal: %q", s)
 }
 
-// readNomorPemisah reads the PEMISAH integer value from DBNOMOR and returns a *int.
-// Returns 1 ('-') as default if the row/column is nil (legacy behavior).
-func readNomorPemisah(tx *gorm.DB) *int {
-	var pemisahVal *int
-	if err := tx.Raw("SELECT [PEMISAH] FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)").Scan(&pemisahVal).Error; err != nil {
-		p := 1
-		return &p
+// defaultTanggal returns the calendar date a new voucher should carry when
+// the caller does not supply one. The legacy Delphi code (FrmKasBank.pas)
+// always populated dtTanggal from DBPERIODE rather than from today's
+// calendar — for example, a user whose period is still 07/2026 but who
+// opens the form on 12-08-2026 would have the voucher posted on 31-07-2026
+// (last day of the active period), NOT on 12-08-2026.
+//
+// Algorithm:
+//   - year = period.tahun
+//   - month = period.bulan
+//   - day = min(today.day, lastDayOf(period.tahun, period.bulan))
+//
+// `today` is the wall-clock time at the moment of the request. The clamped
+// `day` ensures that e.g. opening the form on 31-Aug for a period of
+// 02/2026 produces 28-Feb (or 29-Feb in leap years), not 31-Feb (which
+// would otherwise panic when normalised).
+func defaultTanggal(tahun int, bulan int, today time.Time) time.Time {
+	loc := today.Location()
+	if loc == nil {
+		loc = time.UTC
 	}
-	if pemisahVal == nil {
-		p := 1
-		return &p
+	// Last day of the requested month — Go's time.Date normalises overflow
+	// (day=32 in a 30-day month → day 1 of next month), so we explicitly
+	// compute the boundary by jumping to the next month and back.
+	firstOfNext := time.Date(tahun, time.Month(bulan)+1, 1, 0, 0, 0, 0, loc)
+	lastDay := firstOfNext.AddDate(0, 0, -1).Day()
+	day := today.Day()
+	if day > lastDay {
+		day = lastDay
 	}
-	return pemisahVal
+	return time.Date(tahun, time.Month(bulan), day, 0, 0, 0, 0, loc)
 }
 
+// upper is a small ASCII-only uppercase helper so we don't pull in the
+// strings package just for strings.ToUpper.
 func upper(s string) string {
 	out := make([]byte, len(s))
 	for i := 0; i < len(s); i++ {

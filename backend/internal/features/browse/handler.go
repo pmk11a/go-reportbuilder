@@ -22,9 +22,7 @@ func NewHandler(resolver *SConfigResolver) *Handler {
 // GET /api/browse/types
 func (h *Handler) ListTypes(c *gin.Context) {
 	types := h.resolver.ListTypes()
-	c.JSON(http.StatusOK, gin.H{
-		"data": types,
-	})
+	response.Success(c, "Browse types retrieved", types)
 }
 
 // Search performs a search on a browse type.
@@ -44,21 +42,25 @@ func (h *Handler) Search(c *gin.Context) {
 	// Extract parent filters from query params
 	parentFilters := make(map[string]interface{})
 	for key, values := range c.Request.URL.Query() {
-		if len(values) > 0 && key[:7] == "parent_" {
-			sourceColumn := key[7:] // remove "parent_" prefix
+		// Guard against short keys (e.g. `q`, `limit`) that lack the
+		// `parent_` prefix. Without this check, adding `parent_NoKira1=KAS`
+		// to a query like `?kodeBrowse=20011&q=abc&parent_NoKira1=KAS`
+		// causes `key[:7]` to panic with index-out-of-range when iterating
+		// over the shorter `q` param.
+		const prefix = "parent_"
+		if len(values) > 0 && len(key) >= len(prefix) && key[:len(prefix)] == prefix {
+			sourceColumn := key[len(prefix):]
 			parentFilters[sourceColumn] = values[0]
 		}
 	}
 
 	results, err := h.resolver.Search(c.Request.Context(), kodeBrowse, q, limit, userMode, parentFilters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": results,
-	})
+	response.Success(c, "Browse search results", results)
 }
 
 // ValidateCode validates a single code for a browse type.
@@ -77,18 +79,16 @@ func (h *Handler) ValidateCode(c *gin.Context) {
 
 	result, err := h.resolver.ValidateCode(c.Request.Context(), req.KodeBrowse, req.Code)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if result == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "code not found"})
+		response.Error(c, http.StatusNotFound, "code not found")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": result,
-	})
+	response.Success(c, "Code validated", result)
 }
 
 // ValidateBatch validates multiple codes for a browse type.
@@ -107,13 +107,11 @@ func (h *Handler) ValidateBatch(c *gin.Context) {
 
 	results, err := h.resolver.ValidateBatch(c.Request.Context(), req.KodeBrowse, req.Codes)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": results,
-	})
+	response.Success(c, "Batch validated", results)
 }
 
 // GetAll returns all records for a browse type without search filtering.
@@ -130,13 +128,11 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 	results, err := h.resolver.GetAll(c.Request.Context(), kodeBrowse, limit, userMode)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.Error(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": results,
-	})
+	response.Success(c, "Browse all results", results)
 }
 
 // SearchPaged executes a paginated browse search with sorting and jenis filter.

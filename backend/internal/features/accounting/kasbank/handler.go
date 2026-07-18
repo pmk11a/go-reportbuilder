@@ -395,6 +395,7 @@ func (h *SKasBankHandler) BatalOtorisasiKasBank(c *gin.Context) {
 // @Tags AccountingKasBank
 // @Produce json
 // @Param tipe query string true "Tipe voucher (BKM/BKK/BBM/BBK)"
+// @Param devisi query string false "Devisi (unit code, legacy 'Simbol')"
 // @Success 200 {object} SGenerateNoBuktiResponse
 // @Failure 400 {object} map[string]interface{}
 // @Security BearerAuth
@@ -405,8 +406,9 @@ func (h *SKasBankHandler) GenerateNoBukti(c *gin.Context) {
 		response.BadRequest(c, "Invalid tipe; expected BKM/BKK/BBM/BBK")
 		return
 	}
+	devisi := strings.TrimSpace(c.Query("devisi"))
 	uid := userIDFromContext(c)
-	out, err := h.svc.GenerateNoBukti(c.Request.Context(), tipe, uid)
+	out, err := h.svc.GenerateNoBukti(c.Request.Context(), tipe, devisi, uid)
 	if err != nil {
 		writeServiceError(c, err)
 		return

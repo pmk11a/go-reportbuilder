@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
@@ -201,14 +203,33 @@ func GetRateLimiter(client *redis.Client, r rate.Limit, b int) RateLimiter {
 	return NewIPBasedLimiter(r, b)
 }
 
-// TimeoutMiddleware implements a robust request timeout using channels
+// TimeoutMiddleware implements a robust request timeout using channels.
 func TimeoutMiddleware(timeout time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Channel to signal handler completion
 		finished := make(chan struct{}, 1)
 
-		// Run the rest of the handler chain in a separate goroutine
+		// Run the rest of the handler chain in a separate goroutine.
+		//
+		// `defer recover()` is required here: Gin only recovers panics in the
+		// request goroutine, not in `go func()`-spawned goroutines. Without
+		// the defer-recover, a panic anywhere downstream (e.g. an
+		// index-out-of-range in a handler, or a nil-map write) crashes the
+		// whole process with exit status 2.
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("[panic-recovery] timeout-middleware goroutine: %v\n%s", r, debug.Stack())
+					// Best-effort: try to write a 500 to the client. If
+					// headers were already written, this will silently fail.
+					_ = c.Error(fmt.Errorf("internal server error: %v", r))
+					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+						"success": false,
+						"message": "Internal server error",
+					})
+					finished <- struct{}{}
+				}
+			}()
 			c.Next()
 			finished <- struct{}{}
 		}()

@@ -8,6 +8,7 @@
 package kasbank
 
 import (
+	"github.com/masza1/dapen-backend/internal/features/settings"
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 
 	"context"
@@ -56,9 +57,16 @@ type IKasBankRepository interface {
 	SetOtorisasi(ctx context.Context, noBukti string, level int, userID string) error
 	// CancelOtorisasi clears the flag, user and timestamp for the given level.
 	CancelOtorisasi(ctx context.Context, noBukti string, level int) error
-	// GenerateNoBukti atomically increments the per-tipe counter and returns
-	// the formatted voucher number. Delegates to nomor.go.
-	GenerateNoBukti(ctx context.Context, tipe string) (string, error)
+	// GenerateNoBukti atomically reserves the next sequence number for a
+	// voucher of the given tipe, devisi, and active accounting period, and
+	// returns the formatted voucher number plus the assigned NoUrut.
+	//
+	// bulan/tahun come from DBPERIODE (user's active period). devisi is the
+	// unit code ("Simbol" in the legacy Delphi form).
+	//
+	// The voucher number format mirrors MyProcedure.pas::Check_NomorKasBank
+	// and is described in detail on the GenerateNoBukti helper in nomor.go.
+	GenerateNoBukti(ctx context.Context, tipe, devisi string, bulan, tahun int) (string, error)
 	// LookupPerkiraan returns DBPERKIRAAN rows whose Perkiraan or Keterangan
 	// matches the query substring. When kelompokKas is true the result is
 	// restricted to Kelompok in ("1", "2") — the cash/bank groups in the
@@ -104,13 +112,16 @@ type SAggregateTotals struct {
 // The struct name keeps the S-prefix convention from the architecture
 // guide; the constructor is exposed as NewSKasBankRepository.
 type SKasBankRepository struct {
-	db *gorm.DB
+	db          *gorm.DB
+	settingsSvc *settings.Service
 }
 
 // NewSKasBankRepository constructs the concrete GORM repository. Caller
-// passes the same *gorm.DB used by every other domain.
-func NewSKasBankRepository(db *gorm.DB) *SKasBankRepository {
-	return &SKasBankRepository{db: db}
+// passes the same *gorm.DB used by every other domain and a reference to
+// the shared settings.Service (used for voucher-number generation — see
+// GenerateNoBukti).
+func NewSKasBankRepository(db *gorm.DB, settingsSvc *settings.Service) *SKasBankRepository {
+	return &SKasBankRepository{db: db, settingsSvc: settingsSvc}
 }
 
 // List applies the optional filters and returns a page of DBTRANS rows.
@@ -341,22 +352,30 @@ func (r *SKasBankRepository) CancelOtorisasi(ctx context.Context, noBukti string
 	return nil
 }
 
-// GenerateNoBukti delegates to the helper in nomor.go, wrapping the
-// single-row increment in its own short transaction.
-func (r *SKasBankRepository) GenerateNoBukti(ctx context.Context, tipe string) (string, error) {
+// GenerateNoBukti delegates to settings.NumberingService.
+//
+// The DBNOMOR counter read+write is wrapped in a single short transaction
+// so concurrent voucher generations cannot claim the same NoBukti or race
+// on the counter increment. The new counter is committed to
+// DBNOMOR.NOB{jns} (NOBKK/NOBKM/NOBBM/NOBBK depending on `tipe`) inside
+// the same transaction — if the commit fails the generated NoBukti is
+// discarded by the transaction rollback.
+//
+// `devisi` is accepted for backward-compat with the previous signature
+// (the legacy FrmKasBank.pas treated "Simbol" / devisi as one of the
+// configurable slots). It is not part of the DBNOMOR FORMAT template, so
+// the algorithm does not consult it — callers can still log it.
+func (r *SKasBankRepository) GenerateNoBukti(ctx context.Context, tipe, devisi string, bulan, tahun int) (string, error) {
 	var generated string
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Read pemisah from DBNOMOR
-		var pemisahVal *int
-		sql := `SELECT [PEMISAH] FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)`
-		if err := tx.Raw(sql).Scan(&pemisahVal).Error; err != nil {
-			return err
-		}
-		v, errGen := GenerateNoBukti(tx, tipe, pemisahVal)
+		result, errGen := r.settingsSvc.GenerateNoBuktiTx(tx, tipe, tahun, bulan)
 		if errGen != nil {
 			return errGen
 		}
-		generated = v
+		if errCommit := r.settingsSvc.CommitCounterTx(tx, tipe, result.NewCounter); errCommit != nil {
+			return errCommit
+		}
+		generated = result.NoBukti
 		return nil
 	})
 	if err != nil {
@@ -396,12 +415,15 @@ func (r *SKasBankRepository) LookupPerkiraan(ctx context.Context, query string, 
 	// columns FlagCashFlow / IsPPN never reach GORM's scanner as a raw string.
 	// SQL Server stores empty-string ('') values in some rows; COALESCE maps
 	// them to 0 which scans cleanly into Go int fields.
+	//
+	// The "WHERE 1=1" anchor lets whereSQL keep its leading " AND ..." tokens
+	// without producing invalid SQL like "FROM DBPERKIRAAN AND (...)".
 	sql := `SELECT TOP (?) [Perkiraan], [Kelompok], [Tipe], [DK], [Valas], [KodeAK], [KodeSAK],
 		[Keterangan], [Simbol],
 		CAST(COALESCE(NULLIF(CAST([FlagCashFlow] AS VARCHAR(50)), ''), '0') AS INT) AS FlagCashFlow,
 		[Neraca],
 		CAST(COALESCE(NULLIF(CAST([IsPPN] AS VARCHAR(50)), ''), '0') AS INT) AS IsPPN,
-		[GroupPerkiraan], [Lokasi], [MyID] FROM DBPERKIRAAN` + whereSQL + " ORDER BY Perkiraan ASC"
+		[GroupPerkiraan], [Lokasi], [MyID] FROM DBPERKIRAAN WHERE 1=1` + whereSQL + " ORDER BY Perkiraan ASC"
 	args = append(args, limit)
 
 	var rows []SDbPerkiraan

@@ -108,8 +108,8 @@ export const kasbankService = {
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async generateNoBukti(tipe: string): Promise<IAPIResponse<IGenerateNoBuktiResponse>> {
-    const result = await generateNoBuktiFn({ data: { tipe } })
+  async generateNoBukti(tipe: string, devisi?: string): Promise<IAPIResponse<IGenerateNoBuktiResponse>> {
+    const result = await generateNoBuktiFn({ data: { tipe, devisi } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 

@@ -1,15 +1,18 @@
 import { kasbankService } from "@/domains/accounting/services/kasbankService";
-import { GiroSubForm } from "./GiroSubForm";
-import { DepositoSubForm } from "./DepositoSubForm";
-import { HutangPiutangSubForm } from "./HutangPiutangSubForm";
+import {
+	KasBankSelect as KasBankBrowseSelect,
+	type KasBankTipe as KasBankBrowseTipe,
+} from "@/domains/browse/components/browse/KasBankSelect";
 import { AktivaSubForm } from "./AktivaSubForm";
+import { DepositoSubForm } from "./DepositoSubForm";
+import { GiroSubForm } from "./GiroSubForm";
+import { HutangPiutangSubForm } from "./HutangPiutangSubForm";
 
-
-"use client";
+("use client");
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Calculator, Plus, Trash2, PenLine } from "lucide-react";
+import { Calculator, PenLine, Plus, Trash2 } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -22,19 +25,19 @@ import { z } from "zod";
 import {
 	useCreateKasBank,
 	useGenerateNoBukti,
-	useLookupPerkiraanShared,
-	useUpdateKasBank,
-	useResolveSubTransaction,
 	useLookupDevisi,
+	useLookupPerkiraanShared,
+	useResolveSubTransaction,
+	useUpdateKasBank,
 } from "@/domains/accounting/hooks/useKasBank";
 import { useKasBankDetailList } from "@/domains/accounting/hooks/useKasBankDetail";
 import type {
-	ICreateKasBankPayload,
-	IKasBankHeader,
 	IAddDetailPayload,
-	KasBankTipe,
-	IGiro,
+	ICreateKasBankPayload,
 	IDeposito,
+	IGiro,
+	IKasBankHeader,
+	KasBankTipe,
 } from "@/domains/accounting/types/kasbank";
 
 import { useToast } from "@/shared/hooks/use-toast";
@@ -84,11 +87,30 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 // Display metadata per tipe (mirrors legacy bank-or-kas.js:335-363)
-const TIPE_META: Record<KasBankTipe, { kasLabel: string; noteLabel: string; kelompok: "Y" | "T" }> = {
-	BKM: { kasLabel: "Kas", noteLabel: "Terima Dari", kelompok: "Y" },
-	BKK: { kasLabel: "Kas", noteLabel: "Kepada", kelompok: "Y" },
-	BBM: { kasLabel: "Bank", noteLabel: "Terima Dari", kelompok: "T" },
-	BBK: { kasLabel: "Bank", noteLabel: "Kepada", kelompok: "T" },
+//
+// `kelompok` (Y/T) is intentionally no longer here — Kas/Bank filtering is
+// now handled by `KasBankSelect` (browse 20011 + NoKira1 parent filter).
+const TIPE_META: Record<KasBankTipe, { kasLabel: string; noteLabel: string }> =
+	{
+		BKM: { kasLabel: "Kas", noteLabel: "Terima Dari" },
+		BKK: { kasLabel: "Kas", noteLabel: "Kepada" },
+		BBM: { kasLabel: "Bank", noteLabel: "Terima Dari" },
+		BBK: { kasLabel: "Bank", noteLabel: "Kepada" },
+	};
+
+/**
+ * Maps the KasBank transaction type to the browse `kasType` filter:
+ *   BKM/BKK → KAS     (browse 20011 + NoKira1=KAS)
+ *   BBM/BBK → BANK    (browse 20011 + NoKira1=BANK)
+ *
+ * Mirrors legacy Delphi:
+ *   if Mode='BKK' or Mode='BKM' then NoKira1:='KAS' else NoKira1:='BANK';
+ */
+const TIPE_TO_KAS_TYPE: Record<KasBankTipe, KasBankBrowseTipe> = {
+	BKM: "KAS",
+	BKK: "KAS",
+	BBM: "BANK",
+	BBK: "BANK",
 };
 
 interface KasBankFormDialogProps {
@@ -100,7 +122,9 @@ interface KasBankFormDialogProps {
 }
 
 /** Derives detail lines for the API payload from managed state. */
-function detailsToPayload(details: IAddDetailPayload[]): ICreateKasBankPayload["details"] {
+function detailsToPayload(
+	details: IAddDetailPayload[],
+): ICreateKasBankPayload["details"] {
 	return details.map((d) => ({
 		perkiraan: d.perkiraan,
 		lawan: d.lawan,
@@ -129,7 +153,6 @@ export function KasBankFormDialog({
 	const { t } = useTranslation(["accounting", "common"]);
 	const { toast } = useToast();
 	const [selectedTipe, setSelectedTipe] = useState<KasBankTipe>("BKK");
-	const [perkiraanSearch, setPerkiraanSearch] = useState("");
 	const [detailRows, setDetailRows] = useState<IAddDetailPayload[]>([]);
 	const [detailModalOpen, setDetailModalOpen] = useState(false);
 	const [editingDetailIdx, setEditingDetailIdx] = useState<number | null>(null);
@@ -143,21 +166,27 @@ export function KasBankFormDialog({
 	const [depositoModalOpen, setDepositoModalOpen] = useState(false);
 	const [hutPiutModalOpen, setHutPiutModalOpen] = useState(false);
 	const [aktivaModalOpen, setAktivaModalOpen] = useState(false);
-	const [pendingDetailRow, setPendingDetailRow] = useState<{row: IAddDetailPayload, trigger: 'giro'|'deposito'|'hutpiut'|'aktiva'} | null>(null);
+	const [pendingDetailRow, setPendingDetailRow] = useState<{
+		row: IAddDetailPayload;
+		trigger: "giro" | "deposito" | "hutpiut" | "aktiva";
+	} | null>(null);
 	const [pendingSubTransResult, setPendingSubTransResult] = useState<any>(null);
-
-	const { data: noBuktiData } = useGenerateNoBukti(selectedTipe);
 
 	const { data: detailListRes } = useKasBankDetailList(editData?.nobukti ?? "");
 
-	// Dynamic account filter: KAS (Y) for BKM/BKK, BANK (T) for BBM/BBK
-	const kelompokFilter = TIPE_META[selectedTipe]?.kelompok ?? "Y";
-	const { data: perkiraanData } = useLookupPerkiraanShared(perkiraanSearch, kelompokFilter);
-	
+	// Dynamic account filter was previously driven by `useLookupPerkiraanShared`
+	// with `kelompok=Y/T`. It is now handled by the `KasBankSelect` (browse 20011)
+	// component, which uses `kodeBrowse` + parent filter `NoKira1=KAS|BANK` to
+	// discriminate Kas-only vs Bank-only rows at the SQL level.
+
 	const { data: devisiData } = useLookupDevisi();
 	const devisiOpts = useMemo(
-		() => (devisiData ?? []).map((d: any) => ({ value: d.devisi, label: d.namadevisi })),
-		[devisiData]
+		() =>
+			(devisiData ?? []).map((d: any) => ({
+				value: d.devisi,
+				label: d.namadevisi,
+			})),
+		[devisiData],
 	);
 
 	const createMutation = useCreateKasBank(() => {
@@ -201,18 +230,30 @@ export function KasBankFormDialog({
 		},
 	});
 
+	// Generate NoBukti only after `watch` is available (useForm above) and
+	// only when both `tipe` and `devisi` are populated — the backend rejects
+	// empty devisi ("devisi wajib diisi").
+	const {
+		data: noBuktiData,
+		error: noBuktiError,
+		isLoading: noBuktiLoading,
+		refetch: refetchNoBukti,
+	} = useGenerateNoBukti(selectedTipe, watch("devisi"));
+
 	// Effect 1: fires immediately when dialog opens — populate header fields
 	useEffect(() => {
 		if (open) {
 			if (editData) {
 				reset({
-					tanggal: editData.tanggal?.split("T")[0] ?? new Date().toISOString().split("T")[0],
+					tanggal:
+						editData.tanggal?.split("T")[0] ??
+						new Date().toISOString().split("T")[0],
 					tipeTransHd: editData.tipetranshd as KasBankTipe,
 					perkiraanHd: editData.perkiraanhd ?? "",
 					note: editData.note ?? "",
 					devisi: "",
 				});
-				setSelectedTipe(editData.tipetranshd as KasBankTipe ?? "BKK");
+				setSelectedTipe((editData.tipetranshd as KasBankTipe) ?? "BKK");
 			} else {
 				reset({
 					tanggal: new Date().toISOString().split("T")[0],
@@ -234,15 +275,15 @@ export function KasBankFormDialog({
 	// Effect 2: fires when detail API data loads — populate detail-specific fields and rows
 	useEffect(() => {
 		if (!open || !editData || !detailListRes) return;
-		
+
 		const details: any[] = (detailListRes as any).details || [];
-		
+
 		// Fill detail-specific header fields from first detail row
 		if (details.length > 0) {
 			const first = details[0];
 			setValue("devisi", first.devisi ?? "");
 		}
-		
+
 		// Map detail rows
 		const mappedRows: IAddDetailPayload[] = details.map((d: any) => ({
 			perkiraan: d.perkiraan,
@@ -257,12 +298,23 @@ export function KasBankFormDialog({
 		setDetailRows(mappedRows);
 	}, [open, editData, detailListRes, setValue]);
 
-	const perkiraanOpts = useMemo(
-		() => (perkiraanData ?? []).map(
-			(p: { id: string; text: string }) => ({ value: p.id, label: p.text }),
-		),
-		[perkiraanData],
-	);
+	// Effect 3: When the backend returns a generated NoBukti in create
+	// mode, sync the Tanggal field to whatever date the server will stamp
+	// on DBTRANS.Tanggal. The server derives Tanggal from DBPERIODE (not
+	// from today) — see defaultTanggal in service.go — so we mirror that
+	// here so the user sees the same date in the form as will end up in
+	// the saved record. Without this, the date input keeps the wall-clock
+	// value from defaultValues and the server may reject the submit with
+	// ErrTanggalDiLuarPeriode if today is past the active period.
+	useEffect(() => {
+		if (!open || editData) return;
+		const generatedAt = (noBuktiData as any)?.data?.generatedAt;
+		if (!generatedAt) return;
+		const isoDate = String(generatedAt).split("T")[0];
+		if (isoDate && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+			setValue("tanggal", isoDate, { shouldValidate: false, shouldDirty: false });
+		}
+	}, [open, editData, noBuktiData, setValue]);
 
 	const isPending = createMutation.isPending || updateMutation.isPending;
 	const apiError = createMutation.error ?? updateMutation.error;
@@ -296,7 +348,10 @@ export function KasBankFormDialog({
 		setEditingDetailIdx(null);
 	}
 
-	function handleConfirmDetail(newRow: IAddDetailPayload, subTransResult?: any) {
+	function handleConfirmDetail(
+		newRow: IAddDetailPayload,
+		subTransResult?: any,
+	) {
 		const trigger = subTransResult?.trigger;
 
 		if (trigger === "giro") {
@@ -465,11 +520,10 @@ export function KasBankFormDialog({
 							<Label htmlFor="perkiraanHd">
 								{tipeMeta?.kasLabel ?? "Akun Kas/Bank"} *
 							</Label>
-							<SearchableSelect
+							<KasBankBrowseSelect
 								value={watch("perkiraanHd")}
-								onValueChange={(v) => setValue("perkiraanHd", v)}
-								options={perkiraanOpts}
-								onSearchChange={setPerkiraanSearch}
+								onChange={(v) => setValue("perkiraanHd", v)}
+								kasType={TIPE_TO_KAS_TYPE[selectedTipe]}
 								placeholder={`Pilih ${tipeMeta?.kasLabel ?? "Akun"}`}
 							/>
 							{errors.perkiraanHd && (
@@ -490,6 +544,23 @@ export function KasBankFormDialog({
 									disabled
 									className="bg-slate-50"
 								/>
+								<Show when={noBuktiLoading && !editData}>
+									<p className="text-xs text-slate-500 mt-1">
+										Generating voucher number…
+									</p>
+								</Show>
+								<Show when={noBuktiError && !editData}>
+									<p className="text-xs text-rose-500 mt-1">
+										Gagal generate No Bukti: {String(noBuktiError)}
+										<button
+											type="button"
+											className="ml-2 underline"
+											onClick={() => refetchNoBukti()}
+										>
+											Coba lagi
+										</button>
+									</p>
+								</Show>
 							</div>
 						</div>
 					</Show>
@@ -524,7 +595,11 @@ export function KasBankFormDialog({
 								options={devisiOpts}
 								placeholder="Pilih Devisi"
 							/>
-							{errors.devisi && <p className="text-xs text-rose-500">{errors.devisi.message as string}</p>}
+							{errors.devisi && (
+								<p className="text-xs text-rose-500">
+									{errors.devisi.message as string}
+								</p>
+							)}
 						</div>
 					</div>
 
@@ -549,27 +624,44 @@ export function KasBankFormDialog({
 									<table className="w-full text-sm">
 										<thead className="bg-slate-100 dark:bg-slate-800">
 											<tr>
-												<th className="text-left px-3 py-2 font-medium">Akun</th>
-												<th className="text-left px-3 py-2 font-medium">Lawan</th>
-												<th className="text-right px-3 py-2 font-medium">Debet</th>
-												<th className="text-right px-3 py-2 font-medium">Kredit</th>
-												<th className="text-left px-3 py-2 font-medium">Sumber</th>
+												<th className="text-left px-3 py-2 font-medium">
+													Akun
+												</th>
+												<th className="text-left px-3 py-2 font-medium">
+													Lawan
+												</th>
+												<th className="text-right px-3 py-2 font-medium">
+													Debet
+												</th>
+												<th className="text-right px-3 py-2 font-medium">
+													Kredit
+												</th>
+												<th className="text-left px-3 py-2 font-medium">
+													Sumber
+												</th>
 												<th className="px-3 py-2 font-medium w-20">Aksi</th>
 											</tr>
 										</thead>
 										<tbody>
 											{detailRows.map((row, idx) => (
-												<tr key={idx} className="border-t hover:bg-slate-50 dark:hover:bg-slate-900">
+												<tr
+													key={idx}
+													className="border-t hover:bg-slate-50 dark:hover:bg-slate-900"
+												>
 													<td className="px-3 py-2">{row.perkiraan}</td>
 													<td className="px-3 py-2">{row.lawan}</td>
 													<td className="px-3 py-2 text-right font-mono">
 														{row.debet > 0
-															? row.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })
+															? row.debet.toLocaleString("id-ID", {
+																	minimumFractionDigits: 2,
+																})
 															: "—"}
 													</td>
 													<td className="px-3 py-2 text-right font-mono">
 														{row.kredit > 0
-															? row.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })
+															? row.kredit.toLocaleString("id-ID", {
+																	minimumFractionDigits: 2,
+																})
 															: "—"}
 													</td>
 													<td className="px-3 py-2">Manual</td>
@@ -598,10 +690,14 @@ export function KasBankFormDialog({
 													Total
 												</td>
 												<td className="px-3 py-2 text-right font-mono">
-													{totalDebet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}
+													{totalDebet.toLocaleString("id-ID", {
+														minimumFractionDigits: 2,
+													})}
 												</td>
 												<td className="px-3 py-2 text-right font-mono">
-													{totalKredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}
+													{totalKredit.toLocaleString("id-ID", {
+														minimumFractionDigits: 2,
+													})}
 												</td>
 												<td colSpan={2} />
 											</tr>
@@ -641,7 +737,9 @@ export function KasBankFormDialog({
 							</div>
 							<div className="flex items-center gap-2">
 								<Calculator className="h-4 w-4 text-slate-500" />
-								<span className={`text-sm font-medium ${isBalanced ? "text-emerald-600" : "text-rose-500"}`}>
+								<span
+									className={`text-sm font-medium ${isBalanced ? "text-emerald-600" : "text-rose-500"}`}
+								>
 									{isBalanced ? "Seimbang ✓" : "Tidak Seimbang ✗"}
 								</span>
 							</div>
@@ -656,7 +754,10 @@ export function KasBankFormDialog({
 						>
 							{t("actions.cancel")}
 						</Button>
-						<Button type="submit" disabled={isPending || detailRows.length === 0}>
+						<Button
+							type="submit"
+							disabled={isPending || detailRows.length === 0}
+						>
 							{isPending ? t("form.saving") : t("actions.save")}
 						</Button>
 					</DialogFooter>
@@ -667,7 +768,9 @@ export function KasBankFormDialog({
 					open={detailModalOpen}
 					onClose={handleCloseDetailModal}
 					onConfirm={handleConfirmDetail}
-					existingRow={editingDetailIdx !== null ? detailRows[editingDetailIdx] : undefined}
+					existingRow={
+						editingDetailIdx !== null ? detailRows[editingDetailIdx] : undefined
+					}
 					perkiraanHd={currentPerkiraanHd}
 					tipe={selectedTipe}
 				/>
@@ -677,8 +780,15 @@ export function KasBankFormDialog({
 					open={giroModalOpen}
 					onClose={() => setGiroModalOpen(false)}
 					onConfirm={handleConfirmGiro}
-					defaultTipe={pendingSubTransResult?.statusP?.startsWith("PT") || pendingSubTransResult?.statusL?.startsWith("PT") ? "PT" : "HT"}
-					defaultNominal={pendingDetailRow?.row?.debet || pendingDetailRow?.row?.kredit}
+					defaultTipe={
+						pendingSubTransResult?.statusP?.startsWith("PT") ||
+						pendingSubTransResult?.statusL?.startsWith("PT")
+							? "PT"
+							: "HT"
+					}
+					defaultNominal={
+						pendingDetailRow?.row?.debet || pendingDetailRow?.row?.kredit
+					}
 				/>
 
 				{/* Deposito Sub-Form Modal */}
@@ -686,7 +796,9 @@ export function KasBankFormDialog({
 					open={depositoModalOpen}
 					onClose={() => setDepositoModalOpen(false)}
 					onConfirm={handleConfirmDeposito}
-					defaultNominal={pendingDetailRow?.row?.debet || pendingDetailRow?.row?.kredit}
+					defaultNominal={
+						pendingDetailRow?.row?.debet || pendingDetailRow?.row?.kredit
+					}
 				/>
 
 				{/* Hutang/Piutang Sub-Form Modal */}
@@ -720,7 +832,10 @@ import type { ISubTransactionResult } from "@/domains/accounting/types/kasbank";
 export interface DetailRowEditorProps {
 	open: boolean;
 	onClose: () => void;
-	onConfirm: (row: IAddDetailPayload, subTransResult?: ISubTransactionResult) => void;
+	onConfirm: (
+		row: IAddDetailPayload,
+		subTransResult?: ISubTransactionResult,
+	) => void;
 	existingRow?: IAddDetailPayload;
 	perkiraanHd: string;
 	tipe: KasBankTipe;
@@ -736,12 +851,17 @@ export function DetailRowEditor({
 }: DetailRowEditorProps) {
 	const { t } = useTranslation(["accounting", "common"]);
 	const [perkiraanSearch, setPerkiraanSearch] = useState("");
-	const { data: detailPerkiraanData } = useLookupPerkiraanShared(perkiraanSearch, "T");
+	const { data: detailPerkiraanData } = useLookupPerkiraanShared(
+		perkiraanSearch,
+		"T",
+	);
 
 	const perkiraanOpts = useMemo(
-		() => (detailPerkiraanData ?? []).map(
-			(p: { id: string; text: string }) => ({ value: p.id, label: p.text }),
-		),
+		() =>
+			(detailPerkiraanData ?? []).map((p: { id: string; text: string }) => ({
+				value: p.id,
+				label: p.text,
+			})),
 		[detailPerkiraanData],
 	);
 
@@ -802,7 +922,10 @@ export function DetailRowEditor({
 		if (!form.perkiraan) return;
 		try {
 			const dk = form.debet > 0 ? "D" : "K";
-			const result = await kasbankService.resolveSubTransaction(form.perkiraan, dk);
+			const result = await kasbankService.resolveSubTransaction(
+				form.perkiraan,
+				dk,
+			);
 			onConfirm(form, result.data as ISubTransactionResult);
 		} catch (error) {
 			console.error("Failed to resolve sub-transaction", error);
@@ -862,7 +985,10 @@ export function DetailRowEditor({
 							step="0.01"
 							value={form.kurs ?? 1}
 							onChange={(e) =>
-								setForm((f) => ({ ...f, kurs: parseFloat(e.target.value) || 1 }))
+								setForm((f) => ({
+									...f,
+									kurs: parseFloat(e.target.value) || 1,
+								}))
 							}
 						/>
 					</div>
@@ -876,7 +1002,9 @@ export function DetailRowEditor({
 							min="0"
 							step="0.01"
 							value={jumlah || ""}
-							onChange={(e) => handleJumlahChange(parseFloat(e.target.value) || 0)}
+							onChange={(e) =>
+								handleJumlahChange(parseFloat(e.target.value) || 0)
+							}
 						/>
 					</div>
 
@@ -885,13 +1013,17 @@ export function DetailRowEditor({
 						<span>
 							Debet:{" "}
 							<span className="font-mono font-semibold">
-								{form.debet.toLocaleString("id-ID", { minimumFractionDigits: 2 })}
+								{form.debet.toLocaleString("id-ID", {
+									minimumFractionDigits: 2,
+								})}
 							</span>
 						</span>
 						<span>
 							Kredit:{" "}
 							<span className="font-mono font-semibold">
-								{form.kredit.toLocaleString("id-ID", { minimumFractionDigits: 2 })}
+								{form.kredit.toLocaleString("id-ID", {
+									minimumFractionDigits: 2,
+								})}
 							</span>
 						</span>
 					</div>
