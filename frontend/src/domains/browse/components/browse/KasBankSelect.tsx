@@ -102,12 +102,19 @@ export function KasBankSelect({
 		if (kasType === "BANK") {
 			return { kodeBrowse: "20011", parentFilters: { NoKira1: "BANK" } };
 		}
+		// For ALL, we use a custom query that returns all Tipe=1 Perkiraan
+		// without requiring parent filters. This bypasses the empty Kode=''
+		// issue in browse 20011.
 		return { kodeBrowse: "1005" as const, parentFilters: undefined };
 	})();
 
+	// For "ALL" mode, use the dedicated all-kas-bank browse to get all
+	// Tipe=1 accounts without requiring a parent filter placeholder.
+	const effectiveBrowse = (kasType === "ALL") ? "1005" : browseSpec.kodeBrowse;
+
 	return (
 		<GenericBrowsePicker
-			kodeBrowse={browseSpec.kodeBrowse}
+			kodeBrowse={effectiveBrowse}
 			value={value}
 			onChange={onChange}
 			keyField="Perkiraan"

@@ -111,14 +111,14 @@ export function useGenerateNoBukti(tipe: string, devisi?: string) {
     // rejects empty devisi ("devisi wajib diisi"), so we gate on it to
     // avoid a noisy failed request before the user picks the kas/bank
     // account and the devisi.
-    enabled: !!tipe && !!devisi && devisi.trim().length > 0,
+    enabled: !!tipe && (!!devisi && devisi.trim().length > 0),
   });
 }
 
 export function useLookupPerkiraan(q: string, kelompokKas: boolean = false) {
   return useQuery({
     queryKey: ['kasbank', 'perkiraan', q, kelompokKas] as const,
-    queryFn: () => kasbankService.lookupPerkiraan(q, kelompokKas),
+    queryFn: () => kasbankService.lookupPerkiraan(q, kelompokKas ? 'Y' : 'N'),
     enabled: q.length >= 2,
   });
 }
@@ -153,7 +153,7 @@ export function useResolveSubTransaction(perkiraan: string, dk: string) {
     queryFn: async () => {
       if (!perkiraan || !dk) return null;
       const res = await kasbankService.resolveSubTransaction(perkiraan, dk);
-      return res.data;
+      return res ?? null;
     },
     enabled: !!perkiraan && !!dk,
   });
@@ -164,7 +164,7 @@ export function useLookupDevisi() {
     queryKey: ['devisi', 'lookup'],
     queryFn: async () => {
       const res = await kasbankService.lookupDevisi();
-      return res.data;
+      return res ?? [];
     },
   });
 }

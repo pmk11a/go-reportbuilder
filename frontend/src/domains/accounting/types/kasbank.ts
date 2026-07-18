@@ -46,6 +46,24 @@ export interface IKasBankDetail {
   kurs: number;
 }
 
+export interface IDetailRow {
+  perkiraan: string;
+  lawan: string;
+  debet: number;
+  kredit: number;
+  keterangan: string;
+  valas?: string;
+  kurs?: number;
+  /** Sumber: C=Cash, T=Transfer, H=Hutang Giro, P=Piutang Giro */
+  tphc?: string;
+  /** SPK / project reference (KodeBag) */
+  kodebag?: string;
+  /** Customer/supplier code for pelunasan settlement */
+  kode_cust_supp?: string;
+  /** Selected Hutang/Piut items */
+  hutpiut_selected?: any[];
+}
+
 export interface ICreateKasBankPayload {
   tanggal: string;
   tipeTransHd: KasBankTipe;
@@ -60,25 +78,35 @@ export interface ICreateKasBankPayload {
   devisi: string;
   nobon: string;
   tphc: string;
-  details: Array<{
-    perkiraan: string;
-    lawan: string;
-    debet: number;
-    kredit: number;
-    keterangan: string;
-    valas?: string;
-    kurs?: number;
-    /** Sumber: C=Cash, T=Transfer, H=Hutang Giro, P=Piutang Giro */
-    tphc?: string;
-    /** SPK / project reference (KodeBag) */
-    kodebag?: string;
-    /** Customer/supplier code for pelunasan settlement */
-    kode_cust_supp?: string;
-  }>;
+  details: IDetailRow[];
   giroList?: Array<any>;
   depositoList?: Array<any>;
   hutPiutList?: Array<any>; // Should map to SDBHUTPIUT structure
   aktivaList?: Array<any>; // Should map to SDBAKTIVA structure
+}
+
+export interface IAktiva {
+  perkiraan: string;
+  kelompok: number; // 0=Header, 1=Sub
+  nobelakang: string; // No Urut
+  nobelakang2: string; // No Urut 2 (for Sub Aktiva)
+  tglpengakuan: string; // Tanggal Perolehan
+  tipeaktiva: number; // 0=Aktiva Tetap, 1=Aktiva Yang Dibiayakan
+  keterangan: string;
+  kuantum: number; // Quantity
+  persen: number; // % Susut
+  metode: string; // L=Lurus, M=Menurun, P=Pajak
+  akumulasi: string; // Akun Akumulasi
+  biaya: string; // Akun Biaya Penyusutan 1
+  persenbiaya1: number; // % Susut Biaya 1
+  biaya2: string; // Akun Biaya Penyusutan 2
+  persenbiaya2: number; // % Susut Biaya 2
+  biaya3: string; // Akun Biaya Penyusutan 3
+  persenbiaya3: number; // % Susut Biaya 3
+  xsusut: number; // x Susut Bulan ini
+  perlakuanaktiva: number; // 0=-, 1=Jual, 2=Keluar Aktiva
+  kodebag: string;
+  devisi: string;
 }
 
 export interface IUpdateKasBankPayload {
@@ -120,6 +148,8 @@ export interface IAddDetailPayload {
   kodebag?: string;
   /** Customer/supplier code for pelunasan settlement */
   kode_cust_supp?: string;
+  /** Selected Hutang/Piut items */
+  hutpiut_selected?: any[];
 }
 
 export interface IUpdateDetailPayload extends IAddDetailPayload {
@@ -169,7 +199,6 @@ export interface IGiro {
   tgljatuhtempo: string | null;
   statusgiro: string;
   tipe: string;
-  nobukti: string;
   keterangan: string;
 }
 
@@ -181,7 +210,6 @@ export interface IDeposito {
   tglbuka: string | null;
   tgljatuhtempo: string | null;
   statusdeposito: string;
-  nobukti: string;
   keterangan: string;
 }
 
@@ -190,4 +218,28 @@ export interface ISubTransactionResult {
   kode: string;
   statusP: string;
   statusL: string;
+}
+
+export interface IOutstandingHutPiut {
+  nofaktur: string;
+  tanggal: string | null;
+  jatuhtempo: string | null;
+  catatan: string | null;
+  debet: number;
+  kredit: number;
+  debetd: number;
+  kredited: number;
+  valas: string | null;
+  kurs: number;
+  tipetrans: string | null;
+  nobukti: string | null;
+  kodecustsupp: string;
+  perkiraan: string;
+  jmlbayar: number;
+  saldo: number;
+}
+
+export interface ICustSupp {
+  kode: string;
+  nama: string;
 }

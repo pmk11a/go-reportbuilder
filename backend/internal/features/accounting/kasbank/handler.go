@@ -443,7 +443,7 @@ func (h *SKasBankHandler) LookupPerkiraan(c *gin.Context) {
 
 // LookupDevisi godoc
 // @Summary Lookup Devisi
-// @Description Returns list of all Devisi from DBDIVISI table
+// @Description Returns list of all Devisi from DBDEVISI table
 // @Tags AccountingKasBank
 // @Produce json
 // @Success 200 {object} map[string]interface{}
@@ -455,7 +455,7 @@ func (h *SKasBankHandler) LookupDevisi(c *gin.Context) {
 		NamaDevisi string `gorm:"column:NamaDevisi" json:"namadevisi"`
 	}
 	var rows []SDevisiRow
-	if err := h.svc.DB().Raw("SELECT Devisi, NamaDevisi FROM DBDIVISI ORDER BY Devisi").Scan(&rows).Error; err != nil {
+	if err := h.svc.DB().Raw("SELECT Devisi, NamaDevisi FROM DBDEVISI ORDER BY Devisi").Scan(&rows).Error; err != nil {
 		response.InternalError(c, "Failed to lookup devisi: "+err.Error())
 		return
 	}

@@ -105,7 +105,7 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
     sortDir: 'desc',
   };
 
-  const { data: response, isLoading, isFetching, refetch } = useKasBankList(params);
+  const { data: response, isLoading, isFetching, refetch, error } = useKasBankList(params);
   const deleteMutation = useDeleteKasBank();
   const downloadPdf = useDownloadKasBankPdf('');
 
@@ -243,25 +243,39 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
                 </Each>
               }
             >
-              <Each
-                of={vouchers}
-                fallback={
-                  <TableRow>
-                    <TableCell colSpan={8 + maxOtorisasi} className="text-center py-12 text-slate-500">
-                      {t('messages.no_data')}
-                    </TableCell>
-                  </TableRow>
-                }
-              >
-                {(v) => (
-                  <KasBankRow
-                    voucher={v}
-                    onDelete={handleDelete}
-                    onEdit={onEdit}
-                    onPdf={handlePdf}
-                  />
-                )}
-              </Each>
+              <Show when={!!error} fallback={
+                <Each
+                  of={vouchers}
+                  fallback={
+                    <TableRow>
+                      <TableCell colSpan={8 + maxOtorisasi} className="text-center py-12 text-slate-500">
+                        {t('messages.no_data')}
+                      </TableCell>
+                    </TableRow>
+                  }
+                >
+                  {(v) => (
+                    <KasBankRow
+                      voucher={v}
+                      onDelete={handleDelete}
+                      onEdit={onEdit}
+                      onPdf={handlePdf}
+                    />
+                  )}
+                </Each>
+              }>
+                <TableRow>
+                  <TableCell colSpan={8 + maxOtorisasi} className="text-center py-8 text-red-600 font-semibold">
+                    ⚠ Error loading data: {error instanceof Error ? error.message : String(error)}
+                    <button
+                      onClick={() => refetch()}
+                      className="ml-4 underline cursor-pointer text-blue-600"
+                    >
+                      Retry
+                    </button>
+                  </TableCell>
+                </TableRow>
+              </Show>
             </Show>
           </TableBody>
         </Table>

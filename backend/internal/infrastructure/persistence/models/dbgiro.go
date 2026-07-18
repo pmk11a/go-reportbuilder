@@ -13,7 +13,6 @@ type SDBGIRO struct {
 	TglJatuhTempo *time.Time `gorm:"column:TglJatuhTempo" json:"tgljatuhtempo"`
 	StatusGiro  string     `gorm:"column:StatusGiro;size:5" json:"statusgiro"`
 	Tipe        string     `gorm:"column:Tipe;size:5" json:"tipe"` // PT or HT
-	NoBukti     string     `gorm:"column:NoBukti;size:30" json:"nobukti"`
 	Keterangan  string     `gorm:"column:Keterangan;size:500" json:"keterangan"`
 	MyID        *string    `gorm:"column:MyID;->;<-:false" json:"-"`
 }

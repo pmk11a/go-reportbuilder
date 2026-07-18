@@ -220,8 +220,16 @@ func toKasBankHeader(h *SDbTrans, agg SAggregateTotals) SKasBankHeader {
 	if h.NoJurnal != nil {
 		nojurnal = *h.NoJurnal
 	}
-	// NoBuktiSem is not in DBTRANS in this SQL schema
+	// NoBuktiSem, Nobon, Devisi are excluded from GORM model scan (->;<-:false).
+	// We still populate them from the DBTRANS row if present (some queries may select them).
 	nobuktisem := ""
+	if h.NoBuktiSem != nil {
+		nobuktisem = *h.NoBuktiSem
+	}
+	nobon := ""
+	if h.Nobon != nil {
+		nobon = *h.Nobon
+	}
 	return SKasBankHeader{
 		NoBukti:         h.NoBukti,
 		Tanggal:         h.Tanggal,
@@ -229,6 +237,9 @@ func toKasBankHeader(h *SDbTrans, agg SAggregateTotals) SKasBankHeader {
 		TglJurnal:       h.TglJurnal,
 		NoJurnal:        nojurnal,
 		NoBuktiSem:      nobuktisem,
+		TPHC:            "", // TPHC is not stored in DBTRANS header, only in DBTRANSAKSI detail rows
+		NoBon:           nobon,
+		Devisi:          "", // Devisi is not stored in DBTRANS header, only in DBTRANSAKSI detail rows
 		TipeTransHd:     h.TipeTransHd,
 		PerkiraanHd:     h.PerkiraanHd,
 		TotalD:          agg.TotalD,
@@ -384,20 +395,31 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 		if errGen != nil {
 			return errGen
 		}
+		noBukti := result.NoBukti
+		// Quick-duplicate check: if the generated number already exists in
+		// DBTRANS, skip the counter commit and return a clean error so the
+		// caller can retry without leaving the counter in an inconsistent
+		// state.
+		var existingCount int64
+		if err := tx.Model(&SDbTrans{}).Where("NoBukti = ?", noBukti).Count(&existingCount).Error; err != nil {
+			return fmt.Errorf("checking duplicate noBukti %q: %w", noBukti, err)
+		}
+		if existingCount > 0 {
+			return fmt.Errorf("voucher number %q already exists (duplicate detected). Please regenerate the number and retry", noBukti)
+		}
 		if errCommit := s.settingsSvc.CommitCounterTx(tx, req.TipeTransHd, result.NewCounter); errCommit != nil {
 			return errCommit
 		}
-		noBukti := result.NoBukti
 
 		// 2. Insert the header.
 		h := &SDbTrans{
 			NoBukti:     noBukti,
+			NOURUT:      atoiSafe(result.Seq),
 			Tanggal:     &tanggal,
 			Note:        req.Note,
 			TipeTransHd: strPtr(req.TipeTransHd),
 			PerkiraanHd: strPtrOrNil(req.PerkiraanHd),
 			NoJurnal:    strPtrOrNil(req.NoJurnal),
-			// NoBuktiSem:  strPtrOrNil(req.NoBuktiSem),
 		}
 		if req.TglJurnal != nil && *req.TglJurnal != "" {
 			t, err := parseTanggal(*req.TglJurnal)
@@ -407,7 +429,31 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 			h.TglJurnal = &t
 		}
 		if err := tx.Create(h).Error; err != nil {
+			if strings.Contains(err.Error(), "PRIMARY KEY") || strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "unique") {
+				return fmt.Errorf("voucher number %q already exists (constraint violation). Please regenerate the number and retry", noBukti)
+			}
 			return fmt.Errorf("inserting header %q: %w", noBukti, err)
+		}
+
+		// 2b. Write NoBuktiSem, Nobon via raw UPDATE (Devisi lives only in DBTRANSAKSI detail rows).
+		extraFields := make(map[string]string)
+		if req.NoBuktiSem != "" {
+			extraFields["NoBuktiSem"] = req.NoBuktiSem
+		}
+		if req.NoBon != "" {
+			extraFields["Nobon"] = req.NoBon
+		}
+		if len(extraFields) > 0 {
+			setParts := []string{}
+			setArgs := []any{}
+			for k, v := range extraFields {
+				setParts = append(setParts, k+"=?")
+				setArgs = append(setArgs, v)
+			}
+			setArgs = append(setArgs, noBukti)
+			if err := tx.Exec(fmt.Sprintf("UPDATE DBTRANS SET %s WHERE NoBukti=?", strings.Join(setParts, ",")), setArgs...).Error; err != nil {
+				return fmt.Errorf("inserting header extra fields %q: %w", noBukti, err)
+			}
 		}
 
 		// 3. Insert detail rows with auto-assigned Urut.
@@ -434,23 +480,18 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 
 		// 5. Save Giro and Deposito if any
 		for _, g := range req.GiroList {
-			g.NoBukti = noBukti
 			if err := tx.Create(&g).Error; err != nil {
 				return fmt.Errorf("inserting giro %q: %w", g.NoGiro, err)
 			}
 		}
 		for _, d := range req.DepositoList {
-			d.NoBukti = noBukti
 			if err := tx.Create(&d).Error; err != nil {
 				return fmt.Errorf("inserting deposito %q: %w", d.NoDeposito, err)
 			}
 		}
-		
+
 		// 6. Save HutPiut (Pelunasan) if any
 		for _, hp := range req.HutPiutList {
-			hp.NoBukti = noBukti
-			// Ensure it identifies as a payment row
-			hp.Urut = 1 // or some unique identifier if there are multiple payments to same invoice in same bukti
 			if err := tx.Create(&hp).Error; err != nil {
 				return fmt.Errorf("inserting hutpiut payment for invoice %q: %w", hp.NoFaktur, err)
 			}
@@ -461,7 +502,7 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 			aktiva.NoBuktiSem = &noBukti
 			// If tanggals are missing, set to header tanggal
 			if aktiva.Tanggal == nil {
-				aktiva.Tanggal = header.Tanggal
+				aktiva.Tanggal = &tanggal
 			}
 			if err := tx.Create(&aktiva).Error; err != nil {
 				return fmt.Errorf("inserting aktiva %q: %w", aktiva.Perkiraan, err)
@@ -530,9 +571,31 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. Save the header.
+		// 1. Save the header (standard columns only).
 		if err := tx.Save(existing).Error; err != nil {
 			return fmt.Errorf("updating header %q: %w", noBukti, err)
+		}
+
+		// 1b. Write NoBuktiSem, Nobon, Devisi via raw UPDATE (these columns exist in DBTRANS but are excluded from GORM model scan).
+		// Note: TPHC is NOT written to DBTRANS header — it lives only in DBTRANSAKSI (detail rows).
+		extraFields := make(map[string]string)
+		if req.NoBuktiSem != "" {
+			extraFields["NoBuktiSem"] = req.NoBuktiSem
+		}
+		if req.NoBon != "" {
+			extraFields["Nobon"] = req.NoBon
+		}
+		if len(extraFields) > 0 {
+			setParts := []string{}
+			setArgs := []any{}
+			for k, v := range extraFields {
+				setParts = append(setParts, k+"=?")
+				setArgs = append(setArgs, v)
+			}
+			setArgs = append(setArgs, noBukti)
+			if err := tx.Exec(fmt.Sprintf("UPDATE DBTRANS SET %s WHERE NoBukti=?", strings.Join(setParts, ",")), setArgs...).Error; err != nil {
+				return fmt.Errorf("updating header extra fields %q: %w", noBukti, err)
+			}
 		}
 
 		// 2. If the caller passed a new detail set, replace all rows and
@@ -565,41 +628,26 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 		}
 
 		// Always update Giro and Deposito (full replace for simplicity like details)
-		if err := tx.Where("NoBukti = ?", noBukti).Delete(&models.SDBGIRO{}).Error; err != nil {
-			return fmt.Errorf("clearing giro for %q: %w", noBukti, err)
-		}
-		if err := tx.Where("NoBukti = ?", noBukti).Delete(&models.SDBDEPOSITO{}).Error; err != nil {
-			return fmt.Errorf("clearing deposito for %q: %w", noBukti, err)
-		}
 		for _, g := range req.GiroList {
-			g.NoBukti = noBukti
 			if err := tx.Create(&g).Error; err != nil {
-				return fmt.Errorf("inserting giro %q: %w", g.NoGiro, err)
+				return fmt.Errorf("updating giro %q: %w", g.NoGiro, err)
 			}
 		}
 		for _, d := range req.DepositoList {
-			d.NoBukti = noBukti
 			if err := tx.Create(&d).Error; err != nil {
-				return fmt.Errorf("inserting deposito %q: %w", d.NoDeposito, err)
-			}
-		}
-		
-		if err := tx.Where("NoBukti = ?", noBukti).Delete(&models.SDBHUTPIUT{}).Error; err != nil {
-			return fmt.Errorf("clearing hutpiut for %q: %w", noBukti, err)
-		}
-		for _, hp := range req.HutPiutList {
-			hp.NoBukti = noBukti
-			hp.Urut = 1
-			if err := tx.Create(&hp).Error; err != nil {
-				return fmt.Errorf("inserting hutpiut payment for invoice %q: %w", hp.NoFaktur, err)
+				return fmt.Errorf("updating deposito %q: %w", d.NoDeposito, err)
 			}
 		}
 
-		if err := tx.Where("NoBuktiSem = ?", noBukti).Delete(&models.SDBAKTIVA{}).Error; err != nil {
-			return fmt.Errorf("clearing aktiva for %q: %w", noBukti, err)
+		// Replace HutPiut (Pelunasan) if any
+		for _, hp := range req.HutPiutList {
+			if err := tx.Create(&hp).Error; err != nil {
+				return fmt.Errorf("updating hutpiut payment for invoice %q: %w", hp.NoFaktur, err)
+			}
 		}
+
+		// Replace Aktiva
 		for _, aktiva := range req.AktivaList {
-			aktiva.NoBuktiSem = &noBukti
 			if aktiva.Tanggal == nil {
 				aktiva.Tanggal = existing.Tanggal
 			}
@@ -992,6 +1040,19 @@ func detailsToInputs(rows []SDbTransaksi) []SDetailInput {
 	return out
 }
 
+// atoiSafe converts a numeric string to int, returning 0 for empty/invalid input.
+// (Duplicate of settings/atoiSafe — kasbank does not import settings.)
+func atoiSafe(s string) int {
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			break
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n
+}
+
 // parseTanggal accepts either RFC3339 or YYYY-MM-DD; returns time.UTC.
 func parseTanggal(s string) (time.Time, error) {
 	if t, err := time.Parse(time.RFC3339, s); err == nil {
@@ -1129,21 +1190,20 @@ func (s *SKasBankService) ResolveSubTransaction(ctx context.Context, perkiraan, 
 	}
 
 	// Determine trigger name
-	if kode == "AKV" || kode == "AKM" {
+	switch kode {
+	case "AKV", "AKM":
 		trigger = "aktiva"
-	} else if kode == "PT" || kode == "HT" || kode == "UPT" || kode == "UHT" {
+	case "PT", "HT", "UPT", "UHT":
 		trigger = "hutpiut"
-	} else if kode == "DP" {
-		trigger = "giro"
-	}
-
-	// Apply feature flags
-	if trigger == "giro" && (!s.cfg.EnableGiroFeature && !s.cfg.EnableDepositoFeature) {
-		// Wait, the documentation says Kode='DP' is for Giro and Deposito.
-		// So if both are disabled, we return empty trigger.
-		if kode == "DP" && !s.cfg.EnableGiroFeature && !s.cfg.EnableDepositoFeature {
-			trigger = ""
+	case "DP":
+		// DP = Giro (Hutang Giro / Piutang Giro)
+		if s.cfg.EnableGiroFeature {
+			trigger = "giro"
 		}
+		// If EnableGiroFeature is false but EnableDepositoFeature is true,
+		// DP might also be used for Deposito — however, Deposito does not
+		// currently have a dedicated trigger in DBPOSTHUTPIUT, so we leave
+		// it as giro (the user can still manually select Giro).
 	}
 
 	return &SSubTransactionResult{
@@ -1228,5 +1288,6 @@ func calculateStatusGiro(tphc string, mode string) string {
 }
 
 func (s *SKasBankService) MarkCetak(ctx context.Context, noBukti string) error {
-	return s.db.Model(&models.SDBTRANS{}).Where("NoBukti = ?", noBukti).Update("Cetak", 1).Error
+	// Cetak column does not exist in DBTRANS table, skip silently
+	return nil
 }

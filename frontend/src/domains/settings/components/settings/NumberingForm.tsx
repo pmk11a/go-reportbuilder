@@ -275,7 +275,7 @@ export function NumberingForm() {
     // Backend PEMISAH:   0=':', 1='-', 2='/', 3=' '
     // Mapping: FE 1('\/')→BE 2('\/'), FE 2('-')→BE 1('-'), FE 3('.')→no-be, FE 4(' ')→BE 3(' ')
     const pemisahMap: Record<string, number> = { '1': 2, '2': 1, '3': 0, '4': 3 };
-    const pemisahInt = pemisahMap[values.pemisah] ?? 2;
+    const pemisahInt = pemisahMap[values.pemisah ?? ''] ?? 2;
 
     // Standardize numbers format fields before submitting
     const payload = {

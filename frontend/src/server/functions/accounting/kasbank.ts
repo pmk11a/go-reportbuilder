@@ -10,7 +10,7 @@ export const getKasBankListFn = createServerFn({ method: 'GET' })
     const url = data.query ? `/api/accounting/kasbank${data.query}` : '/api/accounting/kasbank'
     const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
     if (!result.success) throw new Error(result.message)
-    return result.data
+    return { data: result.data, meta: result.meta }
   })
 
 export const lookupDevisiFn = createServerFn({ method: 'GET' })
@@ -244,6 +244,61 @@ export const resolveSubTransactionFn = createServerFn({ method: 'GET' })
       { method: 'GET' },
       accessToken
     )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const getOutstandingHutPiutFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { query?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const url = data.query ? `/api/accounting/kasbank/outstanding-hutpiut${data.query}` : '/api/accounting/kasbank/outstanding-hutpiut'
+    const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const lookupCustSuppFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { query?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const url = data.query ? `/api/accounting/kasbank/lookup-custsupp${data.query}` : '/api/accounting/kasbank/lookup-custsupp'
+    const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const lookupBagianFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { query?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const url = data.query ? `/api/accounting/kasbank/lookup-bagian${data.query}` : '/api/accounting/kasbank/lookup-bagian'
+    const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const lookupAkumulasiAktivaFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { query?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const url = data.query ? `/api/accounting/kasbank/lookup-akumulasi-aktiva${data.query}` : '/api/accounting/kasbank/lookup-akumulasi-aktiva'
+    const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const lookupBiayaAktivaFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { query?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const url = data.query ? `/api/accounting/kasbank/lookup-biaya-aktiva${data.query}` : '/api/accounting/kasbank/lookup-biaya-aktiva'
+    const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
     if (!result.success) throw new Error(result.message)
     return result.data
   })

@@ -1,0 +1,9 @@
+1. autocomplete bank/kas tidak terfilter pake kode browse -> Pake kode browse 20011
+      Application.CreateForm(TFrBrows, FrBrows);
+      if (Mode.Text='BKK') or (Mode.Text='BKM') then
+        FrBrows.NoKira1:='KAS'
+      else if (Mode.Text='BBK') or (Mode.Text='BBM') then
+        FrBrows.NoKira1:='BANK';
+      FrBrows.ShowModal;
+2. nobukti tidak sesuai format dan periode BKM/202607/0001(Now) -> 00001/BKM/PWT/012021 (ini set periode)
+

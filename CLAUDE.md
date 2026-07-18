@@ -347,6 +347,87 @@ See `tasks/CLAUDE.md` for full task lifecycle documentation.
 
 ---
 
+## Lessons Learned — Browse Autocomplete
+
+> **Date:** 2026-07-12 · **Status:** Resolved (commit `a13c6a9`)
+> **Symptom:** `Cannot read properties of undefined (reading 'spread')` on `KasBankFormDialog` Perkiraan autocomplete.
+
+### TL;DR
+Backend handlers returned mixed response envelopes (raw array vs wrapped `{success,status,message,data}`). The frontend service/hook/picker layer was typed for one shape but received the other, causing `Array.isArray` to fail silently and `...spread` of `undefined` to crash.
+
+### Root Cause Chain
+1. **`handler.go` used `c.JSON(http.StatusOK, results)`** — raw array, no envelope.
+2. **`makeBackendRequest`** expects `{success, message, data}` and only unwraps when `success !== undefined`. Bare arrays slip through unchanged.
+3. **`browseService.search`** typed as `Promise<IBrowseRow[]>` but received `{data: [...]}` → `Array.isArray` returned `false`.
+4. **`useBrowseSearch`** and **`GenericBrowsePicker`** then spread an object literal → runtime crash.
+
+### The Fix (one-shot pattern — apply to ALL list endpoints)
+**Backend handler — always use `response.Success` / `response.Error`:**
+```go
+// ✅ Correct
+c.JSON(http.StatusOK, response.Success(c, "Browse search results", results))
+c.JSON(http.StatusInternalServerError, response.Error(c, 500, err.Error()))
+
+// ❌ Wrong (envelope drift)
+c.JSON(http.StatusOK, results)
+c.JSON(http.StatusOK, gin.H{"results": results})
+```
+
+**Frontend service — defensive unwrap for both shapes:**
+```ts
+async search(params: IBrowseSearchParams): Promise<IBrowseRow[]> {
+  const result = await searchBrowseFn({ data: { query: buildSearchQuery(params) } })
+  // Belt-and-suspenders: handle raw array OR wrapper OR null
+  if (Array.isArray(result)) return result
+  return ((result as any)?.data as IBrowseRow[] | undefined) ?? []
+}
+```
+
+**Frontend hooks/components — coerce to array BEFORE spread:**
+```ts
+// useBrowseSearch
+const options: IBrowseRow[] = Array.isArray(query.data) ? query.data : []
+
+// GenericBrowsePicker
+const safeResults: IBrowseRow[] = Array.isArray(searchResults) ? searchResults : []
+const items = [...safeResults]
+```
+
+### Files Touched (commit `a13c6a9`)
+- `backend/internal/features/browse/handler.go` — all 5 endpoints normalized to `response.Success`
+- `frontend/src/domains/browse/services/browseService.ts` — defensive unwraps in 5 methods
+- `frontend/src/domains/browse/hooks/useBrowseSearch.ts` — `Array.isArray` coercion
+- `frontend/src/domains/browse/components/browse/GenericBrowsePicker.tsx` — `safeResults` guard
+
+### Detection Signals (if this EVER recurs)
+1. Console error contains: `'undefined' is not iterable` / `Cannot read properties of undefined (reading 'spread')` / `map of undefined`
+2. Network tab shows bare `[...]` array OR `{success: undefined, data: [...]}` from a Go handler
+3. Autocomplete dropdown shows nothing OR label "undefined"
+
+### Debug Procedure (5 minutes)
+```bash
+# 1. Hit endpoint directly with JWT
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"superadmin","password":"superadmin123"}' | jq -r '.data.access_token')
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/browse/search?kodeBrowse=1001&q=test" | head -c 200
+
+# 2. If response is bare array → handler missing response.Success wrapper
+# 3. If response is {success:true, data:[...]} → FE service missing unwrap
+# 4. If response is null/undefined → server function validator throwing
+```
+
+### Related Issues (not yet fixed but catalogued)
+- **Browse 1001 (Perkiraan global):** `mssql: Incorrect syntax near ':'` — a browse config has legacy Delphi `<P:` placeholder that mssql can't parse. Affects only `kodeBrowse=1001`, not used by KasBank (we use 20011/1005).
+- **NoBukti generation** depends on `dbNomor` config row — verify before relying on autonumber.
+
+### Rule Going Forward
+**Any new browse/list handler MUST use `response.Success(c, msg, data)`.** When reviewing PRs, reject any handler returning raw arrays or custom wrappers.
+
+---
+
 ## Slash Commands
 
 - `/architect TASK-XXX` — Orchestrate full feature (backend → frontend → QA). The orchestrator only **reviews** artifacts the user ran; it never executes `check-all.sh` itself.

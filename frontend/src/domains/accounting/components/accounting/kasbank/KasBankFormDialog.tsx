@@ -33,6 +33,7 @@ import {
 import { useKasBankDetailList } from "@/domains/accounting/hooks/useKasBankDetail";
 import type {
 	IAddDetailPayload,
+	IAktiva,
 	ICreateKasBankPayload,
 	IDeposito,
 	IGiro,
@@ -160,7 +161,7 @@ export function KasBankFormDialog({
 	const [giroList, setGiroList] = useState<IGiro[]>([]);
 	const [depositoList, setDepositoList] = useState<IDeposito[]>([]);
 	const [hutPiutList, setHutPiutList] = useState<any[]>([]);
-	const [aktivaList, setAktivaList] = useState<any[]>([]);
+	const [aktivaList, setAktivaList] = useState<IAktiva[]>([]);
 
 	const [giroModalOpen, setGiroModalOpen] = useState(false);
 	const [depositoModalOpen, setDepositoModalOpen] = useState(false);
@@ -230,15 +231,16 @@ export function KasBankFormDialog({
 		},
 	});
 
-	// Generate NoBukti only after `watch` is available (useForm above) and
-	// only when both `tipe` and `devisi` are populated — the backend rejects
-	// empty devisi ("devisi wajib diisi").
-	const {
-		data: noBuktiData,
-		error: noBuktiError,
-		isLoading: noBuktiLoading,
-		refetch: refetchNoBukti,
-	} = useGenerateNoBukti(selectedTipe, watch("devisi"));
+		// Generate NoBukti only after `watch` is available (useForm above) and
+		// only when both `tipe` and `devisi` are populated — the backend rejects
+		// empty devisi ("devisi wajib diisi").
+		const devisiVal = editData ? (watch("devisi") || "KANTOR PUSAT") : watch("devisi");
+		const {
+			data: noBuktiData,
+			error: noBuktiError,
+			isLoading: noBuktiLoading,
+			refetch: refetchNoBukti,
+		} = useGenerateNoBukti(selectedTipe, devisiVal);
 
 	// Effect 1: fires immediately when dialog opens — populate header fields
 	useEffect(() => {
@@ -281,7 +283,10 @@ export function KasBankFormDialog({
 		// Fill detail-specific header fields from first detail row
 		if (details.length > 0) {
 			const first = details[0];
-			setValue("devisi", first.devisi ?? "");
+			setValue("devisi", first.devisi ?? "KANTOR PUSAT");
+		} else {
+			// Fallback: if no details, set default devisi so NoBukti can generate
+			setValue("devisi", "KANTOR PUSAT");
 		}
 
 		// Map detail rows
@@ -294,6 +299,8 @@ export function KasBankFormDialog({
 			valas: d.valas,
 			kurs: d.kurs,
 			kodebag: d.kodebag,
+			kode_cust_supp: d.kodecustsupp || "",
+			hutpiut_selected: d.hutpiut_selected || [],
 		}));
 		setDetailRows(mappedRows);
 	}, [open, editData, detailListRes, setValue]);
@@ -308,13 +315,22 @@ export function KasBankFormDialog({
 	// ErrTanggalDiLuarPeriode if today is past the active period.
 	useEffect(() => {
 		if (!open || editData) return;
-		const generatedAt = (noBuktiData as any)?.data?.generatedAt;
+		const generatedAt = (noBuktiData as any)?.generatedAt;
 		if (!generatedAt) return;
 		const isoDate = String(generatedAt).split("T")[0];
 		if (isoDate && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
 			setValue("tanggal", isoDate, { shouldValidate: false, shouldDirty: false });
 		}
 	}, [open, editData, noBuktiData, setValue]);
+
+	// Effect 4: when devisi becomes available in edit mode, refetch NoBukti
+	useEffect(() => {
+		if (!open || !editData) return;
+		const devisiVal = watch("devisi");
+		if (devisiVal && devisiVal.trim().length > 0) {
+			refetchNoBukti();
+		}
+	}, [open, editData, watch("devisi"), refetchNoBukti]);
 
 	const isPending = createMutation.isPending || updateMutation.isPending;
 	const apiError = createMutation.error ?? updateMutation.error;
@@ -353,6 +369,7 @@ export function KasBankFormDialog({
 		subTransResult?: any,
 	) {
 		const trigger = subTransResult?.trigger;
+		console.log("[KasBank] handleConfirmDetail trigger =", trigger, "row.perkiraan =", newRow?.perkiraan);
 
 		if (trigger === "giro") {
 			setPendingDetailRow({ row: newRow, trigger });
@@ -377,6 +394,7 @@ export function KasBankFormDialog({
 			return;
 		}
 
+		// No sub-transaction needed (regular detail row).
 		_finishDetailRow(newRow);
 	}
 
@@ -410,6 +428,19 @@ export function KasBankFormDialog({
 	}
 
 	function handleConfirmHutPiut(selected: any[]) {
+		// Store selected items back into the detail row for edit persistence
+		if (pendingDetailRow) {
+			const updatedRows = [...detailRows];
+			const targetIdx = editingDetailIdx ?? updatedRows.length;
+			if (!updatedRows[targetIdx]) {
+				updatedRows[targetIdx] = pendingDetailRow.row;
+			}
+			updatedRows[targetIdx] = {
+				...updatedRows[targetIdx],
+				hutpiut_selected: selected,
+			};
+			setDetailRows(updatedRows);
+		}
 		setHutPiutList([...hutPiutList, ...selected]);
 		setHutPiutModalOpen(false);
 		if (pendingDetailRow) {
@@ -417,7 +448,7 @@ export function KasBankFormDialog({
 		}
 	}
 
-	function handleConfirmAktiva(aktiva: any) {
+	function handleConfirmAktiva(aktiva: IAktiva) {
 		setAktivaList([...aktivaList, aktiva]);
 		setAktivaModalOpen(false);
 		if (pendingDetailRow) {
@@ -483,7 +514,9 @@ export function KasBankFormDialog({
 				</DialogHeader>
 
 				<Show when={apiError}>
-					<Alert variant="destructive">{String(apiError)}</Alert>
+					<Alert variant="destructive">
+						{apiError instanceof Error ? apiError.message : String(apiError)}
+					</Alert>
 				</Show>
 
 				<form
@@ -537,10 +570,10 @@ export function KasBankFormDialog({
 					{/* Row 1.5: No Bukti — shown only after Kas/Bank is chosen */}
 					<Show when={editData || currentPerkiraanHd}>
 						<div className="grid grid-cols-12 gap-4">
-							<div className="col-span-3">
+							<div className="col-span-6">
 								<Label>{t("fields.no_bukti")}</Label>
 								<Input
-									value={editData?.nobukti ?? noBuktiData?.data?.nobukti ?? ""}
+									value={editData?.nobukti ?? noBuktiData?.nobukti ?? ""}
 									disabled
 									className="bg-slate-50"
 								/>
@@ -717,7 +750,7 @@ export function KasBankFormDialog({
 					{/* Balance summary */}
 					<Show when={detailRows.length > 0}>
 						<div className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
-							<div className="flex items-center gap-4">
+							{/*<div className="flex items-center gap-4">
 								<span className="text-sm">
 									Total Debet:{" "}
 									<span className="font-mono font-semibold">
@@ -734,15 +767,15 @@ export function KasBankFormDialog({
 										})}
 									</span>
 								</span>
-							</div>
-							<div className="flex items-center gap-2">
+							</div>*/}
+							{/* <div className="flex items-center gap-2">
 								<Calculator className="h-4 w-4 text-slate-500" />
 								<span
 									className={`text-sm font-medium ${isBalanced ? "text-emerald-600" : "text-rose-500"}`}
 								>
 									{isBalanced ? "Seimbang ✓" : "Tidak Seimbang ✗"}
 								</span>
-							</div>
+							</div> */}
 						</div>
 					</Show>
 
@@ -806,7 +839,17 @@ export function KasBankFormDialog({
 					open={hutPiutModalOpen}
 					onOpenChange={setHutPiutModalOpen}
 					perkiraan={pendingDetailRow?.row?.perkiraan || ""}
-					isPiutang={pendingSubTransResult?.statusP === "PT"} // Simple check based on resolver
+					kodeCustSupp={pendingDetailRow?.row?.kode_cust_supp || ""}
+					isPiutang={
+						pendingSubTransResult?.statusP?.startsWith("PT") || pendingSubTransResult?.statusP?.startsWith("UPT") || pendingSubTransResult?.statusL?.startsWith("PT") || pendingSubTransResult?.statusL?.startsWith("UPT") ||
+						pendingDetailRow?.row?.perkiraan?.includes("1-13") ||
+						false
+					}
+					initialData={
+						editingDetailIdx !== null && detailRows[editingDetailIdx]?.hutpiut_selected
+							? detailRows[editingDetailIdx].hutpiut_selected
+							: []
+					}
 					onSave={handleConfirmHutPiut}
 				/>
 
@@ -853,7 +896,7 @@ export function DetailRowEditor({
 	const [perkiraanSearch, setPerkiraanSearch] = useState("");
 	const { data: detailPerkiraanData } = useLookupPerkiraanShared(
 		perkiraanSearch,
-		"T",
+		"N",
 	);
 
 	const perkiraanOpts = useMemo(
@@ -926,10 +969,15 @@ export function DetailRowEditor({
 				form.perkiraan,
 				dk,
 			);
-			onConfirm(form, result.data as ISubTransactionResult);
+			console.log("[KasBank] resolveSubTransaction result:", result);
+			const subTrans = (result?.data ?? {}) as ISubTransactionResult;
+			console.log("[KasBank] subTrans.trigger =", subTrans?.trigger);
+			onConfirm(form, subTrans);
 		} catch (error) {
 			console.error("Failed to resolve sub-transaction", error);
-			onConfirm(form);
+			// Pass empty subTransResult so the parent can decide what to do.
+			// Without the second arg, _finishDetailRow runs and skips sub-forms.
+			onConfirm(form, { trigger: "", kode: "", statusP: "", statusL: "" } as ISubTransactionResult);
 		}
 	};
 

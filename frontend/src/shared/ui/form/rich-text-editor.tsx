@@ -39,7 +39,6 @@ import {
   SelectItem,
 } from './select';
 import {
-  DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,

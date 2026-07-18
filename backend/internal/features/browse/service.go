@@ -644,34 +644,35 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 	// bare `EditFilter.Text` reference by replacing the WHOLE token with the
 	// already-q-escaped literal. Single apostrophes inside `q` are doubled so
 	// the resulting LIKE literal is parse-safe.
-	if q != "" {
-		escaped := strings.ReplaceAll(q, "'", "''")
-		likeValue := fmt.Sprintf("LIKE '%%%s%%'", escaped)
+	//
+	// When q is empty, replace with '%' (match everything) so the query
+	// still executes without the EditFilter.Text binding error.
+	escaped := strings.ReplaceAll(q, "'", "''")
+	likeValue := fmt.Sprintf("LIKE '%%%s%%'", escaped)
 
-		// 1. LIKE ''%''+EditFilter.Text+''%''  →  LIKE '%q%'
-		// Matches ''%''  +  EditFilter.Text  +  ''%''
-		editFilterBracketAdd := regexp.MustCompile(`(?i)like\s*''%''\s*\+\s*EditFilter\.Text\s*\+\s*''%''`)
-		sql = editFilterBracketAdd.ReplaceAllString(sql, likeValue)
+	// 1. LIKE ''%''+EditFilter.Text+''%''  →  LIKE '%q%'
+	// Matches ''%''  +  EditFilter.Text  +  ''%''
+	editFilterBracketAdd := regexp.MustCompile(`(?i)like\s*''%''\s*\+\s*EditFilter\.Text\s*\+\s*''%''`)
+	sql = editFilterBracketAdd.ReplaceAllString(sql, likeValue)
 
-		// 2. LIKE ''%EditFilter.Text%''  →  LIKE '%q%'
-		editFilterBracket := regexp.MustCompile(`(?i)like\s*''%EditFilter\.Text%''`)
-		sql = editFilterBracket.ReplaceAllString(sql, likeValue)
+	// 2. LIKE ''%EditFilter.Text%''  →  LIKE '%q%'
+	editFilterBracket := regexp.MustCompile(`(?i)like\s*''%EditFilter\.Text%''`)
+	sql = editFilterBracket.ReplaceAllString(sql, likeValue)
 
-		// 3. LIKE '%'+EditFilter.Text+'%'  →  LIKE '%q%'
-		editFilterPlainAdd := regexp.MustCompile(`(?i)like\s*'%'\s*\+\s*EditFilter\.Text\s*\+\s*'%'`)
-		sql = editFilterPlainAdd.ReplaceAllString(sql, likeValue)
+	// 3. LIKE '%'+EditFilter.Text+'%'  →  LIKE '%q%'
+	editFilterPlainAdd := regexp.MustCompile(`(?i)like\s*'%'\s*\+\s*EditFilter\.Text\s*\+\s*'%'`)
+	sql = editFilterPlainAdd.ReplaceAllString(sql, likeValue)
 
-		// 4. LIKE '%EditFilter.Text%'  →  LIKE '%q%'
-		editFilterPlain := regexp.MustCompile(`(?i)like\s*'%EditFilter\.Text%'`)
-		sql = editFilterPlain.ReplaceAllString(sql, likeValue)
+	// 4. LIKE '%EditFilter.Text%'  →  LIKE '%q%'
+	editFilterPlain := regexp.MustCompile(`(?i)like\s*'%EditFilter\.Text%'`)
+	sql = editFilterPlain.ReplaceAllString(sql, likeValue)
 
-		// 5. Any remaining bare `EditFilter.Text` reference (e.g.
-		// "X = EditFilter.Text AND ..."): quote-escape and embed the literal.
-		// We do this LAST so the four LIKE rewrites above (which would
-		// otherwise overwrite a contained EditFilter.Text token correctly)
-		// are not disturbed.
-		sql = strings.ReplaceAll(sql, "EditFilter.Text", fmt.Sprintf("'%s'", escaped))
-	}
+	// 5. Any remaining bare `EditFilter.Text` reference (e.g.
+	// "X = EditFilter.Text AND ..."): quote-escape and embed the literal.
+	// We do this LAST so the four LIKE rewrites above (which would
+	// otherwise overwrite a contained EditFilter.Text token correctly)
+	// are not disturbed.
+	sql = strings.ReplaceAll(sql, "EditFilter.Text", fmt.Sprintf("'%s'", escaped))
 
 	sql = strings.TrimSpace(sql)
 	upperSQL := strings.ToUpper(sql)

@@ -386,8 +386,12 @@ func (s *Service) GenerateNoBuktiTx(tx *gorm.DB, jns string, tahun int, bulan in
 		return nil, fmt.Errorf("unknown transaction type: %s", jns)
 	}
 
+	// Use UPDLOCK/HOLDLOCK to serialise concurrent counter reads within
+	// the same transaction, preventing two callers from generating the same
+	// noBukti when they race on GenerateNoBuktiTx → CommitCounterTx →
+	// DBTRANS INSERT.
 	var nomor models.SDBNOMOR
-	if err := tx.First(&nomor).Error; err != nil {
+	if err := tx.Raw("SELECT * FROM DBNOMOR WITH (UPDLOCK, HOLDLOCK)").Scan(&nomor).Error; err != nil {
 		return nil, fmt.Errorf("failed to load DBNOMOR: %w", err)
 	}
 

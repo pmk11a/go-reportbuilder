@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/overlay/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/overlay/dialog";
 import { Input } from "@/shared/ui/form/input";
 import { Label } from "@/shared/ui/form/label";
-import type { IDeposito } from "../../types/kasbank";
+import type { IDeposito } from "../../../types/kasbank";
 
 const formSchema = z.object({
 	nodeposito: z.string().min(1, "No. Deposito wajib diisi"),
@@ -98,7 +98,6 @@ export function DepositoSubForm({
 			tgljatuhtempo: values.tgljatuhtempo ? new Date(values.tgljatuhtempo).toISOString() : null,
 			statusdeposito: values.statusdeposito,
 			keterangan: values.keterangan,
-			nobukti: "", // to be filled by parent
 		});
 	};
 
