@@ -26,10 +26,12 @@ interface HutangPiutangSubFormProps {
   onOpenChange: (open: boolean) => void;
   perkiraan: string;
   kodeCustSupp?: string;
+  tipeTrans?: string; // BKM/BKK/BBM/BBK — used to pick which field maps to Hutang/Piutang account
   isPiutang: boolean; // true for Piutang, false for Hutang (can be determined by trigger/kode)
   onSave: (selected: any[]) => void;
   // If editing an existing detail row that already has selected HutPiut items
   initialData?: any[];
+  nomsk?: number; // NoMsk: Urut of the detail row that triggered this sub-form (optional if from BE)
 }
 
 export function HutangPiutangSubForm({
@@ -37,8 +39,10 @@ export function HutangPiutangSubForm({
   onOpenChange,
   perkiraan,
   kodeCustSupp: initialKodeCustSupp,
+  tipeTrans,
   isPiutang,
   onSave,
+  nomsk,
 }: HutangPiutangSubFormProps) {
   const [kodeCustSupp, setKodeCustSupp] = useState(initialKodeCustSupp ?? "");
   const [invoices, setInvoices] = useState<IOutstandingHutPiut[]>([]);
@@ -46,18 +50,14 @@ export function HutangPiutangSubForm({
   const [custSuppOptions, setCustSuppOptions] = useState<SearchableSelectOption[]>([]);
   const [custSuppLoading, setCustSuppLoading] = useState(false);
 
-  // Search CustSupp - loads options based on search text
+  // Search CustSupp - loads options based on search text and perkiraan
   const handleCustSuppSearch = useCallback(async (search: string) => {
-    if (!search || search.length < 2) {
-      setCustSuppOptions([]);
-      return;
-    }
     setCustSuppLoading(true);
     try {
-      const res: ICustSupp[] = await kasbankService.lookupCustSupp(search);
+      const res: ICustSupp[] = await kasbankService.lookupCustSupp(search, perkiraan);
       const options = res.map((c) => ({
-        label: `${c.kode} - ${c.nama}`,
-        value: c.kode,
+        label: `${c.KodeCustSupp} - ${c.NamaCustSupp}`,
+        value: c.KodeCustSupp,
       }));
       setCustSuppOptions(options);
     } catch (err) {
@@ -66,20 +66,25 @@ export function HutangPiutangSubForm({
     } finally {
       setCustSuppLoading(false);
     }
-  }, []);
+  }, [perkiraan]);
 
   useEffect(() => {
     if (open) {
       setKodeCustSupp("");
       setInvoices([]);
+      // Populate the CustSupp dropdown with the top 50 records so the picker
+      // shows options before the user types. Mirrors the always-fetch pattern
+      // used in useLookupPerkiraanShared.
+      handleCustSuppSearch("");
     }
-  }, [open]);
+  }, [open, handleCustSuppSearch]);
 
   useEffect(() => {
     if (kodeCustSupp && perkiraan) {
       loadInvoices(kodeCustSupp, perkiraan);
     }
-  }, [kodeCustSupp, perkiraan]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kodeCustSupp, perkiraan, tipeTrans]);
 
   const loadInvoices = async (custSupp: string, perk: string) => {
     setLoading(true);
@@ -126,15 +131,27 @@ export function HutangPiutangSubForm({
 
   const handleSave = () => {
     const selected = invoices.filter(i => (i.jmlbayar || 0) > 0).map(i => {
-      // Create DBHUTPIUT payload for Pelunasan
-      // If Piutang (Kredit balances Piutang/Debet), we set Kredit.
-      // If Hutang (Debet balances Hutang/Kredit), we set Debet.
+      // Create DBHUTPIUT payload for Pelunasan.
+      // Tipe field mirrors Delphi's StatusHutPiut (PT+/PT-/HT+/HT-/UPT+/UPT-/UHT+/UHT-).
+      // The +/- suffix indicates the side (D or K) that the hutpiut row is on:
+      //   PT+ = Pelunasan piutang on Kredit side (K side of DBTRANSAKSI)
+      //   PT- = Pelunasan piutang on Debet side (D side of DBTRANSAKSI)
+      //   HT+ = Penambahan hutang on Kredit side
+      //   HT- = Pelunasan hutang on Debet side
+      // UPT/UHT are Uang Muka (down payment) variants.
+      // For a normal Pelunasan Hutang/Piutang flow, we use:
+      //   Piutang (isPiutang) -> Debet=0, Kredit=jmlbayar -> Tipe = PT+
+      //   Hutang (not isPiutang) -> Debet=jmlbayar, Kredit=0 -> Tipe = HT-
+      const tipe = isPiutang ? "PT+" : "HT-";
       const payload: any = {
         nofaktur: i.nofaktur,
         kodecustsupp: kodeCustSupp,
         perkiraan: perkiraan,
         debet: isPiutang ? 0 : i.jmlbayar,
         kredit: isPiutang ? i.jmlbayar : 0,
+        tipe: tipe,
+        tipetrans: "L",
+        nomsk: nomsk, // NoMsk: Urut of DBTRANSAKSI detail row that triggered this sub-form
       };
       // Preserve saldo for frontend display/editing purposes
       payload.saldo = i.saldo;
