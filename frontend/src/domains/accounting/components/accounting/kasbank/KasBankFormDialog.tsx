@@ -297,7 +297,7 @@ export function KasBankFormDialog({
 		// Fill detail-specific header fields from first detail row
 		if (details.length > 0) {
 			const first = details[0];
-			setValue("devisi", first.devisi ?? "KANTOR PUSAT");
+			setValue("devisi", first.devisi ?? "01");
 		} else {
 			// Fallback: if no details, set default devisi so NoBukti can generate
 			setValue("devisi", "KANTOR PUSAT");

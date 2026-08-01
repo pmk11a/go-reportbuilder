@@ -1,0 +1,554 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/shared/ui/overlay/dialog";
+import { Button } from "@/shared/ui/overlay/button";
+import { Input } from "@/shared/ui/form/input";
+import { Label } from "@/shared/ui/form/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/form/select";
+import { Textarea } from "@/shared/ui/form/textarea";
+import { kasbankService } from "../../../services/kasbankService";
+import type { IAktiva } from "../../../types/kasbank";
+
+interface AktivaSubFormProps {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (aktiva: IAktiva) => void;
+  devisi: string;
+  initialData?: IAktiva | null;
+}
+
+interface BrowsePickerOption {
+  code: string;
+  label: string;
+}
+
+function BrowsePickerModal({
+  title, options, selectedCode, onSelect, onClose,
+}: {
+  title: string;
+  options: BrowsePickerOption[];
+  selectedCode?: string;
+  onSelect: (code: string, label: string) => void;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(
+    () => options.filter(
+      (o) => o.code.toLowerCase().includes(search.toLowerCase()) || o.label.toLowerCase().includes(search.toLowerCase())
+    ),
+    [options, search]
+  );
+
+  return (
+    <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <div className="space-y-3 pt-2">
+          <Input placeholder={`Cari ${title}...`} value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
+          <div className="max-h-64 overflow-auto border rounded-md">
+            {filtered.map((opt) => (
+              <button key={opt.code} type="button"
+                className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm flex items-center gap-3 ${opt.code === selectedCode ? "bg-blue-50 dark:bg-blue-900/20" : ""}`}
+                onClick={() => { onSelect(opt.code, opt.label); onClose(); }}>
+                <span className="font-mono w-20 shrink-0">{opt.code}</span>
+                <span className="truncate">{opt.label}</span>
+              </button>
+            ))}
+            {filtered.length === 0 && <div className="p-4 text-sm text-muted-foreground text-center">Tidak ada data.</div>}
+          </div>
+        </div>
+        <DialogFooter><Button variant="outline" onClick={onClose}>Tutup</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function AktivaSubForm({ open, onClose, onConfirm, devisi: parentDevisi, initialData }: AktivaSubFormProps) {
+  const isEditMode = !!initialData;
+  const [formData, setFormData] = useState<Partial<IAktiva>>({});
+  const [autoNoUrutTriggered, setAutoNoUrutTriggered] = useState(false);
+  const [perkiraanDesc, setPerkiraanDesc] = useState("");
+  const [bagianDesc, setBagianDesc] = useState("");
+  const [devisiDesc, setDevisiDesc] = useState("");
+  const [akumulasiDesc, setAkumulasiDesc] = useState("");
+  const [biayaDesc, setBiayaDesc] = useState("");
+  const [biaya2Desc, setBiaya2Desc] = useState("");
+  const [biaya3Desc, setBiaya3Desc] = useState("");
+  const [browsePicker, setBrowsePicker] = useState<{ type: "perkiraan" | "bagian" | "devisi"; options: BrowsePickerOption[] } | null>(null);
+  // Autocomplete suggestions for Akumulasi and Biaya fields (KodeBrows-style)
+  const [akumulasiSuggestions, setAkumulasiSuggestions] = useState<{ kode: string; keterangan: string }[]>([]);
+  const [biayaSuggestions, setBiayaSuggestions] = useState<{ kode: string; keterangan: string }[]>([]);
+  const [biaya2Suggestions, setBiaya2Suggestions] = useState<{ kode: string; keterangan: string }[]>([]);
+  const [biaya3Suggestions, setBiaya3Suggestions] = useState<{ kode: string; keterangan: string }[]>([]);
+  const [suggestionsTimer, setSuggestionsTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [perkiraanSuggestions, setPerkiraanSuggestions] = useState<{ perkiraan: string; keterangan: string }[]>([]);
+
+  const lookupPerkiraan = async (kode: string) => {
+    try {
+      const res = await kasbankService.lookupAktivaGroupByKode(kode);
+      if (res && (res.keterangan || res.Keterangan)) {
+        const desc = res.keterangan ?? res.Keterangan;
+        setPerkiraanDesc(`[ ${desc} ]`);
+        return { ok: true, description: desc };
+      }
+      setPerkiraanDesc("");
+      return { ok: false };
+    } catch (err) { setPerkiraanDesc(""); console.error(err); return { ok: false }; }
+  };
+
+  const lookupBagian = async (kode: string) => {
+    try {
+      const res = await kasbankService.lookupBagianByKode(kode);
+      if (res && (res.namabag || res.NamaBag)) {
+        const desc = res.namabag ?? res.NamaBag;
+        setBagianDesc(`[ ${desc} ]`);
+        return { ok: true, description: desc };
+      }
+      setBagianDesc("");
+      return { ok: false };
+    } catch (err) { setBagianDesc(""); console.error(err); return { ok: false }; }
+  };
+
+  const lookupDevisi = async (kode: string) => {
+    try {
+      const res = await kasbankService.lookupDevisiByKode(kode);
+      if (res && (res.namadevisi || res.NamaDevisi)) {
+        const desc = res.namadevisi ?? res.NamaDevisi;
+        setDevisiDesc(`[ ${desc} ]`);
+        return { ok: true, description: desc };
+      }
+      setDevisiDesc("");
+      return { ok: false };
+    } catch (err) { setDevisiDesc(""); console.error(err); return { ok: false }; }
+  };
+
+  const lookupAkumulasi = async (kode: string) => {
+    try {
+      const res = await kasbankService.lookupAkumulasiByKode(kode);
+      if (res && (res.keterangan || res.Keterangan)) {
+        const desc = res.keterangan ?? res.Keterangan;
+        setAkumulasiDesc(`[ ${desc} ]`);
+        return { ok: true, description: desc };
+      }
+      setAkumulasiDesc("");
+      return { ok: false };
+    } catch (err) { setAkumulasiDesc(""); console.error(err); return { ok: false }; }
+  };
+
+  const lookupBiaya = async (kode: string) => {
+    try {
+      const res = await kasbankService.lookupBiayaByKode(kode);
+      if (res && (res.keterangan || res.Keterangan)) {
+        return { ok: true, description: res.keterangan ?? res.Keterangan };
+      }
+      return { ok: false };
+    } catch (err) { console.error(err); return { ok: false }; }
+  };
+
+  const updateBiayaDesc = (field: 'biaya' | 'biaya2' | 'biaya3', description?: string) => {
+    const bracket = description ? `[ ${description} ]` : '';
+    if (field === 'biaya') setBiayaDesc(bracket);
+    if (field === 'biaya2') setBiaya2Desc(bracket);
+    if (field === 'biaya3') setBiaya3Desc(bracket);
+  };
+
+  const fetchBrowseOptions = useCallback(async (type: "perkiraan" | "bagian" | "devisi") => {
+    try {
+      if (type === "perkiraan") {
+        const rows = await kasbankService.lookupAktivaGroup("");
+        setBrowsePicker({ type, options: rows.map((r: any) => ({ code: r.perkiraan ?? r.Perkiraan ?? '', label: r.keterangan ?? r.Keterangan ?? '' })) });
+      } else if (type === "bagian") {
+        const rows = await kasbankService.lookupBagian("");
+        setBrowsePicker({ type, options: rows.map((r: any) => ({ code: r.kodebag ?? r.KodeBag ?? r.devisi ?? '', label: r.namabag ?? r.NamaBag ?? '' })) });
+      } else if (type === "devisi") {
+        const result = await kasbankService.lookupDevisi();
+        const rows: any[] = Array.isArray(result) ? result : (result as any)?.data ?? [];
+        setBrowsePicker({ type, options: rows.map((r: any) => ({ code: r.devisi ?? r.Devisi ?? '', label: r.namadevisi ?? r.NamaDevisi ?? '' })) });
+      }
+    } catch (err) { console.error(`Failed to load browse options for ${type}:`, err); setBrowsePicker({ type, options: [] }); }
+  }, []);
+
+  const fetchPerkiraanSuggestions = async (query: string) => {
+    if (suggestionsTimer) clearTimeout(suggestionsTimer);
+    if (!query || query.length < 2) { setPerkiraanSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const rows = await kasbankService.lookupAktivaGroup(query);
+        setPerkiraanSuggestions(rows.slice(0, 15).map((r: any) => ({ perkiraan: r.perkiraan ?? r.Perkiraan ?? '', keterangan: r.keterangan ?? r.Keterangan ?? '' })).filter((s: any) => s.perkiraan));
+      } catch { setPerkiraanSuggestions([]); }
+    }, 300);
+    setSuggestionsTimer(timer);
+  };
+
+  // --- Autocomplete for Akumulasi & Biaya (KodeBrows-style) ---
+  const fetchAkumulasiSuggestions = async (query: string) => {
+    if (!query || query.length < 2) { setAkumulasiSuggestions([]); return; }
+    try {
+      const rows = await kasbankService.lookupAkumulasiAktiva(query);
+      setAkumulasiSuggestions(rows.slice(0, 15).map((r: any) => ({ kode: r.kode ?? r.Kode ?? r.perkiraan ?? r.Perkiraan ?? '', keterangan: r.keterangan ?? r.Keterangan ?? '' })).filter((s: any) => s.kode));
+    } catch { setAkumulasiSuggestions([]); }
+  };
+
+  const fetchBiayaSuggestions = async (field: 'biaya' | 'biaya2' | 'biaya3', query: string) => {
+    if (!query || query.length < 2) {
+      if (field === 'biaya') setBiayaSuggestions([]);
+      else if (field === 'biaya2') setBiaya2Suggestions([]);
+      else setBiaya3Suggestions([]);
+      return;
+    }
+    try {
+      const rows = await kasbankService.lookupBiayaAktiva(query);
+      const mapped = rows.slice(0, 15).map((r: any) => ({ kode: r.kode ?? r.Kode ?? r.perkiraan ?? r.Perkiraan ?? '', keterangan: r.keterangan ?? r.Keterangan ?? '' })).filter((s: any) => s.kode);
+      if (field === 'biaya') setBiayaSuggestions(mapped);
+      else if (field === 'biaya2') setBiaya2Suggestions(mapped);
+      else setBiaya3Suggestions(mapped);
+    } catch {
+      if (field === 'biaya') setBiayaSuggestions([]);
+      else if (field === 'biaya2') setBiaya2Suggestions([]);
+      else setBiaya3Suggestions([]);
+    }
+  };
+
+  const handlePerkiraanKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    if (!formData.perkiraan) return;
+    const r = await lookupPerkiraan(formData.perkiraan);
+    if (!r.ok) alert('Perkiraan tidak ditemukan!');
+    setPerkiraanSuggestions([]);
+  };
+
+  const handleBagianKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    if (!formData.kodebag) return;
+    const r = await lookupBagian(formData.kodebag);
+    if (!r.ok) alert('Bagian tidak ditemukan!');
+  };
+
+  const handleDevisiKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    if (!formData.devisi) return;
+    const r = await lookupDevisi(formData.devisi);
+    if (!r.ok) alert('Devisi tidak ditemukan!');
+  };
+
+  const handleAkumulasiKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    if (!formData.akumulasi) return;
+    const r = await lookupAkumulasi(formData.akumulasi);
+    if (!r.ok) alert('Akumulasi tidak ditemukan!');
+  };
+
+  const handleBiayaKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>, field: 'biaya' | 'biaya2' | 'biaya3') => {
+    if (e.key !== 'Enter') return; e.preventDefault();
+    const kode = formData[field];
+    if (!kode) return;
+    if (kode === '-' || kode === '') {
+      updateBiayaDesc(field);
+      const pctField = field === 'biaya' ? 'persenbiaya1' : field === 'biaya2' ? 'persenbiaya2' : 'persenbiaya3';
+      handleChange(pctField, 0);
+      return;
+    }
+    const r = await lookupBiaya(kode);
+    updateBiayaDesc(field, r.description);
+    if (!r.ok) alert('Biaya tidak ditemukan!');
+  };
+
+  useEffect(() => {
+    if (!open || autoNoUrutTriggered) return;
+    if (!formData.perkiraan || !formData.devisi) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const noUrut = await kasbankService.generateNoUrutAktiva(formData.perkiraan!, formData.devisi!);
+        if (cancelled || !noUrut) return;
+        setFormData((prev) => ({ ...prev, nobelakang: noUrut }));
+        setAutoNoUrutTriggered(true);
+      } catch (err) { console.error('Auto-NoUrut failed:', err); }
+    })();
+    return () => { cancelled = true; };
+  }, [open, formData.perkiraan, formData.devisi]);
+
+  useEffect(() => {
+    if (!open || formData.kelompok !== 1 || !formData.perkiraan || !formData.nobelakang || !formData.devisi) return;
+    if (formData.nobelakang2 && formData.nobelakang2.length === 5) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const prefix = `${formData.perkiraan}.${formData.nobelakang}`;
+        const noUrut2 = await kasbankService.generateNoUrutAktiva2(prefix, formData.devisi!);
+        if (cancelled || !noUrut2) return;
+        setFormData((prev) => ({ ...prev, nobelakang2: noUrut2 }));
+      } catch (err) { console.error('Auto-NoUrut2 failed:', err); }
+    })();
+    return () => { cancelled = true; };
+  }, [open, formData.kelompok, formData.nobelakang]);
+
+  const kodeAktiva = useMemo(() => {
+    const p = (formData.perkiraan ?? '').trim();
+    const n = (formData.nobelakang ?? '').trim();
+    const n2 = (formData.nobelakang2 ?? '').trim();
+    if (!p) return '';
+    if (!n) return p;
+    if (!n2) return `${p}.${n}`;
+    return `${p}.${n}.${n2}`;
+  }, [formData.perkiraan, formData.nobelakang, formData.nobelakang2]);
+
+  useEffect(() => {
+    if (open) {
+      if (isEditMode && initialData) {
+        setFormData({
+          perkiraan: initialData.perkiraan || '', kelompok: initialData.kelompok ?? 0,
+          nobelakang: initialData.nobelakang || '', nobelakang2: initialData.nobelakang2 || '',
+          tglpengakuan: initialData.tglpengakuan || new Date().toISOString().split('T')[0],
+          tipeaktiva: initialData.tipeaktiva ?? 0, keterangan: initialData.keterangan || '',
+          kuantum: initialData.kuantum ?? 1, persen: initialData.persen ?? 0,
+          metode: initialData.metode || 'L', akumulasi: initialData.akumulasi || '',
+          biaya: initialData.biaya || '', persenbiaya1: initialData.persenbiaya1 ?? 0,
+          biaya2: initialData.biaya2 || '', persenbiaya2: initialData.persenbiaya2 ?? 0,
+          biaya3: initialData.biaya3 || '', persenbiaya3: initialData.persenbiaya3 ?? 0,
+          persenpajak: initialData.persenpajak ?? 0, xsusut: initialData.xsusut ?? 1,
+          perlakuanaktiva: initialData.perlakuanaktiva ?? 0, kodebag: initialData.kodebag || '',
+          devisi: initialData.devisi || parentDevisi || '', noAktivahd: initialData.noAktivahd || '',
+        });
+        setAutoNoUrutTriggered(true);
+        // Pre-fill perkiraan description from initialData (already contains the lawan/perkiraan code)
+        if (initialData?.perkiraan) {
+          (async () => { await lookupPerkiraan(initialData.perkiraan); })();
+        }
+      } else {
+        setFormData({
+          perkiraan: '', kelompok: 0, nobelakang: '', nobelakang2: '',
+          tglpengakuan: new Date().toISOString().split('T')[0], tipeaktiva: 0,
+          keterangan: '', kuantum: 1, persen: 0, metode: 'L', akumulasi: '',
+          biaya: '', persenbiaya1: 0, biaya2: '', persenbiaya2: 0, biaya3: '',
+          persenbiaya3: 0, persenpajak: 0, xsusut: 1, perlakuanaktiva: 0,
+          kodebag: '', devisi: parentDevisi || '', noAktivahd: '',
+        });
+        setAutoNoUrutTriggered(false);
+      }
+      setPerkiraanDesc(''); setBagianDesc(''); setDevisiDesc('');
+      setAkumulasiDesc(''); setBiayaDesc(''); setBiaya2Desc(''); setBiaya3Desc('');
+      setPerkiraanSuggestions([]); setAkumulasiSuggestions([]);
+      setBiayaSuggestions([]); setBiaya2Suggestions([]); setBiaya3Suggestions([]);
+    }
+  }, [open, isEditMode, initialData, parentDevisi]);
+
+  const handleChange = (field: keyof IAktiva, value: string | number) => {
+    setFormData((prev: Partial<IAktiva>) => ({ ...prev, [field]: value }));
+  };
+
+  useEffect(() => { return () => { if (suggestionsTimer) clearTimeout(suggestionsTimer); }; }, []);
+
+  const validateAndCollectErrors = (): { ok: boolean; focusField?: keyof IAktiva; msg?: string } => {
+    if (!formData.perkiraan) return { ok: false, focusField: 'perkiraan', msg: 'Perkiraan (Group Aktiva) harus diisi' };
+    if ((formData.persen ?? 0) === 0) return { ok: false, focusField: 'persen', msg: 'Persentase Susut tidak boleh Kosong' };
+    if (!formData.metode) return { ok: false, focusField: 'metode', msg: 'Tipe Penyusutan tidak boleh Kosong' };
+    if (!formData.akumulasi) return { ok: false, focusField: 'akumulasi', msg: 'Perkiraan Akumulasi tidak boleh kosong' };
+    if (!formData.biaya) return { ok: false, focusField: 'biaya', msg: 'Perkiraan Biaya Susut tidak boleh kosong' };
+    if ((formData.persenbiaya1 ?? 0) === 0) return { ok: false, focusField: 'persenbiaya1', msg: 'Persentasi Biaya Susut tidak boleh kosong' };
+    const totalPersen = (formData.persenbiaya1 ?? 0) + (formData.persenbiaya2 ?? 0) + (formData.persenbiaya3 ?? 0);
+    if (Math.abs(totalPersen - 100) > 0.0001) return { ok: false, focusField: 'persenbiaya1', msg: 'Persen 1 + Persen 2 + Persen 3 harus = 100' };
+    if (formData.nobelakang && formData.nobelakang.length < 5) return { ok: false, focusField: 'nobelakang', msg: 'Nomor urut kurang 5 digit.' };
+    if (formData.nobelakang2 && formData.nobelakang2.length < 5) return { ok: false, focusField: 'nobelakang2', msg: 'Nomor urut kurang 5 digit.' };
+    return { ok: true };
+  };
+
+  const handleConfirm = () => {
+    const v = validateAndCollectErrors();
+    if (!v.ok) { alert(v.msg ?? 'Validation error'); return; }
+    const final: IAktiva = { ...(formData as IAktiva) };
+    if (formData.nobelakang && formData.nobelakang.length === 5) { final.perkiraan = kodeAktiva; }
+    onConfirm(final);
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{isEditMode ? 'Edit Aktiva Tetap' : 'Sub-Form Aktiva Tetap'}</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><Label>Perkiraan (Group Aktiva)</Label>{perkiraanDesc && <span className="text-sm text-muted-foreground">{perkiraanDesc}</span>}</div>
+                <div className="relative">
+                  <div className="flex gap-2">
+                    <Input value={formData.perkiraan || ''} onChange={(e) => { handleChange('perkiraan', e.target.value); fetchPerkiraanSuggestions(e.target.value); }} onKeyDown={handlePerkiraanKeyDown} onFocus={() => fetchPerkiraanSuggestions(formData.perkiraan || '')} onBlur={() => setTimeout(() => setPerkiraanSuggestions([]), 200)} placeholder="Kode perkiraan, tekan Enter" autoComplete="off" />
+                    <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => fetchBrowseOptions("perkiraan")}>Browse</Button>
+                  </div>
+                  {perkiraanSuggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-md shadow-lg">
+                      {perkiraanSuggestions.map((s) => (
+                        <button key={s.perkiraan} type="button" className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-700 text-sm"
+                          onMouseDown={(e) => { e.preventDefault(); handleChange('perkiraan', s.perkiraan); setPerkiraanDesc(`[ ${s.keterangan} ]`); setPerkiraanSuggestions([]); }}>
+                          <div className="font-mono">{s.perkiraan}</div><div className="text-xs text-muted-foreground">{s.keterangan}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2"><Label>Kelompok</Label>
+                <Select value={String(formData.kelompok ?? 0)} onValueChange={(v) => handleChange('kelompok', parseInt(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="0">Header Aktiva</SelectItem><SelectItem value="1">Sub Aktiva</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>No. Urut</Label><Input value={formData.nobelakang || ''} onChange={(e) => handleChange('nobelakang', e.target.value)} maxLength={5} placeholder="5 digit" /></div>
+              <div className="space-y-2"><Label>No. Urut 2 (Sub Aktiva)</Label><Input value={formData.nobelakang2 || ''} onChange={(e) => handleChange('nobelakang2', e.target.value)} maxLength={5} placeholder="5 digit" disabled={formData.kelompok !== 1} /></div>
+            </div>
+            <div className="space-y-2"><Label>Kode Aktiva (otomatis)</Label><Input value={kodeAktiva} readOnly className="bg-muted font-mono" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>No. Aktiva Hd</Label><Input value={formData.noAktivahd || ''} onChange={(e) => handleChange('noAktivahd', e.target.value)} placeholder="No. Aktiva Hd" /></div>
+              <div className="space-y-2"><Label>Tanggal Perolehan</Label><Input type="date" value={formData.tglpengakuan || ''} onChange={(e) => handleChange('tglpengakuan', e.target.value)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Tipe Aktiva</Label>
+                <Select value={String(formData.tipeaktiva ?? 0)} onValueChange={(v) => handleChange('tipeaktiva', parseInt(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="0">Aktiva Tetap</SelectItem><SelectItem value="1">Aktiva Yang Dibiayakan</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2"><Label>Keterangan</Label><Textarea value={formData.keterangan || ''} onChange={(e) => handleChange('keterangan', e.target.value)} placeholder="Keterangan aktiva" rows={3} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2"><Label>Kuantum</Label><Input type="number" value={formData.kuantum ?? 1} onChange={(e) => handleChange('kuantum', parseFloat(e.target.value) || 0)} /></div>
+              <div className="space-y-2"><Label>% Susut</Label><Input type="number" step="0.01" value={formData.persen ?? 0} onChange={(e) => handleChange('persen', parseFloat(e.target.value) || 0)} /></div>
+              <div className="space-y-2"><Label>Metode Penyusutan</Label>
+                <Select value={formData.metode || 'L'} onValueChange={(v) => handleChange('metode', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="L">[L]urus</SelectItem><SelectItem value="M">[M]enurun</SelectItem><SelectItem value="P">[P]ajak</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {formData.metode === 'P' && (
+              <div className="space-y-2"><Label>% Pajak</Label><Input type="number" step="0.01" value={formData.persenpajak ?? 0} onChange={(e) => handleChange('persenpajak', parseFloat(e.target.value) || 0)} placeholder="% pajak untuk metode [P]ajak" /></div>
+            )}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2"><Label>Akumulasi Penyusutan (Perkiraan)</Label>{akumulasiDesc && <span className="text-sm text-muted-foreground">{akumulasiDesc}</span>}</div>
+              <div className="relative flex gap-2">
+                <Input value={formData.akumulasi || ''} onChange={(e) => { handleChange('akumulasi', e.target.value); fetchAkumulasiSuggestions(e.target.value); }} onFocus={() => { if (formData.akumulasi && formData.akumulasi.length >= 2) fetchAkumulasiSuggestions(formData.akumulasi); }} onKeyDown={handleAkumulasiKeyDown} placeholder="Kode akun, tekan Enter" autoComplete="off" />
+                {akumulasiSuggestions.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-auto">
+                    {akumulasiSuggestions.map((s, i) => (
+                      <button key={i} type="button" className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-sm flex items-center gap-3" onClick={() => { handleChange('akumulasi', s.kode); setAkumulasiDesc(`[ ${s.keterangan} ]`); setAkumulasiSuggestions([]); }}>
+                        <span className="font-mono w-20 shrink-0">{s.kode}</span><span className="truncate">{s.keterangan}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => fetchBrowseOptions("perkiraan")}>Browse</Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><Label>Biaya Penyusutan 1 (Perkiraan)</Label>{biayaDesc && <span className="text-sm text-muted-foreground">{biayaDesc}</span>}</div>
+                <div className="relative">
+                  <Input value={formData.biaya || ''} onChange={(e) => { handleChange('biaya', e.target.value); fetchBiayaSuggestions('biaya', e.target.value); }} onFocus={() => { if (formData.biaya && formData.biaya.length >= 2) fetchBiayaSuggestions('biaya', formData.biaya); }} onKeyDown={(e) => handleBiayaKeyDown(e, 'biaya')} placeholder="Kode akun, tekan Enter" autoComplete="off" />
+                  {biayaSuggestions.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-auto">
+                      {biayaSuggestions.map((s, i) => (
+                        <button key={i} type="button" className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-sm flex items-center gap-3" onClick={() => { handleChange('biaya', s.kode); setBiayaDesc(`[ ${s.keterangan} ]`); setBiayaSuggestions([]); }}>
+                          <span className="font-mono w-20 shrink-0">{s.kode}</span><span className="truncate">{s.keterangan}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2"><Label>% Susut Biaya 1</Label><Input type="number" step="0.01" value={formData.persenbiaya1 ?? 0} onChange={(e) => handleChange('persenbiaya1', parseFloat(e.target.value) || 0)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><Label>Biaya Penyusutan 2 (Perkiraan)</Label>{biaya2Desc && <span className="text-sm text-muted-foreground">{biaya2Desc}</span>}</div>
+                <div className="relative">
+                  <Input value={formData.biaya2 || ''} onChange={(e) => { handleChange('biaya2', e.target.value); fetchBiayaSuggestions('biaya2', e.target.value); }} onFocus={() => { if (formData.biaya2 && formData.biaya2.length >= 2) fetchBiayaSuggestions('biaya2', formData.biaya2); }} onKeyDown={(e) => handleBiayaKeyDown(e, 'biaya2')} placeholder="Kode akun, tekan Enter (atau '-' untuk kosong)" autoComplete="off" />
+                  {biaya2Suggestions.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-auto">
+                      {biaya2Suggestions.map((s, i) => (
+                        <button key={i} type="button" className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-sm flex items-center gap-3" onClick={() => { handleChange('biaya2', s.kode); setBiaya2Desc(`[ ${s.keterangan} ]`); setBiaya2Suggestions([]); }}>
+                          <span className="font-mono w-20 shrink-0">{s.kode}</span><span className="truncate">{s.keterangan}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2"><Label>% Susut Biaya 2</Label><Input type="number" step="0.01" value={formData.persenbiaya2 ?? 0} onChange={(e) => handleChange('persenbiaya2', parseFloat(e.target.value) || 0)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><Label>Biaya Penyusutan 3 (Perkiraan)</Label>{biaya3Desc && <span className="text-sm text-muted-foreground">{biaya3Desc}</span>}</div>
+                <div className="relative">
+                  <Input value={formData.biaya3 || ''} onChange={(e) => { handleChange('biaya3', e.target.value); fetchBiayaSuggestions('biaya3', e.target.value); }} onFocus={() => { if (formData.biaya3 && formData.biaya3.length >= 2) fetchBiayaSuggestions('biaya3', formData.biaya3); }} onKeyDown={(e) => handleBiayaKeyDown(e, 'biaya3')} placeholder="Kode akun, tekan Enter (atau '-' untuk kosong)" autoComplete="off" />
+                  {biaya3Suggestions.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-48 overflow-auto">
+                      {biaya3Suggestions.map((s, i) => (
+                        <button key={i} type="button" className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-sm flex items-center gap-3" onClick={() => { handleChange('biaya3', s.kode); setBiaya3Desc(`[ ${s.keterangan} ]`); setBiaya3Suggestions([]); }}>
+                          <span className="font-mono w-20 shrink-0">{s.kode}</span><span className="truncate">{s.keterangan}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2"><Label>% Susut Biaya 3</Label><Input type="number" step="0.01" value={formData.persenbiaya3 ?? 0} onChange={(e) => handleChange('persenbiaya3', parseFloat(e.target.value) || 0)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>x Susut Bulan Ini</Label><Input type="number" step="0.01" value={formData.xsusut ?? 1} onChange={(e) => handleChange('xsusut', parseFloat(e.target.value) || 1)} /></div>
+              <div className="space-y-2"><Label>Perlakuan Aktiva</Label>
+                <Select value={String(formData.perlakuanaktiva ?? 0)} onValueChange={(v) => handleChange('perlakuanaktiva', parseInt(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    <SelectItem value="0">-</SelectItem><SelectItem value="1">Jual</SelectItem><SelectItem value="2">Keluar Aktiva</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><Label>Bagian (Kode)</Label>{bagianDesc && <span className="text-sm text-muted-foreground">{bagianDesc}</span>}</div>
+                <div className="flex gap-2">
+                  <Input value={formData.kodebag || ''} onChange={(e) => handleChange('kodebag', e.target.value)} onKeyDown={handleBagianKeyDown} placeholder="Kode bagian, tekan Enter" />
+                  <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => fetchBrowseOptions("bagian")}>Browse</Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><Label>Divisi</Label>{devisiDesc && <span className="text-sm text-muted-foreground">{devisiDesc}</span>}</div>
+                <div className="flex gap-2">
+                  <Input value={formData.devisi || ''} onChange={(e) => handleChange('devisi', e.target.value)} onKeyDown={handleDevisiKeyDown} placeholder="Kode devisi, tekan Enter" />
+                  <Button type="button" variant="outline" size="sm" className="shrink-0" onClick={() => fetchBrowseOptions("devisi")}>Browse</Button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={onClose}>Batal</Button>
+            <Button onClick={handleConfirm}>{isEditMode ? 'Update Aktiva' : 'Simpan Aktiva'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {browsePicker && (
+        <BrowsePickerModal
+          title={browsePicker.type === "perkiraan" ? "Pilih Group Aktiva" : browsePicker.type === "bagian" ? "Pilih Bagian" : "Pilih Divisi"}
+          options={browsePicker.options}
+          selectedCode={browsePicker.type === "perkiraan" ? (formData.perkiraan as string) : browsePicker.type === "bagian" ? (formData.kodebag as string) : (formData.devisi as string)}
+          onSelect={(code, label) => {
+            if (browsePicker.type === "perkiraan") { handleChange('perkiraan', code); setPerkiraanDesc(`[ ${label} ]`); }
+            else if (browsePicker.type === "bagian") { handleChange('kodebag', code); setBagianDesc(`[ ${label} ]`); }
+            else if (browsePicker.type === "devisi") { handleChange('devisi', code); setDevisiDesc(`[ ${label} ]`); }
+          }}
+          onClose={() => setBrowsePicker(null)}
+        />
+      )}
+    </>
+  );
+}
