@@ -236,7 +236,7 @@ export function KasBankFormDialog({
 			tipeTransHd: "BKK",
 			perkiraanHd: "",
 			note: "",
-			devisi: "KANTOR PUSAT",
+			devisi: "01",
 		},
 	});
 
@@ -276,7 +276,7 @@ export function KasBankFormDialog({
 					tipeTransHd: "BKK",
 					perkiraanHd: "",
 					note: "",
-					devisi: "KANTOR PUSAT",
+					devisi: "01",
 				});
 				setDetailRows([]);
 				setGiroList([]);
