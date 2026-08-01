@@ -8,8 +8,8 @@ export function useKasBankDetailList(noBukti: string) {
     queryKey: [...kasbankKeys.detail(noBukti), 'lines'] as const,
     queryFn: async () => {
       const res = await kasbankService.getDetailList(noBukti);
-      // Unwrap IAPIResponse wrapper so callers get { header, details } directly
-      return (res as any).data as { header: any; details: any[] };
+      // getDetailList already returns the unwrapped { header, details } from makeBackendRequest
+      return res as { header: any; details: any[] };
     },
     enabled: !!noBukti,
   });

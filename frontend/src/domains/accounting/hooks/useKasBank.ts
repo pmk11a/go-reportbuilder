@@ -106,12 +106,10 @@ export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onErr
 export function useGenerateNoBukti(tipe: string, devisi?: string) {
   return useQuery({
     queryKey: kasbankKeys.noBukti(tipe, devisi ?? ''),
-    queryFn: () => kasbankService.generateNoBukti(tipe, devisi),
-    // Only fire the query once both tipe and devisi are known — the backend
-    // rejects empty devisi ("devisi wajib diisi"), so we gate on it to
-    // avoid a noisy failed request before the user picks the kas/bank
-    // account and the devisi.
-    enabled: !!tipe && (!!devisi && devisi.trim().length > 0),
+    queryFn: () => kasbankService.generateNoBuktiPreview(tipe),
+    // Only fire once tipe is known — uses the preview endpoint so no counter
+    // is consumed while the user is filling in the form.
+    enabled: !!tipe,
   });
 }
 
@@ -119,7 +117,10 @@ export function useLookupPerkiraan(q: string, kelompokKas: boolean = false) {
   return useQuery({
     queryKey: ['kasbank', 'perkiraan', q, kelompokKas] as const,
     queryFn: () => kasbankService.lookupPerkiraan(q, kelompokKas ? 'Y' : 'N'),
-    enabled: q.length >= 2,
+    // Always fetch so the dropdown is populated on first open. The 5-minute
+    // staleTime keeps the cached list reusable across keystrokes.
+    enabled: true,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -130,7 +131,10 @@ export function useLookupPerkiraanShared(q: string, posthutpiut: string = 'Y') {
   return useQuery({
     queryKey: ['shared', 'perkiraan', q, posthutpiut] as const,
     queryFn: () => sharedFilterService.getPerkiraan(q, undefined, posthutpiut),
-    enabled: q.length >= 2,
+    // Always fetch so the dropdown is populated on first open. The 5-minute
+    // staleTime keeps the cached list reusable across keystrokes.
+    enabled: true,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

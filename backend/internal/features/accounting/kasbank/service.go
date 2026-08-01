@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,6 +69,28 @@ type IKasBankService interface {
 	// GetByNoBukti fetches a header + its detail rows in one call so the
 	// detail page only needs one round-trip.
 	GetByNoBukti(ctx context.Context, noBukti string) (*SKasBankHeader, []SDbTransaksi, error)
+
+	// GetPeriodeFromUser returns the active accounting period (bulan, tahun) for the given user
+	GetPeriodeFromUser(ctx context.Context, userID string) (int, int, error)
+
+	// GenerateNoBuktiPreview returns a preview voucher number and sequence for the given tipe and period
+	GenerateNoBuktiPreview(ctx context.Context, tipe string, bulan, tahun int) (string, int, error)
+
+	// LookupBagian returns department/bagian matching a search query
+	LookupBagian(ctx context.Context, q string) ([]models.SDBBAGIAN, error)
+
+	// LookupAkumulasiAktiva returns accumulation accounts for Aktiva sub-form
+	LookupAkumulasiAktiva(ctx context.Context, q string) ([]models.SDbPerkiraan, error)
+
+	// LookupBiayaAktiva returns cost accounts for Aktiva sub-form
+	LookupBiayaAktiva(ctx context.Context, q string) ([]models.SDbPerkiraan, error)
+
+	// GenerateNoUrutAktiva generates the next NoUrut for Aktiva sub-form
+	GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (int, error)
+
+	// GenerateNoUrutAktiva2 generates the next NoUrut2 for Aktiva sub-form
+	GenerateNoUrutAktiva2(ctx context.Context, prefix, devisi string) (string, error)
+
 	// GenerateNoBukti returns a freshly formatted voucher number for the
 	// given tipe and devisi, using the caller's active accounting period
 	// from DBPERIODE. The period's bulan/tahun drive the MMYYYY segment;
@@ -139,6 +162,84 @@ func NewSKasBankService(repo IKasBankRepository, db *gorm.DB, cfg *config.SConfi
 func (s *SKasBankService) DB() *gorm.DB {
 	return s.db
 }
+
+// GetPeriodeFromUser returns the active accounting period for the user.
+func (s *SKasBankService) GetPeriodeFromUser(ctx context.Context, userID string) (int, int, error) {
+	bulan, tahun, err := GetCurrentPeriode(ctx, s.db, userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	if bulan == 0 || tahun == 0 {
+		return 0, 0, ErrPeriodeNotSet
+	}
+	return bulan, tahun, nil
+}
+
+// GenerateNoBuktiPreview returns a preview of the next voucher number without consuming it.
+func (s *SKasBankService) GenerateNoBuktiPreview(ctx context.Context, tipe string, bulan, tahun int) (string, int, error) {
+	// Use repository's GenerateNoBuktiPreview for the actual generation
+	// This does not commit any counter - just predicts the next number
+	noBukti, seqStr, err := s.repo.GenerateNoBuktiPreview(ctx, tipe, bulan, tahun)
+	if err != nil {
+		return "", 0, err
+	}
+	// Parse sequence number to integer for the return value (matches old signature)
+	seq, _ := strconv.Atoi(seqStr)
+	return noBukti, seq, nil
+}
+
+// LookupBagian returns department/bagian matching a search query
+func (s *SKasBankService) LookupBagian(ctx context.Context, q string) ([]models.SDBBAGIAN, error) {
+	var results []models.SDBBAGIAN
+	likeQ := "%" + q + "%"
+	err := s.db.WithContext(ctx).Where("KodeBag LIKE ? OR NamaBag LIKE ?", likeQ, likeQ).Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// LookupAkumulasiAktiva returns accumulation accounts for Aktiva sub-form
+func (s *SKasBankService) LookupAkumulasiAktiva(ctx context.Context, q string) ([]models.SDbPerkiraan, error) {
+	var results []models.SDbPerkiraan
+	likeQ := "%" + q + "%"
+	err := s.db.WithContext(ctx).Where("Perkiraan LIKE ? OR Keterangan LIKE ?", likeQ, likeQ).Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// LookupBiayaAktiva returns cost accounts for Aktiva sub-form
+func (s *SKasBankService) LookupBiayaAktiva(ctx context.Context, q string) ([]models.SDbPerkiraan, error) {
+	var results []models.SDbPerkiraan
+	likeQ := "%" + q + "%"
+	err := s.db.WithContext(ctx).Where("Tipe = ? AND (Perkiraan LIKE ? OR Keterangan LIKE ?)", 1, likeQ, likeQ).Find(&results).Error
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// GenerateNoUrutAktiva generates the next NoUrut for Aktiva sub-form
+func (s *SKasBankService) GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (int, error) {
+	var maxUrut float64
+	// Query the database directly for MAX(NOURUT) from DBAKTIVA table
+	err := s.db.WithContext(ctx).Raw("SELECT MAX(NOURUT) FROM DBAKTIVA WHERE Perkiraan = ? AND Devisi = ?", perkiraan, devisi).Scan(&maxUrut).Error
+	if err != nil {
+		return 0, err
+	}
+	if maxUrut == 0 {
+		return 1, nil
+	}
+	return int(maxUrut) + 1, nil
+}
+
+// GenerateNoUrutAktiva2 generates the next NoUrut2 for Aktiva sub-form
+func (s *SKasBankService) GenerateNoUrutAktiva2(ctx context.Context, prefix, devisi string) (string, error) {
+	return s.repo.GenerateNoUrutAktiva2(ctx, prefix, devisi)
+}
+
 
 // List delegates to the repository, batch-fetches aggregate totals for the
 // whole page in a single query (avoiding N+1), and converts every raw row
@@ -293,7 +394,7 @@ func (s *SKasBankService) GenerateNoBukti(ctx context.Context, tipe, devisi, use
 		return nil, ErrPeriodeNotSet
 	}
 
-	v, err := s.repo.GenerateNoBukti(ctx, tipe, strings.TrimSpace(devisi), bulan, tahun)
+	noBukti, _, _, err := s.repo.GenerateNoBukti(ctx, tipe, strings.TrimSpace(devisi), bulan, tahun)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +407,7 @@ func (s *SKasBankService) GenerateNoBukti(ctx context.Context, tipe, devisi, use
 	// a "Generate NoBukti" click.
 	return &SGenerateNoBuktiResponse{
 		Tipe:        tipe,
-		NoBukti:     v,
+		NoBukti:     noBukti,
 		GeneratedAt: defaultTanggal(tahun, bulan, time.Now()),
 	}, nil
 }
@@ -407,14 +508,14 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 		if existingCount > 0 {
 			return fmt.Errorf("voucher number %q already exists (duplicate detected). Please regenerate the number and retry", noBukti)
 		}
-		if errCommit := s.settingsSvc.CommitCounterTx(tx, req.TipeTransHd, result.NewCounter); errCommit != nil {
+		if errCommit := s.settingsSvc.CommitCounterTx(tx, req.TipeTransHd, result.Seq); errCommit != nil {
 			return errCommit
 		}
 
 		// 2. Insert the header.
 		h := &SDbTrans{
 			NoBukti:     noBukti,
-			NOURUT:      atoiSafe(result.Seq),
+			NOURUT:      result.Seq,
 			Tanggal:     &tanggal,
 			Note:        req.Note,
 			TipeTransHd: strPtr(req.TipeTransHd),
@@ -452,16 +553,29 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 			}
 			setArgs = append(setArgs, noBukti)
 			if err := tx.Exec(fmt.Sprintf("UPDATE DBTRANS SET %s WHERE NoBukti=?", strings.Join(setParts, ",")), setArgs...).Error; err != nil {
-				return fmt.Errorf("inserting header extra fields %q: %w", noBukti, err)
+				// Check if this is due to missing column (e.g., NoBuktiSem or Nobon) in DBTRANS table
+				if strings.Contains(err.Error(), "Invalid column name") ||
+				   strings.Contains(err.Error(), "NoBuktiSem") ||
+				   strings.Contains(err.Error(), "Nobon") {
+					fmt.Printf("⚠️ Column(s) not found in DBTRANS; skipping header field update during insert for %q\n", noBukti)
+					// Continue anyway - header fields will be whatever they were before
+				} else {
+					return fmt.Errorf("inserting header extra fields %q: %w", noBukti, err)
+				}
 			}
 		}
 
-		// 3. Insert detail rows with auto-assigned Urut.
+		// 3. Insert detail rows with auto-assigned Urut using batch insert for performance
+		rows := make([]*SDbTransaksi, 0, len(req.Details))
 		for i, d := range req.Details {
 			urut := i + 1
 			row := buildDetailRow(ctx, s, noBukti, urut, d, req.TipeTransHd, h, req.TPHC, req.NoBon, req.Devisi)
-			if err := tx.Create(row).Error; err != nil {
-				return fmt.Errorf("inserting detail row %d: %w", urut, err)
+			rows = append(rows, row)
+		}
+		if len(rows) > 0 {
+			// Batch insert with Omit to skip columns that may not exist in legacy DB
+			if err := tx.Omit("XSusut", "PerlakuanAktiva").Create(rows).Error; err != nil {
+				return fmt.Errorf("inserting detail rows: %w", err)
 			}
 		}
 
@@ -490,10 +604,21 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 			}
 		}
 
-		// 6. Save HutPiut (Pelunasan) if any
-		for _, hp := range req.HutPiutList {
-			if err := tx.Create(&hp).Error; err != nil {
-				return fmt.Errorf("inserting hutpiut payment for invoice %q: %w", hp.NoFaktur, err)
+		// 6. Save HutPiut (Pelunasan) if any.
+		// NoMsk = DBTRANSAKSI.Urut yang memicu sub-form hutpiut.
+		// Urut = sequence number dalam grup NoMsk yang sama (1, 2, 3...).
+		// Rows dengan NoMsk berbeda berasal dari detail row berbeda.
+		hpGroup := make(map[int]int) // noMsk → current urut counter
+		for i := range req.HutPiutList {
+			hp := &req.HutPiutList[i]
+			hp.NoBukti = noBukti
+			if hp.NoMsk == 0 {
+				hp.NoMsk = 1 // fallback: default ke baris detail pertama
+			}
+			hpGroup[hp.NoMsk]++
+			hp.Urut = hpGroup[hp.NoMsk]
+			if err := tx.Create(hp).Error; err != nil {
+				return fmt.Errorf("inserting hutpiut payment for invoice %q (NoMsk=%d, Urut=%d): %w", hp.NoFaktur, hp.NoMsk, hp.Urut, err)
 			}
 		}
 
@@ -594,12 +719,20 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 			}
 			setArgs = append(setArgs, noBukti)
 			if err := tx.Exec(fmt.Sprintf("UPDATE DBTRANS SET %s WHERE NoBukti=?", strings.Join(setParts, ",")), setArgs...).Error; err != nil {
-				return fmt.Errorf("updating header extra fields %q: %w", noBukti, err)
+				// Check if this is due to missing column (e.g., NoBuktiSem or Nobon) in DBTRANS table
+				if strings.Contains(err.Error(), "Invalid column name") ||
+				   strings.Contains(err.Error(), "NoBuktiSem") ||
+				   strings.Contains(err.Error(), "Nobon") {
+					fmt.Printf("⚠️ Column(s) not found in DBTRANS; skipping header field update for %q\n", noBukti)
+					// Continue anyway - header fields will be whatever they were before
+				} else {
+					return fmt.Errorf("updating header extra fields %q: %w", noBukti, err)
+				}
 			}
 		}
 
 		// 2. If the caller passed a new detail set, replace all rows and
-		// re-validate double-entry.
+		// re-validate double-entry. Use batch insert for performance.
 		if len(req.Details) > 0 {
 			if err := validateDoubleEntry(req.Details); err != nil {
 				return err
@@ -607,11 +740,17 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 			if err := tx.Where("NoBukti = ?", noBukti).Delete(&SDbTransaksi{}).Error; err != nil {
 				return fmt.Errorf("clearing details for %q: %w", noBukti, err)
 			}
+			// Build all rows first, then batch-insert in one SQL round-trip
+			rows := make([]*SDbTransaksi, 0, len(req.Details))
 			for i, d := range req.Details {
 				urut := i + 1
 				row := buildDetailRow(ctx, s, noBukti, urut, d, strVal(existing.TipeTransHd), existing, req.TPHC, req.NoBon, req.Devisi)
-				if err := tx.Create(row).Error; err != nil {
-					return fmt.Errorf("re-inserting detail row %d: %w", urut, err)
+				rows = append(rows, row)
+			}
+			if len(rows) > 0 {
+				// Batch insert with Omit to skip columns that may not exist in legacy DB
+				if err := tx.Omit("XSusut", "PerlakuanAktiva").Create(rows).Error; err != nil {
+					return fmt.Errorf("re-inserting detail rows: %w", err)
 				}
 			}
 			var totalD, totalK float64
@@ -627,27 +766,103 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 			}
 		}
 
-		// Always update Giro and Deposito (full replace for simplicity like details)
+		// 3. Clear existing sub-transaction rows so the new set fully replaces them.
+		// DBTRANSAKSI was already cleared above (step 2).
+		//
+		// DBGIRO: delete open giros linked to this noBukti.
+		// "Open" means TglCair IS NULL — a cair giro stays in the ledger.
+		if err := tx.Exec(
+			`DELETE FROM DBGIRO WHERE [BuktiBuka] = ? AND [TglCair] IS NULL`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing giro for %q: %w", noBukti, err)
+		}
+		// Clear cair-link on giros that this voucher previously settled.
+		if err := tx.Exec(
+			`UPDATE DBGIRO
+				SET [BuktiCair] = '', [urutBuktiCair] = 0, [TglCair] = NULL,
+				    [Kredit] = 0, [KreditRp] = 0, [KeteranganCair] = ''
+				WHERE [BuktiCair] = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing giro cair link for %q: %w", noBukti, err)
+		}
+
+		// DBDEPOSITO: same convention as DBGIRO.
+		if err := tx.Exec(
+			`DELETE FROM DBDEPOSITO WHERE [BuktiBuka] = ? AND [TglCair] IS NULL`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing deposito for %q: %w", noBukti, err)
+		}
+		if err := tx.Exec(
+			`UPDATE DBDEPOSITO
+				SET [BuktiCair] = '', [urutBuktiCair] = 0, [TglCair] = NULL,
+				    [Kredit] = 0, [KreditRp] = 0, [KeteranganCair] = ''
+				WHERE [BuktiCair] = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing deposito cair link for %q: %w", noBukti, err)
+		}
+
+		// DBHUTPIUT: delete all settlement rows linked to this noBukti.
+		if err := tx.Exec(
+			`DELETE FROM DBHUTPIUT WHERE LTRIM(RTRIM([nobukti])) = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing hutpiut for %q: %w", noBukti, err)
+		}
+
+		// DBTempHUTPIUT: staging rows per-user; clear any matching this noBukti.
+		if err := tx.Exec(
+			`DELETE FROM DBTempHUTPIUT WHERE LTRIM(RTRIM([NoBukti])) = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing temp hutpiut for %q: %w", noBukti, err)
+		}
+
+		// DBAKTIVA: delete all aktiva rows linked via NoBuktiSem.
+		// This column may not exist in legacy databases - gracefully skip if so.
+		if err := tx.Exec(
+			`DELETE FROM DBAKTIVA WHERE [NoBuktiSem] = ?`,
+			noBukti,
+		).Error; err != nil {
+			// Check if this is due to missing column in DBAKTIVA table
+			if strings.Contains(err.Error(), "Invalid column name") || strings.Contains(err.Error(), "noBuktiSem") {
+				// NoBuktiSem column might be missing in older database versions
+				// Skip deletion gracefully - no aktiva rows will be cleared but operation continues
+				fmt.Printf("⚠️ Column 'NoBuktiSem' not found in DBAKTIVA; skipping aktiva clearance for %q\n", noBukti)
+			} else {
+				return fmt.Errorf("clearing aktiva for %q: %w", noBukti, err)
+			}
+		}
+
+		// 4. Insert new Giro, Deposito, HutPiut, Aktiva rows.
 		for _, g := range req.GiroList {
 			if err := tx.Create(&g).Error; err != nil {
-				return fmt.Errorf("updating giro %q: %w", g.NoGiro, err)
+				return fmt.Errorf("inserting giro %q: %w", g.NoGiro, err)
 			}
 		}
 		for _, d := range req.DepositoList {
 			if err := tx.Create(&d).Error; err != nil {
-				return fmt.Errorf("updating deposito %q: %w", d.NoDeposito, err)
+				return fmt.Errorf("inserting deposito %q: %w", d.NoDeposito, err)
 			}
 		}
-
-		// Replace HutPiut (Pelunasan) if any
-		for _, hp := range req.HutPiutList {
-			if err := tx.Create(&hp).Error; err != nil {
-				return fmt.Errorf("updating hutpiut payment for invoice %q: %w", hp.NoFaktur, err)
+		hpGroup := make(map[int]int) // noMsk → current urut counter
+		for i := range req.HutPiutList {
+			hp := &req.HutPiutList[i]
+			hp.NoBukti = noBukti
+			if hp.NoMsk == 0 {
+				hp.NoMsk = 1
+			}
+			hpGroup[hp.NoMsk]++
+			hp.Urut = hpGroup[hp.NoMsk]
+			if err := tx.Create(hp).Error; err != nil {
+				return fmt.Errorf("inserting hutpiut payment for invoice %q (NoMsk=%d, Urut=%d): %w", hp.NoFaktur, hp.NoMsk, hp.Urut, err)
 			}
 		}
-
-		// Replace Aktiva
 		for _, aktiva := range req.AktivaList {
+			aktiva.NoBuktiSem = &noBukti
 			if aktiva.Tanggal == nil {
 				aktiva.Tanggal = existing.Tanggal
 			}
@@ -967,22 +1182,26 @@ func buildDetailRow(ctx context.Context, s *SKasBankService, noBukti string, uru
 	}
 
 	row := &SDbTransaksi{
-		NoBukti:    noBukti,
-		Tanggal:    h.Tanggal,
-		Perkiraan:  d.Perkiraan,
-		Lawan:      d.Lawan,
-		Debet:      d.Debet,
-		Kredit:     d.Kredit,
-		Valas:      valas,
-		Kurs:       d.Kurs,
-		Keterangan: d.Keterangan,
-		TipeTrans:  tipeTrans,
-		TPHC:       headerTPHC,
-		KodeBag:    d.KodeBag,
-		CustSuppP:  d.KodeCustSupp,
-		Urut:       urut,
-		Devisi:     headerDevisi,
-		Nobon:      headerNoBon,
+		NoBukti:     noBukti,
+		Tanggal:     h.Tanggal,
+		Perkiraan:   d.Perkiraan,
+		Lawan:       d.Lawan,
+		Debet:       d.Debet,
+		Kredit:      d.Kredit,
+		Valas:       valas,
+		Kurs:        d.Kurs,
+		Keterangan:  d.Keterangan,
+		TipeTrans:   tipeTrans,
+		TPHC:        headerTPHC,
+		KodeBag:     d.KodeBag,
+		CustSuppP:   d.KodeCustSupp,
+		CustSuppL:   d.CustSuppL,
+		Urut:        urut,
+		Devisi:      headerDevisi,
+		Nobon:       headerNoBon,
+		NoAktivaP:   d.NoAktivaP,
+		NoAktivaL:   d.NoAktivaL,
+		FlagSimbol:  "RP",
 	}
 
 	dkVal := calculateDK(d.Debet, d.Kredit)
@@ -993,7 +1212,7 @@ func buildDetailRow(ctx context.Context, s *SKasBankService, noBukti string, uru
 	subRes, err := s.ResolveSubTransaction(ctx, d.Perkiraan, dkVal)
 	if err == nil && subRes != nil {
 		row.KodeP = subRes.Kode
-		row.KodeL = subRes.Kode // Legacy logic often mirrors this if Lawan is used, but for KasBank Lawan is same as Perkiraan
+		row.KodeL = subRes.Kode // Legacy: for KasBank, KodeL mirrors KodeP
 		if subRes.Trigger == "aktiva" {
 			row.StatusAktivaP = subRes.StatusP
 			row.StatusAktivaL = subRes.StatusL
@@ -1009,10 +1228,6 @@ func buildDetailRow(ctx context.Context, s *SKasBankService, noBukti string, uru
 	} else {
 		row.DebetRp = d.Debet * row.Kurs
 		row.KreditRp = d.Kredit * row.Kurs
-	}
-	// FlagSimbol is the default "RP" for IDR transactions.
-	if row.FlagSimbol == "" {
-		row.FlagSimbol = "RP"
 	}
 	return row
 }

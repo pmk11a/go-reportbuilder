@@ -1,7 +1,7 @@
 import { getEnv, parseEnvTime } from './utils'
 
 const BACKEND_URL = getEnv('BACKEND_URL', 'http://127.0.0.1:8080')
-const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 10000)
+const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 30000)
 const IS_DEV = process.env.NODE_ENV !== 'production'
 
 export interface BackendResponse<T = any> {

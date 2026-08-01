@@ -710,7 +710,8 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 		return nil, err
 	}
 
-	// In-memory filter by q if provided (defensive)
+	// In-memory filter by q if provided (defensive).
+	// Match against key (code) OR label (description) — mirrors SQL LIKE behavior.
 	if q != "" && len(rows) > 0 {
 		filtered := make([]SearchResult, 0)
 		search := strings.ToLower(q)

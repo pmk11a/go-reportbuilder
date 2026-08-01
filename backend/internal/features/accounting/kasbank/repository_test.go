@@ -53,20 +53,18 @@ func assertMock(t *testing.T, mock sqlmock.Sqlmock) {
 func TestList_NoFilters(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	now := time.Now()
-	rows := sqlmock.NewRows([]string{
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(2)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
+
+	dataRows := sqlmock.NewRows([]string{
 		"NoBukti", "NOURUT", "Tanggal", "Note", "TipeTransHd", "PerkiraanHd",
 	}).
 		AddRow("BKK-202606-0001", "0001", now, "Catatan 1", "BKK", "1101").
 		AddRow("BKK-202606-0002", "0002", now, "Catatan 2", "BKK", "1101")
-
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
-
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WillReturnRows(rows)
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
 	require.NoError(t, err)
@@ -87,17 +85,15 @@ func TestList_NoFilters(t *testing.T) {
 func TestList_NoTipe_RestrictsToKasBankDiscriminators(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WithArgs("BKM", "BKK", "BBM", "BBK").
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(2))
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(2)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
 
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WithArgs("BKM", "BKK", "BBM", "BBK").
-		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "TipeTransHd"}).
-			AddRow("BKK-1", "BKK").
-			AddRow("BKM-1", "BKM"))
+	dataRows := sqlmock.NewRows([]string{"NoBukti", "TipeTransHd"}).
+		AddRow("BKK-1", "BKK").
+		AddRow("BKM-1", "BKM")
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
 	require.NoError(t, err)
@@ -113,16 +109,14 @@ func TestList_NoTipe_RestrictsToKasBankDiscriminators(t *testing.T) {
 func TestList_WithFilters(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WithArgs("BKM", "%foo%", "%foo%").
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(1)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
 
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WithArgs("BKM", "%foo%", "%foo%").
-		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "NOURUT", "Note", "TipeTransHd"}).
-			AddRow("BKM-X", "1", "foo", "BKM"))
+	dataRows := sqlmock.NewRows([]string{"NoBukti", "NOURUT", "Note", "TipeTransHd"}).
+		AddRow("BKM-X", "1", "foo", "BKM")
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{
 		Tipe: "BKM", Search: "foo", Page: 1, PerPage: 10,
@@ -139,19 +133,17 @@ func TestList_WithFilters(t *testing.T) {
 func TestList_DefaultPeriod_NoExplicitDate(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPeriode).
 		WithArgs("SA").
 		WillReturnRows(sqlmock.NewRows([]string{"USERID", "BULAN", "TAHUN"}).AddRow("SA", "06", "2026"))
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WithArgs(2026, 6).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(1)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
 
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WithArgs(2026, 6).
-		WillReturnRows(sqlmock.NewRows([]string{"NoBukti", "Tanggal"}).AddRow("BKK-202606-0001", time.Now()))
+	dataRows := sqlmock.NewRows([]string{"NoBukti", "Tanggal"}).AddRow("BKK-202606-0001", time.Now())
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{
 		Page: 1, PerPage: 10, UserID: "SA",
@@ -168,12 +160,12 @@ func TestList_DefaultPeriod_NoExplicitDate(t *testing.T) {
 func TestList_ExplicitDate_OverridesPeriod(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"NoBukti"}).AddRow("BKK-1"))
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(1)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
+	dataRows := sqlmock.NewRows([]string{"NoBukti"}).AddRow("BKK-1")
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{
 		Page: 1, PerPage: 10, UserID: "SA",
@@ -191,16 +183,16 @@ func TestList_ExplicitDate_OverridesPeriod(t *testing.T) {
 func TestList_NoPeriodRow_FallsBackToUnrestricted(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPeriode).
 		WithArgs("NEWUSER").
 		WillReturnRows(sqlmock.NewRows([]string{"USERID"}))
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"NoBukti"}))
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(0)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
+	dataRows := sqlmock.NewRows([]string{"NoBukti"})
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{
 		Page: 1, PerPage: 10, UserID: "NEWUSER",
@@ -218,12 +210,12 @@ func TestList_NoPeriodRow_FallsBackToUnrestricted(t *testing.T) {
 func TestList_NoUserID_SkipsPeriodResolution(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
-		WillReturnRows(sqlmock.NewRows([]string{"NoBukti"}))
+	countRows := sqlmock.NewRows([]string{"COUNT(*)"}).AddRow(0)
+	mock.ExpectQuery(".COUNT.*").WillReturnRows(countRows)
+	dataRows := sqlmock.NewRows([]string{"NoBukti"})
+	mock.ExpectQuery(".ROW_NUMBER.*").WillReturnRows(dataRows)
 
 	out, total, err := repo.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
 	require.NoError(t, err)
@@ -236,9 +228,9 @@ func TestList_NoUserID_SkipsPeriodResolution(t *testing.T) {
 func TestList_CountError(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
-	mock.ExpectQuery(`SELECT count\(\*\) FROM ` + tableDBTrans).
+	mock.ExpectQuery(".COUNT.*").
 		WillReturnError(errors.New("db down"))
 
 	_, _, err := repo.List(context.Background(), SListKasBankQuery{Page: 1, PerPage: 10})
@@ -250,7 +242,7 @@ func TestList_CountError(t *testing.T) {
 func TestGetByNoBukti_NotFound(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTrans).
 		WithArgs("BKK-MISSING").
@@ -266,7 +258,7 @@ func TestGetByNoBukti_NotFound(t *testing.T) {
 func TestGetByNoBukti_Found(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	rows := sqlmock.NewRows([]string{"NoBukti", "NOURUT", "Note", "TipeTransHd"}).
 		AddRow("BKK-1", "0001", "catatan", "BKK")
@@ -285,7 +277,7 @@ func TestGetByNoBukti_Found(t *testing.T) {
 func TestInsertHeader_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`INSERT INTO ` + tableDBTrans).
@@ -303,7 +295,7 @@ func TestInsertHeader_Ok(t *testing.T) {
 func TestUpdateHeader_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`(UPDATE|INSERT INTO) ` + tableDBTrans).
@@ -316,16 +308,44 @@ func TestUpdateHeader_Ok(t *testing.T) {
 }
 
 // TestDeleteHeader_Ok verifies the cascade delete opens a transaction and
-// issues two DELETE statements (DBTRANSAKSI then DBTRANS).
+// issues every dependent-row statement (DBTRANSAKSI, DBGIRO, DBDEPOSITO,
+// DBHUTPIUT, DBTempHUTPIUT, DBTRANS). Mirrors FrmKasBank.pas HapusBtnClick
+// lines 2270–2450. Order matters — child rows must be removed before the
+// parent DBTRANS row.
 func TestDeleteHeader_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
+	// 1. DBTRANSAKSI
 	mock.ExpectExec(`DELETE FROM ` + tableDBTransaksi).
 		WithArgs("BKK-1").
 		WillReturnResult(sqlmock.NewResult(0, 2))
+	// 2. DBGIRO — open giro (BuktiBuka + TglCair IS NULL) — DELETE
+	mock.ExpectExec(`DELETE FROM DBGIRO WHERE BuktiBuka = @p1 AND TglCair IS NULL`).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// 3. DBGIRO — cair rows — UPDATE (clear cair fields)
+	mock.ExpectExec(`UPDATE DBGIRO`).
+		WithArgs("BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// 4. DBDEPOSITO — open deposito DELETE
+	mock.ExpectExec(`DELETE FROM DBDEPOSITO WHERE BuktiBuka = \? AND TglCair IS NULL`).
+		WithArgs("BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// 5. DBDEPOSITO — cair rows UPDATE
+	mock.ExpectExec(`UPDATE DBDEPOSITO`).
+		WithArgs("BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// 6. DBHUTPIUT — DELETE
+	mock.ExpectExec(`DELETE FROM DBHUTPIUT WHERE nobukti = \?`).
+		WithArgs("BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// 7. DBTempHUTPIUT — DELETE staging rows
+	mock.ExpectExec(`DELETE FROM DBTempHUTPIUT WHERE NoBukti = \?`).
+		WithArgs("BKK-1").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+	// 8. DBTRANS — parent
 	mock.ExpectExec(`DELETE FROM ` + tableDBTrans).
 		WithArgs("BKK-1").
 		WillReturnResult(sqlmock.NewResult(0, 1))
@@ -340,7 +360,7 @@ func TestDeleteHeader_Ok(t *testing.T) {
 func TestListDetail_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	rows := sqlmock.NewRows([]string{"NoBukti", "Urut", "Perkiraan", "Debet", "Kredit"}).
 		AddRow("BKK-1", 1, "1101", 1000.0, 0.0).
@@ -359,7 +379,7 @@ func TestListDetail_Ok(t *testing.T) {
 func TestGetDetail_NotFound(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT \* FROM ` + tableDBTransaksi).
 		WithArgs("BKK-1", 99).
@@ -375,7 +395,7 @@ func TestGetDetail_NotFound(t *testing.T) {
 func TestInsertDetail_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`INSERT INTO ` + tableDBTransaksi).
@@ -392,7 +412,7 @@ func TestInsertDetail_Ok(t *testing.T) {
 func TestUpdateDetail_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`(UPDATE|INSERT INTO) ` + tableDBTransaksi).
@@ -408,7 +428,7 @@ func TestUpdateDetail_Ok(t *testing.T) {
 func TestDeleteDetail_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
 	mock.ExpectExec(`DELETE FROM ` + tableDBTransaksi).
@@ -427,7 +447,7 @@ func TestDeleteDetail_Ok(t *testing.T) {
 func TestSetOtorisasi_Level1(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectExec(`UPDATE DBTRANS SET IsOtorisasi1 = 1, OtoUser1 = @p1, TglOto1 = @p2 WHERE NoBukti = @p3`).
 		WithArgs("SA", sqlmock.AnyArg(), "BKK-1").
@@ -443,7 +463,7 @@ func TestSetOtorisasi_Level1(t *testing.T) {
 func TestSetOtorisasi_InvalidLevel(t *testing.T) {
 	gormDB, _, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	err := repo.SetOtorisasi(context.Background(), "BKK-1", 6, "SA")
 	require.Error(t, err)
@@ -454,7 +474,7 @@ func TestSetOtorisasi_InvalidLevel(t *testing.T) {
 func TestSetOtorisasi_Level5(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectExec(`UPDATE DBTRANS SET IsOtorisasi5 = 1, OtoUser5 = @p1, TglOto5 = @p2 WHERE NoBukti = @p3`).
 		WithArgs("SA", sqlmock.AnyArg(), "BKK-1").
@@ -470,7 +490,7 @@ func TestSetOtorisasi_Level5(t *testing.T) {
 func TestCancelOtorisasi_Level5(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectExec(`UPDATE DBTRANS SET IsOtorisasi5 = 0, OtoUser5 = '', TglOto5 = NULL WHERE NoBukti = @p1`).
 		WithArgs("BKK-1").
@@ -485,7 +505,7 @@ func TestCancelOtorisasi_Level5(t *testing.T) {
 func TestCancelOtorisasi_Level2(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectExec(`UPDATE DBTRANS SET IsOtorisasi2 = 0, OtoUser2 = '', TglOto2 = NULL WHERE NoBukti = @p1`).
 		WithArgs("BKK-1").
@@ -502,17 +522,17 @@ func TestCancelOtorisasi_Level2(t *testing.T) {
 func TestGenerateNoBukti_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
-	mock.ExpectQuery(`SELECT \[NOBKK\] FROM DBNOMOR WITH`).
+	mock.ExpectQuery(`SELECT.*FROM DBNOMOR WITH`).
 		WillReturnRows(sqlmock.NewRows([]string{"NOBKK"}).AddRow("202606-0005"))
-	mock.ExpectExec(`UPDATE DBNOMOR SET \[NOBKK\] = @p1`).
+	mock.ExpectExec("UPDATE.*DBNOMOR.*SET.*NOBKK").
 		WithArgs("202606-0006").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 	mock.ExpectCommit()
 
-	out, err := repo.GenerateNoBukti(context.Background(), "BKK")
+	out, _, _, err := repo.GenerateNoBukti(context.Background(), "BKK", "SA", 6, 2025)
 	require.NoError(t, err)
 	assert.Regexp(t, `^BKK-\d{6}-\d{4}$`, out)
 	assertMock(t, mock)
@@ -523,12 +543,12 @@ func TestGenerateNoBukti_Ok(t *testing.T) {
 func TestGenerateNoBukti_UnknownTipe(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectBegin()
 	mock.ExpectRollback()
 
-	_, err := repo.GenerateNoBukti(context.Background(), "XYZ")
+	_, _, _, err := repo.GenerateNoBukti(context.Background(), "XYZ", "SA", 6, 2025)
 	require.ErrorIs(t, err, ErrUnknownTipe)
 	assertMock(t, mock)
 }
@@ -537,12 +557,12 @@ func TestGenerateNoBukti_UnknownTipe(t *testing.T) {
 func TestLookupPerkiraan_NoFilter(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	rows := sqlmock.NewRows([]string{"Perkiraan", "Keterangan"}).
 		AddRow("1101", "Kas Besar").
 		AddRow("1102", "Kas Kecil")
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPerkiraan).
+	mock.ExpectQuery("SELECT.*DBPERKIRAAN").
 		WillReturnRows(rows)
 
 	out, err := repo.LookupPerkiraan(context.Background(), "", false, 10)
@@ -555,11 +575,11 @@ func TestLookupPerkiraan_NoFilter(t *testing.T) {
 func TestLookupPerkiraan_KelompokKas(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	rows := sqlmock.NewRows([]string{"Perkiraan", "Keterangan", "Kelompok"}).
 		AddRow("1101", "Kas Besar", "1")
-	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPerkiraan).
+	mock.ExpectQuery("SELECT.*DBPERKIRAAN").
 		WillReturnRows(rows)
 
 	out, err := repo.LookupPerkiraan(context.Background(), "", true, 10)
@@ -572,7 +592,7 @@ func TestLookupPerkiraan_KelompokKas(t *testing.T) {
 func TestGetPeriode_Found(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPeriode).
 		WithArgs("SA").
@@ -589,7 +609,7 @@ func TestGetPeriode_Found(t *testing.T) {
 func TestGetPeriode_NotFound(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT \* FROM ` + tableDBPeriode).
 		WithArgs("SA").
@@ -607,7 +627,7 @@ func TestGetPeriode_NotFound(t *testing.T) {
 func TestRecalcTotals_Ok(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT COALESCE\(SUM\(Debet\), 0\) AS TotalD, COALESCE\(SUM\(Kredit\), 0\) AS TotalK FROM DBTRANSAKSI WHERE NoBukti = @p1`).
 		WithArgs("BKK-1").
@@ -627,7 +647,7 @@ func TestRecalcTotals_Ok(t *testing.T) {
 func TestGetAggregateTotals_EmptyInput(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	out, err := repo.GetAggregateTotals(context.Background(), []string{})
 	require.NoError(t, err)
@@ -642,7 +662,7 @@ func TestGetAggregateTotals_EmptyInput(t *testing.T) {
 func TestGetAggregateTotals_SingleVoucher_IdrAndUsdLines(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	// IDR line: Debet=1000000, Kredit=0, Kurs=1 -> contributes 0 to JumlahValas, 1000000 to JumlahRupiah.
 	// USD line: Debet=0, Kredit=100, Kurs=15000 -> contributes 100 to JumlahValas, 1500000 to JumlahRupiah.
@@ -668,7 +688,7 @@ func TestGetAggregateTotals_SingleVoucher_IdrAndUsdLines(t *testing.T) {
 func TestGetAggregateTotals_MultipleVouchers_SingleQuery(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	noBuktis := make([]string, 0, 10)
 	args := make([]driver.Value, 0, 10)
@@ -697,7 +717,7 @@ func TestGetAggregateTotals_MultipleVouchers_SingleQuery(t *testing.T) {
 func TestGetAggregateTotals_VoucherWithNoDetailLines_NotInResult(t *testing.T) {
 	gormDB, mock, rawDB := newTestDB(t)
 	defer rawDB.Close()
-	repo := NewSKasBankRepository(gormDB)
+	repo := NewSKasBankRepository(gormDB, nil)
 
 	mock.ExpectQuery(`SELECT NoBukti,.*FROM DBTRANSAKSI\s*WHERE NoBukti IN \(.+\)\s*GROUP BY NoBukti`).
 		WithArgs("BKK-EMPTY").

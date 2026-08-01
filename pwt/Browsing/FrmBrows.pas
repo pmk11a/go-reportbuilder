@@ -269,7 +269,7 @@ begin
                             '   group by A.KodeCustSupp,a.Perkiraan  '+
                             '  ) X, DBCUSTSUPP Y '+
                             ' where X.KodeCustSupp=Y.KodeCustSupp '+
-                            ' and (Y.KodeCustSupp like ''%'+EditFilter.Text+'%'' or Y.NamaCustSupp like ''%'+EditFilter.Text+'%'') '+
+                            ' and (Y.KodeCustSupp like ''%'+EditFilter.Text+'%'') '+
                             ' order by X.KodeCustSupp',
                    ['Kode','Nama','Alamat','Kota','Perkiraan','N','N','N'],
                    [15,40,50,20,10,1,1,1], QuBrows, EditBrows);
@@ -1138,7 +1138,7 @@ begin
                             ' from vwGroupCustSupp X, DBCUSTSUPP Y '+
                             ' where X.KodeCustSupp=Y.KodeCustSupp  ' +
                             ' and x.perkiraan ='+QuotedStr(NoKira)+
-                            ' and (Y.KodeCustSupp like ''%'+EditFilter.Text+'%'' or Y.NamaCustSupp like ''%'+EditFilter.Text+'%'') '+
+                            ' and (Y.KodeCustSupp like ''%'+EditFilter.Text+'%'') '+
                             ' order by X.KodeCustSupp',
                    ['Kode','Nama','Alamat','Kota'],
                    [15,40,50,20], QuBrows, EditBrows);

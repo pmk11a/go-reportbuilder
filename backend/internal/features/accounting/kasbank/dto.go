@@ -122,13 +122,34 @@ type SDetailInput struct {
 	Keterangan string `json:"keterangan"`
 	// TipeTrans echoes the header discriminator.
 	TipeTrans string `json:"tipeTrans"`
-	// TPHC is "D" or "C" — the debit/credit marker the legacy schema requires.
+	// TPHC is the payment-method marker: C=Cash, T=Transfer, H=Hutang Giro, P=Piutang Giro.
+	// This is the per-row value, mirroring Delphi's Copy(THPC.Text,2,1) on the detail row.
 	TPHC string `json:"tphc"`
 	// KodeBag is the SPK/project reference ("KodeBag" column in DBTRANSAKSI).
 	KodeBag string `json:"kodebag"`
-	// KodeCustSupp stores the customer/supplier code when this line is a
-	// pelunasan (Hutang/Piutang settlement).
+	// KodeCustSupp stores the customer/supplier code for the Perkiraan (D) side.
+	// Maps to DBTRANSAKSI.CustSuppP.
 	KodeCustSupp string `json:"kode_cust_supp"`
+	// CustSuppP mirrors KodeCustSupp — stored as CustSuppP on DBTRANSAKSI.
+	// (Alias for clarity; same value as KodeCustSupp.)
+	CustSuppP string `json:"custSuppP"`
+	// CustSuppL stores the customer/supplier code for the Lawan (K) side.
+	// Maps to DBTRANSAKSI.CustSuppL. Used in HT/PT pelunasan (HutPiut settlement).
+	CustSuppL string `json:"custSuppL"`
+	// NoAktivaP is the fixed-asset number for the D (Perkiraan) side.
+	// Set when the user fills the Aktiva sub-form for AKV/AKM purchases.
+	// Mirrors Delphi's @NoAktivaP parameter of sp_TransaksiKasBank.
+	NoAktivaP string `json:"noAktivaP"`
+	// NoAktivaL is the fixed-asset number for the K (Lawan) side.
+	// Mirrors Delphi's @NoAktivaL parameter of sp_TransaksiKasBank.
+	NoAktivaL string `json:"noAktivaL"`
+	// XSusut is the number of depreciation periods. From FrmKasBankAktiva XSusut field.
+	// Mirrors Delphi's @XSusut parameter of sp_TransaksiKasBank.
+	XSusut int `json:"xSusut"`
+	// PerlakuanAktiva encodes the asset treatment: 0=normal, 1=Jual, 2=Keluar Aktiva.
+	// From FrmKasBankAktiva PerlakuanAktiva combo box.
+	// Mirrors Delphi's @PerlakuanAktiva parameter of sp_TransaksiKasBank.
+	PerlakuanAktiva int `json:"perlakuanAktiva"`
 }
 
 // SOtorisasiRequest is the JSON body for POST /:noBukti/otorisasi and
@@ -191,4 +212,13 @@ type SSubTransactionResult struct {
 	Kode    string `json:"kode"`
 	StatusP string `json:"statusP"`
 	StatusL string `json:"statusL"`
+	// IsLokalORexim mirrors Delphi's IsLokalORexim from DBPOSTHUTPIUT.
+	// When true, the open-invoice query for this perkiraan should restrict
+	// to locally-created invoices (vs exim trade). Used by the frontend to
+	// filter the invoice list in the HutPiut sub-form.
+	IsLokalORexim bool `json:"isLokalOrExim"`
+	// TipeDK mirrors Delphi's TipeDK from DBPOSTHUTPIUT.
+	// 'D' or 'K' — the default posting side used when inserting a new
+	// DBHUTPIUT row. Frontend can use this to pre-fill TipeDK on invoice rows.
+	TipeDK string `json:"tipeDK"`
 }

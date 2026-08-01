@@ -3172,7 +3172,8 @@ begin
   begin
     Close;
     Sql.Clear;
-    sql.Add('Select Tipe,nourut,NoBukti,UserID From dbNomorPK where Tipe=:0 and Nobukti=:1');
+    // PATCH: UPDLOCK,ROWLOCK untuk mencegah race condition saat SELECT
+    sql.Add('Select Tipe,nourut,NoBukti,UserID From dbNomorPK WITH (UPDLOCK,ROWLOCK) where Tipe=:0 and Nobukti=:1');
     Prepared;
     Parameters[0].Value := Tipe;
     Parameters[1].Value := Nomor;
@@ -3195,7 +3196,12 @@ begin
       Parameters[5].Value := StrToInt(PeriodThn);
       Parameters[6].value := 0;
       Parameters[7].value := XnamaGudang;
-      ExecSQL;
+      try
+        ExecSQL;
+      except
+        // PATCH: Silent error - duplicate entry bisa terjadi jika race condition
+        // INSERT akan di-retry oleh pemanggil (TambahBtnClick) atau dianggap bentrok
+      end;
     end;
   end
   else
@@ -3208,19 +3214,22 @@ end;
 procedure Hapus_Daftar_Nomor(Tipe:String;NoBukti,pemakai:String);
 begin
       // Hapus Nomor Yang ada di daftar (dbNOMORPK)
+      // PATCH: Tambah UPDLOCK dan fix SQL injection (parameter untuk UserID)
       with Dm.DaftarNO do
       begin
          Close;
          SQL.Clear;
-         SQL.Add('Delete from dbNOMORPK');
-         SQL.Add('Where tipe =:0 and NoBukti =:1 and UserID='+QuotedStr(pemakai));
+         SQL.Add('Delete from dbNOMORPK WITH (UPDLOCK)');
+         SQL.Add('Where tipe =:0 and NoBukti =:1 and UserID=:2');
          Prepared;
          Parameters[0].Value:=Tipe;
          Parameters[1].Value:=NoBukti;
+         Parameters[2].Value:=pemakai;
          try
            ExecSQL;
          except
-           ShowMessage('Hapus Daftar Nomor Gagal !');
+           // PATCH: Silent error - cleanup bukan critical operation
+           // ShowMessage('Hapus Daftar Nomor Gagal !');
          end;
       end;
 end;
@@ -3228,11 +3237,12 @@ end;
 procedure Hapus_Daftar_Nomor_User(Tipe:String;Pemakai:String);
 begin
       // Hapus Nomor Yang ada di daftar (dbNOMORPK)
+      // PATCH: Tambah UPDLOCK untuk mencegah race condition saat cleanup
       with Dm.DaftarNO do
       begin
          Close;
          SQL.Clear;
-         SQL.Add('Delete from dbNOMORPK');
+         SQL.Add('Delete from dbNOMORPK WITH (UPDLOCK)');
          SQL.Add('Where tipe =:0 and UserID =:1');
          Prepared;
          Parameters[0].Value:=Tipe;
@@ -3240,7 +3250,8 @@ begin
          try
            ExecSQL;
          except
-           ShowMessage('Hapus Daftar Nomor Gagal !');
+           // PATCH: Silent error - cleanup bukan critical operation
+           // ShowMessage('Hapus Daftar Nomor Gagal !');
          end;
       end;
 end;

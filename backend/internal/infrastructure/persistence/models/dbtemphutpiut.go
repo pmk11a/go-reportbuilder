@@ -32,7 +32,7 @@ type SDBTempHUTPIUT struct {
 	StatusUID *string `gorm:"column:StatusUID;size:1" json:"statusuid"`
 	JumlahSaldo *float64 `gorm:"column:JumlahSaldo" json:"jumlahsaldo"`
 	JumlahSaldoD *float64 `gorm:"column:JumlahSaldoD" json:"jumlahsaldod"`
-	TipeDK *string `gorm:"column:TipeDK;size:1" json:"tipedk"`
+	TipeDK *string `gorm:"column:TipeDK;size;1;->;<-:false" json:"tipedk"` // Optional legacy column; skipped on inserts if column missing
 	NoInvoice *string `gorm:"column:NoInvoice;size:25" json:"noinvoice"`
 	Valas_ *string `gorm:"column:Valas_;size:15" json:"valas_"`
 	Kurs_ *float64 `gorm:"column:Kurs_" json:"kurs_"`

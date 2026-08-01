@@ -8,6 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// RunMigrations executes all database schema changes required by the application.
+// This includes:
+//   - Legacy constraint fixes for SQL Server compatibility
+//   - Table auto-migration via GORM
+//   - Index creation for performance optimization
+//
+// The legacy DBTRANS table is NOT auto-migrated (it belongs to the Delphi system).
+// Instead, performance-critical indexes are created via raw SQL.
 func RunMigrations(database *gorm.DB) {
 	log.Println("Running selective migrations...")
 
@@ -61,5 +69,63 @@ func RunMigrations(database *gorm.DB) {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
+	// Run index migrations for legacy tables.
+	// These tables (DBTRANS, DBTRANSAKSI, DBPERKIRAAN) belong to the Delphi
+	// system and are NOT auto-migrated. We only create indexes needed for
+	// the kasbank listing performance.
+	runIndexMigrations(database)
+
 	log.Println("Migrations completed successfully")
+}
+
+// runIndexMigrations creates performance indexes on legacy tables.
+// Indexes are created with IF NOT EXISTS semantics to be idempotent.
+func runIndexMigrations(db *gorm.DB) {
+	log.Println("Running index migrations for legacy tables...")
+
+	// Index for kasbank listing: covers the common filter pattern
+	// TipeTransHd IN (BKM, BKK, BBM, BBK) AND Tanggal BETWEEN ... AND ...
+	// This composite index dramatically improves the List() query performance
+	// by allowing SQL Server to seek on TipeTransHd first, then range-scan on Tanggal.
+	db.Exec(`
+		IF NOT EXISTS (
+			SELECT 1 FROM sys.indexes
+			WHERE name = 'IX_DBTRANS_TipeTransHd_Tanggal'
+			AND object_id = OBJECT_ID('DBTRANS')
+		)
+		BEGIN
+			CREATE NONCLUSTERED INDEX IX_DBTRANS_TipeTransHd_Tanggal
+			ON DBTRANS (TipeTransHd, Tanggal)
+			INCLUDE (NoBukti, Note)
+		END
+	`)
+
+	// Index for NoBukti lookups (used by GetByNoBukti, InsertHeader duplicate checks)
+	db.Exec(`
+		IF NOT EXISTS (
+			SELECT 1 FROM sys.indexes
+			WHERE name = 'IX_DBTRANS_NoBukti'
+			AND object_id = OBJECT_ID('DBTRANS')
+		)
+		BEGIN
+			CREATE NONCLUSTERED INDEX IX_DBTRANS_NoBukti
+			ON DBTRANS (NoBukti)
+		END
+	`)
+
+	// Index for DBTRANSAKSI joins (used by GetAggregateTotals, RecalcTotals)
+	db.Exec(`
+		IF NOT EXISTS (
+			SELECT 1 FROM sys.indexes
+			WHERE name = 'IX_DBTRANSAKSI_NoBukti'
+			AND object_id = OBJECT_ID('DBTRANSAKSI')
+		)
+		BEGIN
+			CREATE NONCLUSTERED INDEX IX_DBTRANSAKSI_NoBukti
+			ON DBTRANSAKSI (NoBukti)
+			INCLUDE (Debet, Kredit, Valas, Kurs)
+		END
+	`)
+
+	log.Println("Index migrations completed")
 }

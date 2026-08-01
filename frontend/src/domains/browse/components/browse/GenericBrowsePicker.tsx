@@ -34,6 +34,14 @@ export interface GenericBrowsePickerProps {
    * Parent context filters. Keys are mapped to URL params as
    * `parent_<sourceColumn>=<value>` and substituted into placeholders
    * like `<P:KODE_DIV>` in the SQL query.
+   *
+   * Special keys for Perkiraan picker (kodeBrowse 1001):
+   * - `posthutpiut` → maps to browse param `parent_posthutpiut` (e.g. "N" for netral)
+   * - `without`     → maps to browse param `parent_without` (e.g. "4" for exclude P/L)
+   *
+   * These special keys are NOT prefixed with `parent_` — they pass through
+   * as-is so the backend can handle them via the existing Delphi-style
+   * placeholder substitution (`<P:POSTHUTPIUT>`, `<P:WITHOUT>`).
    */
   parentFilters?: Record<string, string | number>
   /**
@@ -134,6 +142,17 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
     [types, kodeBrowse]
   )
 
+  // For Perkiraan picker (1001), map special parentFilter keys to browse params.
+  // The backend expects these as direct query params (`parent_posthutpiut`, `parent_without`)
+  // rather than the generic `parent_<col>` pattern.
+  const browseParams = useMemo(() => {
+    if (!parentFilters || Object.keys(parentFilters).length === 0) return undefined
+    const filtered = { ...parentFilters }
+    delete filtered.posthutpiut
+    delete filtered.without
+    return Object.keys(filtered).length > 0 ? filtered : undefined
+  }, [parentFilters])
+
   // Resolve effective keyField/labelField (props override metadata)
   const effKeyField = keyField ?? typeMeta?.keyField ?? 'Kode'
   const effLabelField = labelField ?? typeMeta?.labelField ?? 'Keterangan'
@@ -144,7 +163,7 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
     onSearchChange,
   } = useBrowseSearch({
     kodeBrowse,
-    parentFilters,
+    parentFilters: parentFilters,
     userMode,
     limit: 50,
     debounceMs: 300,
@@ -185,12 +204,24 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
 
   // Build options from the active mode
   const options: SearchableSelectOption[] = useMemo(() => {
-    const makeOpt = (row: IBrowseRow): SearchableSelectOption => ({
-      value: String(row[effKeyField] ?? ''),
-      label: renderLabel
+    const makeOpt = (row: IBrowseRow): SearchableSelectOption => {
+      const value = String(row[effKeyField] ?? '')
+      const label = renderLabel
         ? renderLabel(row)
-        : String(row[effLabelField] ?? ''),
-    })
+        : String(row[effLabelField] ?? '')
+      // Defensive: if either field is empty/undefined, fall back to the
+      // other available identifier so the dropdown surfaces *something*
+      // instead of "undefined". This handles DB rows where the
+      // configured keyField/labelField are NULL.
+      if (!label && value) {
+        return { value, label: value }
+      }
+      if (!value) {
+        // eslint-disable-next-line no-console
+        console.warn("[GenericBrowsePicker] row missing keyField", effKeyField, row)
+      }
+      return { value, label }
+    }
 
     if (usePaged) {
       const items = pagedQuery.data?.items ?? []

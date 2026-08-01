@@ -192,6 +192,22 @@ export const generateNoBuktiFn = createServerFn({ method: 'GET' })
     return result.data
   })
 
+export const generateNoBuktiPreviewFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { tipe: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const params = new URLSearchParams()
+    params.set('tipe', data.tipe)
+    const result = await makeBackendRequest(
+      `/api/accounting/kasbank/generate-no-bukti-preview?${params.toString()}`,
+      { method: 'GET' },
+      accessToken
+    )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
 export const lookupPerkiraanFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .validator((data: { q: string; kelompokKas?: boolean; limit?: number }) => data)
@@ -299,6 +315,58 @@ export const lookupBiayaAktivaFn = createServerFn({ method: 'GET' })
     const { accessToken } = context as { accessToken: string }
     const url = data.query ? `/api/accounting/kasbank/lookup-biaya-aktiva${data.query}` : '/api/accounting/kasbank/lookup-biaya-aktiva'
     const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const generateNoUrutAktivaFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { perkiraan: string; devisi?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const sp = new URLSearchParams({ perkiraan: data.perkiraan })
+    if (data.devisi) sp.set('devisi', data.devisi)
+    const result = await makeBackendRequest(
+      `/api/accounting/kasbank/generate-no-urut-aktiva?${sp.toString()}`,
+      { method: 'GET' },
+      accessToken
+    )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+export const generateNoUrutAktiva2Fn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { prefix: string; devisi?: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const sp = new URLSearchParams({ prefix: data.prefix })
+    if (data.devisi) sp.set('devisi', data.devisi)
+    const result = await makeBackendRequest(
+      `/api/accounting/kasbank/generate-no-urut-aktiva2?${sp.toString()}`,
+      { method: 'GET' },
+      accessToken
+    )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+/**
+ * Lookup Group Aktiva Perkiraan — filters via dbposthutpiut.Kode='AKV'.
+ * This mirrors Delphi's PerkiraanKeyDown which queries DBPOSTHUTPIUT
+ * instead of DBPERKIRAAN for the fixed-asset group picker.
+ */
+export const lookupAktivaGroupByKodeFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { q: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const sp = new URLSearchParams({ q: data.q })
+    const result = await makeBackendRequest(
+      `/api/accounting/kasbank/lookup-aktiva-group?${sp.toString()}`,
+      { method: 'GET' },
+      accessToken
+    )
     if (!result.success) throw new Error(result.message)
     return result.data
   })

@@ -30,6 +30,13 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           type="search"
           value={value}
           onChange={handleChange}
+          // Disable browser autofill / search-engine suggestions so the
+          // consumers' search pipeline (not browser suggestions) is the only
+          // UX surfaced when typing.
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
           className={cn(searchInputVariants(), className)}
           {...props}
         />

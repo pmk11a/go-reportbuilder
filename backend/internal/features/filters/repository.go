@@ -4,6 +4,7 @@ import (
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
+	"strings"
 )
 
 type IFilterRepository interface {
@@ -33,8 +34,9 @@ func (r *filterRepository) GetCustomers(customerType int, search string, offset 
 	baseSQL := "SELECT * FROM DBCUSTSUPP WHERE JENIS = ?"
 	args := []any{customerType}
 	if search != "" {
-		searchParam := "%" + search + "%"
-		baseSQL += " AND (KODECUSTSUPP LIKE ? OR NAMACUSTSUPP LIKE ?)"
+		searchParam := "%" + strings.ToUpper(search) + "%"
+		// Search by KODECUSTSUPP and NAMACUSTSUPP (code and name)
+		baseSQL += " AND (UPPER(KODECUSTSUPP) LIKE ? OR UPPER(NAMACUSTSUPP) LIKE ?)"
 		args = append(args, searchParam, searchParam)
 	}
 

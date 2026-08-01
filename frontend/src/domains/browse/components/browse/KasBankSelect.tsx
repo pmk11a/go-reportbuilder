@@ -77,9 +77,18 @@ export function KasBankSelect({
 	kasType = "ALL",
 }: Props) {
 	const renderLabel = (row: IBrowseRow): string => {
-		const kode = String(row.Per ?? row.KODE ?? "");
+		// Backend browse configs (1005, 20011) return {Perkiraan, Keterangan, Simbol}.
+		// The legacy row.Per / row.KODE / row.NAMA aliases are kept for any rows
+		// that are shaped that way. Fall through to a stable non-empty string so
+		// the dropdown never renders literal "undefined".
+		const kode = String(row.Perkiraan ?? row.Per ?? row.KODE ?? "");
 		const nama = String(row.Keterangan ?? row.NAMA ?? "");
 		const sim = row.Simbol ? String(row.Simbol) : "";
+		if (!kode && !nama) {
+			// eslint-disable-next-line no-console
+			console.warn("[KasBankSelect] row missing Perkiraan and Keterangan", row);
+			return "(akun tanpa nama)";
+		}
 		const base = kode && nama ? `${kode} - ${nama}` : nama || kode;
 		return sim ? `${base} (${sim})` : base;
 	};

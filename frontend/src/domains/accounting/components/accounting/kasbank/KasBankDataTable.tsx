@@ -212,7 +212,7 @@ export function KasBankDataTable({ onAdd, onEdit }: KasBankDataTableProps) {
               <TableHead className="min-w-[60px] w-[60px]">{t('headers.tipe')}</TableHead>
               <TableHead className="min-w-[80px] w-[80px]">{t('headers.perkiraan')}</TableHead>
               <TableHead>{t('headers.note')}</TableHead>
-              <TableHead className="text-right">{t('headers.jumlah_valas')}</TableHead>
+              <TableHead className="hidden text-right">{t('headers.jumlah_valas')}</TableHead>
               <TableHead className="text-right">{t('headers.jumlah_rupiah')}</TableHead>
               {authHeaders}
               <TableHead className="text-center w-32">{t('headers.actions')}</TableHead>
@@ -329,7 +329,7 @@ function KasBankRow({ voucher, onDelete, onEdit, onPdf }: {
       <TableCell className="max-w-60 truncate text-sm" title={voucher.note || undefined}>{voucher.note || '-'}</TableCell>
 
       {/* Valas */}
-      <TableCell className="text-right font-mono">
+      <TableCell className="hidden text-right font-mono">
         {Number(voucher.jumlahvalas ?? 0).toLocaleString('id-ID', { minimumFractionDigits: 2 })}
       </TableCell>
 

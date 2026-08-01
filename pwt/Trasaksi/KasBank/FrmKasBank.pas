@@ -1649,117 +1649,208 @@ begin
 end;
 
 procedure TFrKasBank.SimpanData(Choice: String);
+var
+  iRetry: Integer;
+  bSuccess: Boolean;
+  sErrMsg: String;
 begin
   BM := QuTransaksi.GetBookmark;
-  with Sp_Transaksi do
+  iRetry := 0;
+  bSuccess := False;
+
+  // PATCH: Auto-retry untuk PK violation (nomor bentrok)
+  while (iRetry <= 3) and (not bSuccess) do
   begin
-     Parameters[1].Value := Choice;
-     if (Choice='I') or (Choice='U') then
-     begin
-        Parameters[2].Value := NOBUKTI.Text;
-        Parameters[3].Value := NoUrut.Text;
-        Parameters[4].Value := TANGGAL.date;
-        Parameters[5].Value := Terima.Text;
-        Parameters[6].Value := 0;
-        Parameters[7].Value := Devisi.Text;
-        Parameters[8].Value := Perkiraan.Text;
-        Parameters[9].Value := Lawan.Text;
-        Parameters[10].Value:= KETERANGAN.Text;
-        Parameters[11].Value:= '';
-        Parameters[12].Value:= Jumlah.Value;
-        Parameters[13].Value:= 0;
-        Parameters[16].Value:= Jumlah.Value*Kurs.Value;
-        Parameters[17].Value:= 0;
-        Parameters[14].Value:= Valas.Text;
-        Parameters[15].Value:= Kurs.Value;
-        Parameters[18].Value:= Mode.Text;
-        Parameters[19].Value:= Copy(THPC.Text,2,1);
-        Parameters[20].Value:= kodeCustSuppP.Text;
-        Parameters[21].Value:= kodeCustSuppL.Text;
-        Parameters[22].Value:= mUrut;
-        Parameters[23].Value:= NoAktivaP;
-        Parameters[24].Value:= NoAktivaL;
-        Parameters[25].Value:= StatusAktivaP;
-        Parameters[26].Value:= StatusAktivaL;
-        Parameters[27].Value:= NoBon.Text;
-        Parameters[28].Value:= KodeBag.Text;
-        Parameters[29].Value:= KodeP;
-        Parameters[30].Value:= KodeL;
-        Parameters[31].Value:= StatusGiro;
-        Parameters[32].Value:= Simbol.Text;
-        Parameters[33].Value:= mPerkiraan.Text;
-        Parameters[34].Value:= XSusut;
-        Parameters[35].Value:= PerlakuanAktiva;
-     end
-     Else
-     begin
-       Parameters[2].Value := QuTransaksiNoBukti.AsString;
-       Parameters[22].Value:= QuTransaksiUrut.AsInteger;
-     end;
-     try
-       SimpanDataAktiva(Choice);
-       ExecProc;
-       SimpanDataGiro(Choice);
-       //SimpanDataHutPiut;
-       //SimpanDataDeposito(Choice);
-       if Choice='I' then
-       begin
-         mUrut:=mUrut+1;
-         LoggingData(IDUser,Choice,Mode.Text,NOBUKTI.Text,
-                    ' No. Bukti = '+QuotedStr(Nobukti.Text)+
-                    ' Tanggal = '+QuotedStr(Tanggal.Text)+
-                    ' Note = '+QuotedStr(Terima.Text)+
-                    ' Debet = '+QuotedStr(Perkiraan.Text)+
-                    ' Kredit = '+QuotedStr(Lawan.Text)+
-                    ' Sumber = '+QuotedStr(THPC.Text)+
-                    ' Jumlah = '+QuotedStr(Jumlah.Text)+
-                    ' JumlahRp = '+QuotedStr(FormatFloat(',0.00',Jumlah.Value*Kurs.Value)));
-         TampilData(NOBUKTI.Text);
-         QuTransaksi.Locate('NoBukti;urut',VarArrayOf([Nobukti.Text,mUrut]),[]);
-       end else if Choice='U' then
-       begin
-         QuTransaksi.Requery;
-         if QuTransaksi.BookmarkValid(BM) then
-         begin
-           try
-             QuTransaksi.GotoBookmark(BM);
-          finally
-             QuTransaksi.FreeBookmark(BM);
-          end
-        end else
-        begin
-          QuTransaksi.FreeBookmark(BM);
-          QuTransaksi.Last;
-        end;
-        LoggingData(IDUser,Choice,Mode.Text,NOBUKTI.Text,
-                    ' No. Bukti = '+QuotedStr(Nobukti.Text)+
-                    ' Tanggal = '+QuotedStr(Tanggal.Text)+
-                    ' Note = '+QuotedStr(Terima.Text)+
-                    ' Debet = '+QuotedStr(Perkiraan.Text)+
-                    ' Kredit = '+QuotedStr(Lawan.Text)+
-                    ' Sumber = '+QuotedStr(THPC.Text)+
-                    ' Jumlah = '+QuotedStr(Jumlah.Text)+
-                    ' JumlahRp = '+QuotedStr(FormatFloat(',0.00',Jumlah.Value*Kurs.Value)));
-      end
-      else if Choice='D' then
+    try
+      with Sp_Transaksi do
       begin
-        LoggingData(IDUser,Choice,Mode.Text,NOBUKTI.Text,
-                    ' No. Bukti = '+QuotedStr(QuTransaksiNoBukti.Value)+
-                    ' Tanggal = '+QuotedStr(QuTransaksiTanggal.AsString)+
-                    ' Note = '+QuotedStr(QuTransaksiNoBukti.Value)+
-                    ' Debet = '+QuotedStr(QuTransaksiPerkiraan.Value)+
-                    ' Kredit = '+QuotedStr(QuTransaksiLawan.Value)+
-                    ' Sumber = '+QuotedStr(QuTransaksiMyTPHC.Value)+
-                    ' Jumlah = '+QuotedStr(QuTransaksiDebet.Text)+
-                    ' JumlahRp = '+QuotedStr(FormatFloat(',0.00',QuTransaksiDebetRp.Value)));
-        QuTransaksi.Requery;
-      end;
-      except
-      on E: Exception do
+         Parameters[1].Value := Choice;
+         if (Choice='I') or (Choice='U') then
+         begin
+            Parameters[2].Value := NOBUKTI.Text;
+            Parameters[3].Value := NoUrut.Text;
+            Parameters[4].Value := TANGGAL.date;
+            Parameters[5].Value := Terima.Text;
+            Parameters[6].Value := 0;
+            Parameters[7].Value := Devisi.Text;
+            Parameters[8].Value := Perkiraan.Text;
+            Parameters[9].Value := Lawan.Text;
+            Parameters[10].Value:= KETERANGAN.Text;
+            Parameters[11].Value:= '';
+            Parameters[12].Value:= Jumlah.Value;
+            Parameters[13].Value:= 0;
+            Parameters[16].Value:= Jumlah.Value*Kurs.Value;
+            Parameters[17].Value:= 0;
+            Parameters[14].Value:= Valas.Text;
+            Parameters[15].Value:= Kurs.Value;
+            Parameters[18].Value:= Mode.Text;
+            Parameters[19].Value:= Copy(THPC.Text,2,1);
+            Parameters[20].Value:= kodeCustSuppP.Text;
+            Parameters[21].Value:= kodeCustSuppL.Text;
+            Parameters[22].Value:= mUrut;
+            Parameters[23].Value:= NoAktivaP;
+            Parameters[24].Value:= NoAktivaL;
+            Parameters[25].Value:= StatusAktivaP;
+            Parameters[26].Value:= StatusAktivaL;
+            Parameters[27].Value:= NoBon.Text;
+            Parameters[28].Value:= KodeBag.Text;
+            Parameters[29].Value:= KodeP;
+            Parameters[30].Value:= KodeL;
+            Parameters[31].Value:= StatusGiro;
+            Parameters[32].Value:= Simbol.Text;
+            Parameters[33].Value:= mPerkiraan.Text;
+            Parameters[34].Value:= XSusut;
+            Parameters[35].Value:= PerlakuanAktiva;
+         end
+         Else
+         begin
+           Parameters[2].Value := QuTransaksiNoBukti.AsString;
+           Parameters[22].Value:= QuTransaksiUrut.AsInteger;
+         end;
+         try
+           SimpanDataAktiva(Choice);
+           ExecProc;
+           SimpanDataGiro(Choice);
+           //SimpanDataHutPiut;
+           //SimpanDataDeposito(Choice);
+           if Choice='I' then
            begin
-               Application.MessageBox(StrPCopy(S,E.Message),'Peringatan',MB_OK or MB_ICONSTOP);
-           end;
-     end;
+             mUrut:=mUrut+1;
+             LoggingData(IDUser,Choice,Mode.Text,NOBUKTI.Text,
+                        ' No. Bukti = '+QuotedStr(Nobukti.Text)+
+                        ' Tanggal = '+QuotedStr(Tanggal.Text)+
+                        ' Note = '+QuotedStr(Terima.Text)+
+                        ' Debet = '+QuotedStr(Perkiraan.Text)+
+                        ' Kredit = '+QuotedStr(Lawan.Text)+
+                        ' Sumber = '+QuotedStr(THPC.Text)+
+                        ' Jumlah = '+QuotedStr(Jumlah.Text)+
+                        ' JumlahRp = '+QuotedStr(FormatFloat(',0.00',Jumlah.Value*Kurs.Value)));
+             TampilData(NOBUKTI.Text);
+             QuTransaksi.Locate('NoBukti;urut',VarArrayOf([Nobukti.Text,mUrut]),[]);
+           end else if Choice='U' then
+           begin
+             QuTransaksi.Requery;
+             if QuTransaksi.BookmarkValid(BM) then
+             begin
+               try
+                 QuTransaksi.GotoBookmark(BM);
+              finally
+                 QuTransaksi.FreeBookmark(BM);
+              end
+            end else
+            begin
+              QuTransaksi.FreeBookmark(BM);
+              QuTransaksi.Last;
+            end;
+            LoggingData(IDUser,Choice,Mode.Text,NOBUKTI.Text,
+                        ' No. Bukti = '+QuotedStr(Nobukti.Text)+
+                        ' Tanggal = '+QuotedStr(Tanggal.Text)+
+                        ' Note = '+QuotedStr(Terima.Text)+
+                        ' Debet = '+QuotedStr(Perkiraan.Text)+
+                        ' Kredit = '+QuotedStr(Lawan.Text)+
+                        ' Sumber = '+QuotedStr(THPC.Text)+
+                        ' Jumlah = '+QuotedStr(Jumlah.Text)+
+                        ' JumlahRp = '+QuotedStr(FormatFloat(',0.00',Jumlah.Value*Kurs.Value)));
+          end
+          else if Choice='D' then
+          begin
+            LoggingData(IDUser,Choice,Mode.Text,NOBUKTI.Text,
+                        ' No. Bukti = '+QuotedStr(QuTransaksiNoBukti.Value)+
+                        ' Tanggal = '+QuotedStr(QuTransaksiTanggal.AsString)+
+                        ' Note = '+QuotedStr(QuTransaksiNoBukti.Value)+
+                        ' Debet = '+QuotedStr(QuTransaksiPerkiraan.Value)+
+                        ' Kredit = '+QuotedStr(QuTransaksiLawan.Value)+
+                        ' Sumber = '+QuotedStr(QuTransaksiMyTPHC.Value)+
+                        ' Jumlah = '+QuotedStr(QuTransaksiDebet.Text)+
+                        ' JumlahRp = '+QuotedStr(FormatFloat(',0.00',QuTransaksiDebetRp.Value)));
+            QuTransaksi.Requery;
+          end;
+          bSuccess := True;
+        except
+          on E: Exception do
+          begin
+            sErrMsg := E.Message;
+            if Pos('PK violation', sErrMsg) > 0 then
+            begin
+              Inc(iRetry);
+              if iRetry > 3 then
+              begin
+                Application.MessageBox(PChar('Nomor bukti bentrok dengan data existing.'+#13#10+'Silakan tutup form dan buka ulang untuk mendapatkan nomor baru.'),'Peringatan',MB_OK or MB_ICONSTOP);
+                Break;
+              end;
+
+              Application.MessageBox(PChar('Nomor bukti bentrok dengan data existing.'+#13#10+'Mencoba generate nomor baru... (percobaan '+IntToStr(iRetry)+'/'+IntToStr(3)+')'),'Peringatan',MB_OK or MB_ICONWARNING);
+
+              // Generate nomor baru
+              IsiNoBuktiBaru;
+
+              // Daftar ulang dengan nomor baru
+              Daftar_Nomor(Copy(Mode.Text,1,2), NoUrut.Text, NOBUKTI.Text, IsMax);
+
+              // Update parameter NOBUKTI untuk retry berikutnya
+              Parameters[2].Value := NOBUKTI.Text;
+              Parameters[18].Value := Mode.Text;
+            end
+            else
+            begin
+              // Bukan PK violation - raise error
+              Application.MessageBox(StrPCopy(S,E.Message),'Peringatan',MB_OK or MB_ICONSTOP);
+              Break;
+            end;
+          end;
+        end;
+      end;
+    except
+      on E: Exception do
+      begin
+        sErrMsg := E.Message;
+        if Pos('PK violation', sErrMsg) > 0 then
+        begin
+          Inc(iRetry);
+          if iRetry > 3 then
+          begin
+            Application.MessageBox(PChar('Nomor bukti bentrok dengan data existing.'+#13#10+'Silakan tutup form dan buka ulang untuk mendapatkan nomor baru.'),'Peringatan',MB_OK or MB_ICONSTOP);
+            Break;
+          end;
+
+          Application.MessageBox(PChar('Nomor bukti bentrok dengan data existing.'+#13#10+'Mencoba generate nomor baru... (percobaan '+IntToStr(iRetry)+'/'+IntToStr(3)+')'),'Peringatan',MB_OK or MB_ICONWARNING);
+
+          // Generate nomor baru
+          IsiNoBuktiBaru;
+
+          // Daftar ulang dengan nomor baru
+          Daftar_Nomor(Copy(Mode.Text,1,2), NoUrut.Text, NOBUKTI.Text, IsMax);
+
+          // Update parameter NOBUKTI untuk retry berikutnya
+          with Sp_Transaksi do
+          begin
+            Parameters[2].Value := NOBUKTI.Text;
+            Parameters[18].Value := Mode.Text;
+          end;
+        end
+        else
+        begin
+          Application.MessageBox(StrPCopy(S,E.Message),'Peringatan',MB_OK or MB_ICONSTOP);
+          Break;
+        end;
+      end;
+    end;
+  end;
+
+  if not bSuccess then Exit;
+
+  if QuTransaksi.BookmarkValid(BM) then
+  begin
+    try
+      QuTransaksi.GotoBookmark(BM);
+    finally
+      QuTransaksi.FreeBookmark(BM);
+    end;
+  end
+  else
+  begin
+    QuTransaksi.FreeBookmark(BM);
+    QuTransaksi.Last;
   end;
 end;
 
@@ -1917,6 +2008,13 @@ end;
 procedure TFrKasBank.FormClose(Sender: TObject; var Action: TCloseAction);
 var iJmlMode: Integer;
 begin
+  // PATCH: Cleanup orphan dbNomorPK sebelum form ditutup
+  try
+    Hapus_Daftar_Nomor_User(Copy(Mode.Text,1,2), IDUser);
+  except
+    // Silent error
+  end;
+
   if FrMainKasBank.Acetak then  Action:=cafree
   else
   if mExit=true then
@@ -2095,6 +2193,11 @@ Cetak.Visible:=false;
 end;
 
 procedure TFrKasBank.TambahBtnClick(Sender: TObject);
+const
+  MAX_REGEN = 3;
+var
+  iRegen: Integer;
+  bSuccess: Boolean;
 begin
   if IsTambah then
   begin
@@ -2157,6 +2260,31 @@ begin
       Devisi.Text := dm.QuCari.FieldByname('devisi').AsString;
       LDevisi.Caption := '[ '+dm.QuCari.FieldByname('Namadevisi').AsString+' ]';
       Devisi.Enabled := false;
+    end;
+
+    // PATCH: Auto-regenerate nomor jika bentrok dengan user lain
+    bSuccess := False;
+    iRegen := 0;
+    while (iRegen < MAX_REGEN) and (not bSuccess) do
+    begin
+      Inc(iRegen);
+      if not Daftar_Nomor(Copy(Mode.Text,1,2), Nourut.Text, NoBukti.Text, IsMax) then
+      begin
+        if iRegen < MAX_REGEN then
+        begin
+          ShowMessage('Nomor '+NOBUKTI.Text+' telah digunakan oleh '+MyUser+'. Menggenerate nomor baru...');
+          IsiNoBuktiBaru;
+        end
+        else
+        begin
+          ShowMessage('Nomor baru juga bentrok setelah '+IntToStr(MAX_REGEN)+'x percobaan. Silakan tutup form dan buka ulang.');
+          Exit;
+        end;
+      end
+      else
+      begin
+        bSuccess := True;
+      end;
     end;
   end
   else

@@ -7,7 +7,7 @@ import (
 // SDBTRANS represents the DBTRANS table
 type SDBTRANS struct {
 	NoBukti string `gorm:"column:NoBukti;primaryKey;size:30" json:"nobukti"`
-	NOURUT  int    `gorm:"column:NOURUT;primaryKey" json:"nourut"`
+	NOURUT  string `gorm:"column:NOURUT;primaryKey;size:10" json:"nourut"`
 	Tanggal *time.Time `gorm:"column:Tanggal" json:"tanggal"`
 	Note    string `gorm:"column:Note;size:500" json:"note"`
 	Lampiran string `gorm:"column:Lampiran;size:50" json:"lampiran"`

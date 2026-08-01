@@ -14,6 +14,7 @@ import {
   setOtorisasiFn,
   batalOtorisasiFn,
   generateNoBuktiFn,
+  generateNoBuktiPreviewFn,
   lookupPerkiraanFn,
   lookupDevisiFn,
   downloadKasBankPdfFn,
@@ -22,6 +23,9 @@ import {
   lookupBagianFn,
   lookupAkumulasiAktivaFn,
   lookupBiayaAktivaFn,
+  generateNoUrutAktivaFn,
+  generateNoUrutAktiva2Fn,
+  lookupAktivaGroupByKodeFn,
 } from '@/server/functions/accounting/kasbank'
 import type { IAPIResponse } from '@/shared/types/api'
 import type {
@@ -120,17 +124,35 @@ export const kasbankService = {
     return result as IGenerateNoBuktiResponse
   },
 
+  async generateNoBuktiPreview(tipe: string): Promise<{ noBukti: string; seq: string; generatedAt?: string }> {
+    const result = await generateNoBuktiPreviewFn({ data: { tipe } })
+    return result as { noBukti: string; seq: string; generatedAt?: string }
+  },
+
   async lookupPerkiraan(q: string, kelompokKas?: string): Promise<IAPIResponse<IPerkiraan[]>> {
     const sp = new URLSearchParams()
     if (q) sp.set('q', q)
     if (kelompokKas) sp.set('kelompokKas', kelompokKas)
-    const result = await lookupPerkiraanFn({ data: { q: sp.get('q') ?? '', kelompokKas: sp.get('kelompokKas') === 'true', limit: 50 } })
-    return result as IAPIResponse<IPerkiraan[]>
+    // lookupPerkiraanFn returns the underlying SKasBankLookupPerkiraanResponse
+    // (already envelope-unwrapped): { items: SDbPerkiraan[], total: number }.
+    const result: any = await lookupPerkiraanFn({ data: { q: sp.get('q') ?? '', kelompokKas: sp.get('kelompokKas') === 'true', limit: 50 } })
+    const items: IPerkiraan[] = Array.isArray(result?.items)
+      ? result.items
+      : Array.isArray(result)
+      ? result
+      : []
+    return {
+      success: true,
+      status: 200,
+      message: 'Success',
+      data: items,
+    } as IAPIResponse<IPerkiraan[]>
   },
 
   async lookupDevisi(): Promise<any[]> {
-    const result = await lookupDevisiFn()
-    return result as any[]
+    // lookupDevisiFn returns the raw `data` array of the response envelope.
+    const result: any = await lookupDevisiFn()
+    return Array.isArray(result) ? result : (result as any)?.data ?? []
   },
 
   async downloadPdf(noBukti: string): Promise<Blob> {
@@ -149,62 +171,104 @@ export const kasbankService = {
     sp.set('kodeCustSupp', kodeCustSupp);
     sp.set('perkiraan', perkiraan);
     const result = await getOutstandingHutPiutFn({ data: { query: `?${sp.toString()}` } })
-    return result as IOutstandingHutPiut[];
+    // Belt-and-suspenders: handle raw array OR wrapper OR null
+    if (Array.isArray(result)) return result as IOutstandingHutPiut[]
+    return ((result as any)?.data as IOutstandingHutPiut[] | undefined) ?? []
   },
 
-  async lookupCustSupp(q: string): Promise<ICustSupp[]> {
+  async lookupCustSupp(q: string, perkiraan?: string): Promise<ICustSupp[]> {
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
+    if (perkiraan) sp.set('perkiraan', perkiraan);
     const result = await lookupCustSuppFn({ data: { query: `?${sp.toString()}` } })
-    return result as ICustSupp[];
+    // Belt-and-suspenders: handle raw array OR wrapper OR null
+    if (Array.isArray(result)) return result as ICustSupp[]
+    return ((result as any)?.data as ICustSupp[] | undefined) ?? []
   },
 
   async lookupBagian(q: string): Promise<any[]> {
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
     const result = await lookupBagianFn({ data: { query: `?${sp.toString()}` } })
-    return result as any[];
+    if (Array.isArray(result)) return result as any[]
+    return ((result as any)?.data as any[] | undefined) ?? []
   },
 
   async lookupAkumulasiAktiva(q: string): Promise<any[]> {
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
     const result = await lookupAkumulasiAktivaFn({ data: { query: `?${sp.toString()}` } })
-    return result as any[];
+    if (Array.isArray(result)) return result as any[]
+    return ((result as any)?.data as any[] | undefined) ?? []
   },
 
   async lookupBiayaAktiva(q: string): Promise<any[]> {
     const sp = new URLSearchParams();
     if (q) sp.set('q', q);
     const result = await lookupBiayaAktivaFn({ data: { query: `?${sp.toString()}` } })
-    return result as any[];
+    if (Array.isArray(result)) return result as any[]
+    return ((result as any)?.data as any[] | undefined) ?? []
+  },
+
+  async generateNoUrutAktiva(perkiraan: string, devisi: string): Promise<string> {
+    const result = await generateNoUrutAktivaFn({ data: { perkiraan, devisi } })
+    return (((result as any)?.nourut ?? (result as any)?.data?.nourut ?? '') as string).trim()
+  },
+
+  async generateNoUrutAktiva2(prefix: string, devisi: string): Promise<string> {
+    const result = await generateNoUrutAktiva2Fn({ data: { prefix, devisi } })
+    return (((result as any)?.nourut2 ?? (result as any)?.data?.nourut2 ?? '') as string).trim()
   },
 
   async lookupPerkiraanByKode(kode: string): Promise<any> {
-    const result = await lookupPerkiraanFn({ data: { q: kode, kelompokKas: false, limit: 1 } })
-    return (result as any[])[0] || null;
+    // The Aktiva group's perkiraan is identified by dbposthutpiut.Kode='AKV'
+    // (Delphi: PerkiraanKeyDown for FrmSubAktiva uses DBPOSTHUTPIUT,
+    // not DBPERKIRAAN). Therefore AktivaSubForm now calls
+    // lookupAktivaGroupByKode (DBPOSTHUTPIUT-backed) instead of this generic
+    // DBPERKIRAAN lookup. This method is retained for non-Aktiva callers
+    // (e.g. detail-row Perkiraan lookup).
+    const result: any = await lookupPerkiraanFn({ data: { q: kode, kelompokKas: false, limit: 1 } })
+    const arr: any[] = Array.isArray(result)
+      ? result
+      : Array.isArray(result?.items)
+      ? result.items
+      : Array.isArray(result?.data)
+      ? result.data
+      : []
+    return arr[0] ?? null
+  },
+
+  /**
+   * Lookup Group Aktiva by kode — backed by dbposthutpiut (Kode='AKV'),
+   * mirrors Delphi PerkiraanKeyDown for the Aktiva sub-form.
+   * Returns array of { perkiraan, keterangan, namadevisi }.
+   */
+  async lookupAktivaGroup(query: string): Promise<any[]> {
+    const result = await lookupAktivaGroupByKodeFn({ data: { q: query } })
+    if (Array.isArray(result)) return result as any[]
+    return ((result as any)?.data as any[] | undefined) ?? []
+  },
+
+  async lookupAktivaGroupByKode(kode: string): Promise<any> {
+    const rows = await this.lookupAktivaGroup(kode)
+    return rows[0] ?? null
   },
 
   async lookupBagianByKode(kode: string): Promise<any> {
-    const sp = new URLSearchParams();
-    sp.set('kodebag', kode);
-    const result = await lookupBagianFn({ data: { query: `?${sp.toString()}` } })
-    return (result as any[])[0] || null;
+    return this.lookupBagian(kode).then((rows) => rows[0] ?? null)
   },
 
   async lookupDevisiByKode(kode: string): Promise<any> {
     const result = await lookupDevisiFn()
-    const filtered = (result as any[]).filter((d: any) => d.Kode === kode || d.CODE === kode)
-    return filtered[0] || null;
+    const rows: any[] = Array.isArray(result) ? result : (result as any)?.data ?? []
+    return rows.find((d: any) => d.Devisi === kode || d.devisi === kode) ?? null
   },
 
   async lookupAkumulasiByKode(kode: string): Promise<any> {
-    const result = await lookupAkumulasiAktivaFn({ data: { query: `?q=${encodeURIComponent(kode)}` } })
-    return (result as any[])[0] || null;
+    return this.lookupAkumulasiAktiva(kode).then((rows) => rows[0] ?? null)
   },
 
   async lookupBiayaByKode(kode: string): Promise<any> {
-    const result = await lookupBiayaAktivaFn({ data: { query: `?q=${encodeURIComponent(kode)}` } })
-    return (result as any[])[0] || null;
+    return this.lookupBiayaAktiva(kode).then((rows) => rows[0] ?? null)
   },
 }

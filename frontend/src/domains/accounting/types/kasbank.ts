@@ -58,10 +58,20 @@ export interface IDetailRow {
   tphc?: string;
   /** SPK / project reference (KodeBag) */
   kodebag?: string;
-  /** Customer/supplier code for pelunasan settlement */
+  /** Customer/supplier code for pelunasan settlement (D/Perkiraan side) */
   kode_cust_supp?: string;
+  /** Customer/supplier code for K/Lawan side (HutPiut settlement) */
+  custSuppL?: string;
   /** Selected Hutang/Piut items */
   hutpiut_selected?: any[];
+  /** No. Aktiva fixed-asset number for D/Perkiraan side (from Aktiva sub-form) */
+  noAktivaP?: string;
+  /** No. Aktiva fixed-asset number for K/Lawan side (from Aktiva sub-form) */
+  noAktivaL?: string;
+  /** x Susut bulan ini (from Aktiva sub-form, XSusut field) */
+  xSusut?: number;
+  /** Perlakuan aktiva: 0=normal, 1=Jual, 2=Keluar Aktiva (from Aktiva sub-form) */
+  perlakuanAktiva?: number;
 }
 
 export interface ICreateKasBankPayload {
@@ -71,7 +81,7 @@ export interface ICreateKasBankPayload {
   note: string;
   tgljurnal?: string;      // Batas Waktu
   noJurnal?: string;       // No. Order
-  noBuktiSem?: string;     // No. Invoice (not in DBTRANS, stored in detail)
+  noBuktiSem?: string;     // No. Invoice
   noOrder?: string;        // alias kept for compatibility
   noInvoice?: string;      // alias kept for compatibility
   kodeProject?: string;
@@ -79,13 +89,22 @@ export interface ICreateKasBankPayload {
   nobon: string;
   tphc: string;
   details: IDetailRow[];
-  giroList?: Array<any>;
-  depositoList?: Array<any>;
-  hutPiutList?: Array<any>; // Should map to SDBHUTPIUT structure
-  aktivaList?: Array<any>; // Should map to SDBAKTIVA structure
+  /** Giro entries for H+/P+ (open giro) or H-/P- (settle giro) */
+  giroList?: IGiro[];
+  /** Deposito entries for DP+ (open) or DP- (settle) */
+  depositoList?: IDeposito[];
+  /** Hutang/Piutang pelunasan entries — maps to DBHUTPIUT table */
+  hutPiutList?: IHutPiut[];
+  /** Aktiva tetap entries — maps to DBAKTIVA table */
+  aktivaList?: IAktiva[];
 }
 
 export interface IAktiva {
+  /** Group Aktiva code (e.g. "1-11"). NOT the detail-row's lawan/perkiraan —
+   *  user types it or picks via browse, matching Delphi FrmKasBankAktiva.
+   *  On save, this field is OVERWRITTEN with the full `KodeAktiva`
+   *  (Perkiraan + "." + NoUrut + "." + NoUrut2) so it matches the
+   *  IDetailRow.noAktivaP/L semantics. */
   perkiraan: string;
   kelompok: number; // 0=Header, 1=Sub
   nobelakang: string; // No Urut
@@ -103,6 +122,9 @@ export interface IAktiva {
   persenbiaya2: number; // % Susut Biaya 2
   biaya3: string; // Akun Biaya Penyusutan 3
   persenbiaya3: number; // % Susut Biaya 3
+  /** % Pajak — Delphi FrmSubAktiva.PersenPajak. Defaults to 0 when unused.
+   *  When metode === 'P', the user enters the tax percentage here. */
+  persenpajak: number;
   xsusut: number; // x Susut Bulan ini
   perlakuanaktiva: number; // 0=-, 1=Jual, 2=Keluar Aktiva
   kodebag: string;
@@ -121,17 +143,11 @@ export interface IUpdateKasBankPayload {
   devisi?: string;
   nobon?: string;
   tphc?: string;
-  details?: Array<{
-    perkiraan: string;
-    lawan: string;
-    debet: number;
-    kredit: number;
-    keterangan: string;
-    valas?: string;
-    kurs?: number;
-  }>;
+  details?: IDetailRow[];
   giroList?: IGiro[];
   depositoList?: IDeposito[];
+  hutPiutList?: IHutPiut[];
+  aktivaList?: IAktiva[];
 }
 
 export interface IAddDetailPayload {
@@ -146,10 +162,20 @@ export interface IAddDetailPayload {
   tphc?: string;
   /** SPK / project reference (KodeBag) */
   kodebag?: string;
-  /** Customer/supplier code for pelunasan settlement */
+  /** Customer/supplier code for pelunasan settlement (D/Perkiraan side) */
   kode_cust_supp?: string;
+  /** Customer/supplier code for K/Lawan side (HutPiut settlement) */
+  custSuppL?: string;
   /** Selected Hutang/Piut items */
   hutpiut_selected?: any[];
+  /** No. Aktiva for D/Perkiraan side (from Aktiva sub-form) */
+  noAktivaP?: string;
+  /** No. Aktiva for K/Lawan side (from Aktiva sub-form) */
+  noAktivaL?: string;
+  /** x Susut bulan ini (from Aktiva sub-form) */
+  xSusut?: number;
+  /** Perlakuan aktiva: 0=normal, 1=Jual, 2=Keluar Aktiva (from Aktiva sub-form) */
+  perlakuanAktiva?: number;
 }
 
 export interface IUpdateDetailPayload extends IAddDetailPayload {
@@ -213,6 +239,48 @@ export interface IDeposito {
   keterangan: string;
 }
 
+/** Mirrors SDBHUTPIUT (DBHUTPIUT table) structure.
+ *  Used in hutPiutList of ICreateKasBankPayload.
+ *
+ *  Key fields:
+ *  - NoFaktur: Invoice/Faktur number
+ *  - NoMsk: Urut of the detail row that triggered this entry
+ *  - Tipe: PT/HT/UPT/UHT — determines Debet vs Kredit direction
+ *    (PT+/UPT+ = Kredit, PT-/UPT- = Debet for piutang)
+ *    (HT+/UHT+ = Kredit, HT-/UHT- = Debet for hutang)
+ *  - NoBukti: the KasBank voucher NoBukti (filled by service layer)
+ *  - TglBukti: transaction date
+ *  - TglJatuhTempo: invoice due date
+ *  - Debet/Kredit: the payment amount (direction by Tipe)
+ *  - Valas/Kurs/DebetD/KreditD: foreign currency amounts
+ */
+export interface IHutPiut {
+  nofaktur: string;
+  noretur?: string;
+  tiptrans?: string;
+  kodecustsupp: string;
+  nobukti?: string;     // Set by service layer if empty
+  nomsk?: number;       // Urut of detail row (default 1, set by service)
+  tanggal?: string;
+  jatuhtempo?: string;
+  debet?: number;
+  kredit?: number;
+  valas?: string;
+  kurs?: number;
+  debetd?: number;
+  kreditd?: number;
+  saldo?: number;
+  saldod?: number;
+  tipetrans?: string;
+  tipe?: string;        // PT/HT/UPT/UHT
+  perkiraan?: string;
+  catatan?: string;
+  noinvoice?: string;
+  kodevls_?: string;
+  kurs_?: number;
+  kursbayar?: number;
+}
+
 export interface ISubTransactionResult {
   trigger: 'giro' | 'deposito' | 'hutpiut' | 'aktiva' | '';
   kode: string;
@@ -240,6 +308,7 @@ export interface IOutstandingHutPiut {
 }
 
 export interface ICustSupp {
-  kode: string;
-  nama: string;
+  // Match backend SDBCUSTSUPP PascalCase fields (camelized JSON response).
+  KodeCustSupp: string;
+  NamaCustSupp: string;
 }

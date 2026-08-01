@@ -95,10 +95,28 @@ const SearchableSelect = React.forwardRef<
       setSearchValue('');
     };
 
-    // Filter options based on search value and limit to 50 for performance
-    const filteredOptions = options.filter((option) =>
-      option.label.toLowerCase().includes(searchValue.toLowerCase())
-    ).slice(0, 50);
+    // Filter options based on search value and limit to 50 for performance.
+    // Always include the currently selected option so the parent filter value
+    // stays visible even when the search text does not match it.
+    const safeOptions = Array.isArray(options) ? options : []
+    const selectedValue = internalValue || ''
+    const searchLower = searchValue.toLowerCase()
+    const filteredRaw = safeOptions.filter((option) => {
+      // Keep the selected option regardless of search match
+      if (String(option.value) === String(selectedValue)) return true
+      // Match against value (code) and label (description)
+      return String(option.value ?? '').toLowerCase().includes(searchLower) ||
+        String(option.label ?? '').toLowerCase().includes(searchLower)
+    })
+    // Move the selected option to the top of the list so it's always first
+    const selectedIdx = filteredRaw.findIndex((o) => String(o.value) === String(selectedValue))
+    let filteredOptions: SearchableSelectOption[]
+    if (selectedIdx > 0) {
+      const selected = filteredRaw[selectedIdx]
+      filteredOptions = [selected, ...filteredRaw.slice(0, selectedIdx), ...filteredRaw.slice(selectedIdx + 1)].slice(0, 50)
+    } else {
+      filteredOptions = filteredRaw.slice(0, 50)
+    }
 
     // Get selected option label
     const selectedLabel = options.find((opt) => opt.value === internalValue)?.label || internalValue;
@@ -178,6 +196,14 @@ const SearchableSelect = React.forwardRef<
                   value={searchValue}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   autoFocus
+                  // Disable browser autofill / search-engine suggestions so the
+                  // dropdown options (not browser suggestions) are the only
+                  // UX surfaced when typing. spellCheck off avoids red
+                  // underlines on autocomplete suggestion text.
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   className={cn(
                     'flex h-10 w-full rounded-lg border border-slate-100 bg-slate-50 pl-9 pr-3 py-1 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-800 dark:bg-slate-950'
                   )}
@@ -210,7 +236,7 @@ const SearchableSelect = React.forwardRef<
                         {option.icon}
                       </div>
                     )}
-                    <span className="flex-1 truncate">{option.label}</span>
+                    <span className="flex-1 truncate">{option.label ?? `[no-label val=${JSON.stringify(option.value)}]`}</span>
                   </button>
                 ))
               ) : (
