@@ -109,6 +109,7 @@ export interface IAktiva {
   kelompok: number; // 0=Header, 1=Sub
   nobelakang: string; // No Urut
   nobelakang2: string; // No Urut 2 (for Sub Aktiva)
+  noAktivahd: string; // No Aktiva Hd (parent KodeAktiva)
   tglpengakuan: string; // Tanggal Perolehan
   tipeaktiva: number; // 0=Aktiva Tetap, 1=Aktiva Yang Dibiayakan
   keterangan: string;

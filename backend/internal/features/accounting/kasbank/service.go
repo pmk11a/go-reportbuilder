@@ -85,8 +85,8 @@ type IKasBankService interface {
 	// LookupBiayaAktiva returns cost accounts for Aktiva sub-form
 	LookupBiayaAktiva(ctx context.Context, q string) ([]models.SDbPerkiraan, error)
 
-	// GenerateNoUrutAktiva generates the next NoUrut for Aktiva sub-form
-	GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (int, error)
+	// GenerateNoUrutAktiva generates the next 5-digit padded NoUrut for Aktiva sub-form
+	GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (string, error)
 
 	// GenerateNoUrutAktiva2 generates the next NoUrut2 for Aktiva sub-form
 	GenerateNoUrutAktiva2(ctx context.Context, prefix, devisi string) (string, error)
@@ -221,18 +221,11 @@ func (s *SKasBankService) LookupBiayaAktiva(ctx context.Context, q string) ([]mo
 	return results, nil
 }
 
-// GenerateNoUrutAktiva generates the next NoUrut for Aktiva sub-form
-func (s *SKasBankService) GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (int, error) {
-	var maxUrut float64
-	// Query the database directly for MAX(NOURUT) from DBAKTIVA table
-	err := s.db.WithContext(ctx).Raw("SELECT MAX(NOURUT) FROM DBAKTIVA WHERE Perkiraan = ? AND Devisi = ?", perkiraan, devisi).Scan(&maxUrut).Error
-	if err != nil {
-		return 0, err
-	}
-	if maxUrut == 0 {
-		return 1, nil
-	}
-	return int(maxUrut) + 1, nil
+// GenerateNoUrutAktiva generates the next 5-digit padded NoUrut for Aktiva sub-form.
+// Delegates to repository which handles zero-padding formatting (mirrors Delphi
+// UrutAktiva behaviour of returning a zero-padded string up to 5 digits).
+func (s *SKasBankService) GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (string, error) {
+	return s.repo.GenerateNoUrutAktiva(ctx, perkiraan, devisi)
 }
 
 // GenerateNoUrutAktiva2 generates the next NoUrut2 for Aktiva sub-form

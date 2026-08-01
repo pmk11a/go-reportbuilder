@@ -57,8 +57,8 @@ func (m *mockSvc) GenerateNoBukti(ctx context.Context, tipe, devisi, userID stri
 func (m *mockSvc) GenerateNoBuktiTx(ctx context.Context, tipe, devisi string, bulan, tahun int) (*SGenerateNoBuktiResponse, error) {
 	return &SGenerateNoBuktiResponse{Tipe: tipe, NoBukti: "BKK-202606-0001", GeneratedAt: time.Now()}, nil
 }
-func (m *mockSvc) GenerateNoBuktiPreview(ctx context.Context, tipe string, bulan, tahun int) (string, string, error) {
-	return "BKK-202606-0001", "00001", nil
+func (m *mockSvc) GenerateNoBuktiPreview(ctx context.Context, tipe string, bulan, tahun int) (string, int, error) {
+	return "BKK-202606-0001", 1, nil
 }
 func (m *mockSvc) GetPeriodeFromUser(ctx context.Context, userID string) (int, int, error) {
 	return 6, 2026, nil
@@ -66,10 +66,10 @@ func (m *mockSvc) GetPeriodeFromUser(ctx context.Context, userID string) (int, i
 func (m *mockSvc) CommitCounterTx(ctx context.Context, tipe, counter string) error {
 	return nil
 }
-func (m *mockSvc) GetOutstandingHutPiut(ctx context.Context, kodeCustSupp, perkiraan, excludeNoBukti string, excludeNoMsk int) ([]models.SDBHUTPIUT, error) {
+func (m *mockSvc) GetOutstandingHutPiut(ctx context.Context, kodeCustSupp, perkiraan string) ([]models.SDBHUTPIUT, error) {
 	return nil, nil
 }
-func (m *mockSvc) LookupCustSupp(ctx context.Context, q string, perkiraan string) ([]models.SDbCustSupp, error) {
+func (m *mockSvc) LookupCustSupp(ctx context.Context, q string) ([]models.SDbCustSupp, error) {
 	return nil, nil
 }
 func (m *mockSvc) MarkCetak(ctx context.Context, noBukti string) error {

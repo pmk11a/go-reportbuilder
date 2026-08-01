@@ -1243,7 +1243,6 @@ func TestSafeCreateDBTransaksi_ProbeCachedPerTx(t *testing.T) {
 		t.Fatalf("probe should run once per tx: %v", err)
 	}
 }
-}
 
 func TestResolveHutPiutNoMsk(t *testing.T) {
 	t.Parallel()

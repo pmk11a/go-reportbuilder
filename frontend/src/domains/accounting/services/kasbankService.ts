@@ -212,12 +212,13 @@ export const kasbankService = {
 
   async generateNoUrutAktiva(perkiraan: string, devisi: string): Promise<string> {
     const result = await generateNoUrutAktivaFn({ data: { perkiraan, devisi } })
-    return (((result as any)?.nourut ?? (result as any)?.data?.nourut ?? '') as string).trim()
+    // Server function returns result.data (the string directly), not {data: {nourut: ...}}
+    return ((result as any)?.nourut ?? result ?? '') as string
   },
 
   async generateNoUrutAktiva2(prefix: string, devisi: string): Promise<string> {
     const result = await generateNoUrutAktiva2Fn({ data: { prefix, devisi } })
-    return (((result as any)?.nourut2 ?? (result as any)?.data?.nourut2 ?? '') as string).trim()
+    return ((result as any)?.nourut2 ?? result ?? '') as string
   },
 
   async lookupPerkiraanByKode(kode: string): Promise<any> {
