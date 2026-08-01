@@ -983,6 +983,24 @@ export function DetailRowEditor({
 	const { t } = useTranslation(["accounting", "common"]);
 	const [perkiraanSearch, setPerkiraanSearch] = useState("");
 	const [lawanSearch, setLawanSearch] = useState("");
+	const isMasuk = tipe === "BKM" || tipe === "BBM";
+
+	// Form state must be declared BEFORE the useLookupPerkiraanShared calls
+	// because the Lawan dropdown passes `form.perkiraan` as the `without`
+	// argument to exclude the already-selected account.
+	const [form, setForm] = useState<IAddDetailPayload>({
+		perkiraan: "",
+		lawan: "",
+		debet: 0,
+		kredit: 0,
+		keterangan: "",
+		valas: "",
+		kurs: 1,
+		tphc: "C",
+		kodebag: "",
+		kode_cust_supp: "",
+	});
+
 	// Perkiraan (Kas/Bank side) lookup — "N" skips the KelompokKas preload (an
 	// optimisation since we don't need DBPOSTHUTPIUT metadata here). The backend
 	// perkiraan endpoint does not filter by posthutpiut either way; both
@@ -992,12 +1010,14 @@ export function DetailRowEditor({
 		perkiraanSearch,
 		"N",
 	);
-	// Lawan (contra-account side) lookup. Same shape as Perkiraan — the user
-	// picks the contra account that drives the DBPOSTHUTPIUT-based sub-form
-	// trigger (HutPiut/Aktiva/Giro entries live in the same perkiraan master).
+	// Lawan (contra-account side) lookup. Pass `form.perkiraan` as `without` so
+	// the currently selected Perkiraan account is excluded from the Lawan list —
+	// a perkiraan cannot be both the Kas/Bank side and the contra side of the
+	// same transaction (accounting invariant).
 	const { data: lawanPerkiraanData } = useLookupPerkiraanShared(
 		lawanSearch,
 		"N",
+		form.perkiraan || undefined,
 	);
 
 	const perkiraanOpts = useMemo(
@@ -1017,21 +1037,6 @@ export function DetailRowEditor({
 			})),
 		[lawanPerkiraanData],
 	);
-
-	const isMasuk = tipe === "BKM" || tipe === "BBM";
-
-	const [form, setForm] = useState<IAddDetailPayload>({
-		perkiraan: "",
-		lawan: "",
-		debet: 0,
-		kredit: 0,
-		keterangan: "",
-		valas: "",
-		kurs: 1,
-		tphc: "C",
-		kodebag: "",
-		kode_cust_supp: "",
-	});
 
 	// Reset form when modal opens
 	useEffect(() => {

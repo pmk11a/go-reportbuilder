@@ -127,10 +127,17 @@ export function useLookupPerkiraan(q: string, kelompokKas: boolean = false) {
 // useLookupPerkiraanShared uses the shared FilterService which is the
 // canonical Perkiraan lookup endpoint (POSTHUTPIUT/Kelompok aware).
 // Prefer this over the legacy kasbank-specific lookup for new code.
-export function useLookupPerkiraanShared(q: string, posthutpiut: string = 'Y') {
+// The optional `without` parameter excludes a specific account (e.g. the
+// already-selected Perkiraan) from the results — useful for the Lawan
+// dropdown so users cannot pick the same account as both Perkiraan and Lawan.
+export function useLookupPerkiraanShared(
+  q: string,
+  posthutpiut: string = 'Y',
+  without?: string,
+) {
   return useQuery({
-    queryKey: ['shared', 'perkiraan', q, posthutpiut] as const,
-    queryFn: () => sharedFilterService.getPerkiraan(q, undefined, posthutpiut),
+    queryKey: ['shared', 'perkiraan', q, posthutpiut, without ?? null] as const,
+    queryFn: () => sharedFilterService.getPerkiraan(q, without, posthutpiut),
     // Always fetch so the dropdown is populated on first open. The 5-minute
     // staleTime keeps the cached list reusable across keystrokes.
     enabled: true,
