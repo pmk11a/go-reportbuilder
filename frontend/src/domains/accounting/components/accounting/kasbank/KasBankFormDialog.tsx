@@ -1089,16 +1089,10 @@ export function DetailRowEditor({
 		if (!form.perkiraan) return;
 		try {
 			const dk = form.debet > 0 ? "D" : "K";
-			// Resolve sub-transaction by mirroring Delphi CekLawanDiPosting(mLawan, DK):
-			//   - BKK/BBK mode: Perkiraan = Kas/Bank side, Lawan = expense/revenue side
-			//     → lookup DBPOSTHUTPIUT by Lawan (the contra-account carrying the sub-ledger posting).
-			//   - BKM/BBM mode: Perkiraan = expense/revenue side, Lawan = Kas/Bank side
-			//     → lookup DBPOSTHUTPIUT by Perkiraan (since in this direction Perkiraan carries the sub-ledger posting).
-			// If the user did not pick a distinct Lawan, fall back to Perkiraan so the
-			// lookup still runs (it will simply return no trigger if no match).
-			const isKreditMode = tipe === "BKK" || tipe === "BBM";
-			const lookupPerk =
-				isKreditMode && form.lawan ? form.lawan : form.perkiraan;
+			// Resolve sub-transaction by looking up DBPOSTHUTPIUT by the contra account (Lawan).
+			// The contra account is what carries the sub-ledger posting for HutPiut/Aktiva/Giro.
+			// This applies to ALL tipe (BKM/BKK/BBM/BBK) - always use form.lawan.
+			const lookupPerk = form.lawan ? form.lawan : form.perkiraan;
 			const result = await kasbankService.resolveSubTransaction(
 				lookupPerk,
 				dk,
