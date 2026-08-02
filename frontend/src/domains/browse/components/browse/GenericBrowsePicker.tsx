@@ -130,7 +130,7 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
 
   const { data: types } = useBrowseTypes()
   const typeMeta = useMemo(
-    () => types?.find((t:any) => t.kodeBrowse === kodeBrowse),
+    () => types?.find((t:any) => String(t.kodeBrowse) === String(kodeBrowse)),
     [types, kodeBrowse]
   )
 

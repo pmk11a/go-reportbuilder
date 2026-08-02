@@ -128,6 +128,11 @@ export const browseService = {
       }
     }
     
+    // Check if the backend returned a standard success response with data array
+    if (res && (res as any).data !== undefined && Array.isArray((res as any).data)) {
+      return { items: (res as any).data, meta: { total: (res as any).data.length } }
+    }
+    
     // Fallback if backend hasn't been updated yet or returned an array
     if (Array.isArray(res)) {
       return { items: res, meta: { total: res.length } }

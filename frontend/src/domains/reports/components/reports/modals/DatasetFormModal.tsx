@@ -8,7 +8,7 @@ import { Input } from '@/shared/ui/form/input'
 import { Checkbox } from '@/shared/ui/form/checkbox'
 import { Button } from '@/shared/ui/overlay/button'
 import { useReportMutations } from '@/domains/reports/hooks/useReportMutations'
-import type { IReportDataset } from '@/domains/reports/types'
+import type { IReportDataset, IDatasetConfig } from '@/domains/reports/types'
 import { useToast } from '@/shared/hooks/use-toast'
 
 const datasetSchema = z.object({
@@ -20,7 +20,7 @@ const datasetSchema = z.object({
   konfigurasi_list: z.array(z.object({
     key: z.string().min(1, 'Key tidak boleh kosong'),
     value: z.string().min(1, 'Value tidak boleh kosong'),
-    type: z.enum(['string', 'int', 'array', 'json']).default('string'),
+    type: z.enum(['string', 'int', 'array', 'json']),
   })).optional(),
 })
 
@@ -126,7 +126,7 @@ export function DatasetFormModal({ isOpen, onClose, reportId, dataset }: Dataset
       query_sumber_data: values.query_sumber_data,
       urutan: values.urutan,
       visible: values.visible,
-      config_json: parsedConfigJson,
+      config_json: parsedConfigJson as IDatasetConfig | null,
     }
 
     if (isEdit) {
