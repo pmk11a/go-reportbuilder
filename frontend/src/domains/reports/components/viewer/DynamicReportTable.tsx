@@ -6,19 +6,19 @@ interface DynamicReportTableProps {
   columns: import('../../types').IReportColumn[]
   data: any[] | null
   isLoading: boolean
+  hideBorders?: boolean
 }
 
-export function DynamicReportTable({ kodeMenu, columns, data, isLoading }: DynamicReportTableProps) {
+export function DynamicReportTable({ kodeMenu, columns, data, isLoading, hideBorders }: DynamicReportTableProps) {
   const formatColumn = useFormatColumn()
   
   if (columns.length === 0) return null
 
-  return (
-    <Card className="shadow-sm border-secondary-200">
-      <CardContent className="p-0 overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-secondary-50 text-secondary-600 border-b border-secondary-200">
-            <tr>
+  const tableContent = (
+    <div className="overflow-x-auto w-full">
+      <table className="w-full text-sm text-left">
+        <thead className="bg-secondary-50 dark:bg-slate-800/50 text-secondary-600 dark:text-slate-300 border-b border-secondary-200 dark:border-white/10">
+          <tr>
               {columns.map((col) => (
                 <th 
                   key={col.nama_kolom} 
@@ -29,7 +29,7 @@ export function DynamicReportTable({ kodeMenu, columns, data, isLoading }: Dynam
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-secondary-100 bg-white">
+          <tbody className="divide-y divide-secondary-100 dark:divide-white/5 bg-white dark:bg-transparent">
             {isLoading ? (
               <tr>
                 <td colSpan={columns.length} className="px-4 py-12 text-center text-secondary-500">
@@ -71,6 +71,17 @@ export function DynamicReportTable({ kodeMenu, columns, data, isLoading }: Dynam
             )}
           </tbody>
         </table>
+    </div>
+  )
+
+  if (hideBorders) {
+    return tableContent
+  }
+
+  return (
+    <Card className="shadow-sm border-secondary-200 dark:border-white/10 dark:bg-[#0f172a]">
+      <CardContent className="p-0">
+        {tableContent}
       </CardContent>
     </Card>
   )

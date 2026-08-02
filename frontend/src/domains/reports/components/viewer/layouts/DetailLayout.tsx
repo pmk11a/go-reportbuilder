@@ -1,4 +1,3 @@
-import React from 'react'
 import { DynamicReportTable } from '../DynamicReportTable'
 import { IReportDataset } from '@/domains/reports/types'
 

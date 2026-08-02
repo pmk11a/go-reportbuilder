@@ -5,7 +5,7 @@ import { Input } from '@/shared/ui'
 import { useReportsMenu } from '@/domains/reports/hooks/useReport'
 import type { IReportMenuItem } from '@/domains/reports/types'
 import { useThemeStore } from '@/shared/stores/themeStore'
-import { Each, Show } from '@/shared/ui/layout/Render'
+import { Each, Show, CollapsibleSidebarLayout } from '@/shared/ui/layout'
 import { useDebounce } from '@/shared/hooks'
 
 export const Route = createFileRoute('/admin/_layout/reports/laporan')({
@@ -24,90 +24,62 @@ function LaporanDinamisLayout() {
   // we'll rely on active link styling if possible, but manually checking is better.
   const params = Route.useParams() as any
   const selectedKode = params?.kodeMenu || ''
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const sidebarCustomContent = (
+    <Show when={!isLoading} fallback={
+      <div className="p-4 text-center text-secondary-400">Memuat...</div>
+    }>
+      {menuItems && menuItems.length > 0 ? (
+        <div className="space-y-1">
+          <Each of={menuItems}>
+            {(item) => (
+              <MenuNode 
+                item={item} 
+                searchQuery={searchQuery} 
+                selectedKode={selectedKode}
+                isDark={isDark} 
+              />
+            )}
+          </Each>
+        </div>
+      ) : (
+        <div className="p-4 text-center text-secondary-400 text-sm">Tidak ada laporan.</div>
+      )}
+    </Show>
+  )
+
+  const mainContent = (
+    <div className={`rounded-3xl border shadow-xl overflow-hidden flex-1 flex flex-col h-full ${
+      isDark 
+        ? 'bg-[#0f172a] border-white/5 shadow-2xl' 
+        : 'bg-white border-slate-100 shadow-blue-500/5'
+    }`}>
+      <Outlet />
+      
+      {/* Jika tidak ada laporan yang dipilih, tampilkan default view */}
+      <Show when={!selectedKode}>
+        <div className="h-full flex flex-col items-center justify-center text-secondary-400 p-8">
+          <div className={`p-6 rounded-full mb-6 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
+            <FileText className="w-16 h-16 opacity-50" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Pilih Laporan</h2>
+          <p className="text-sm opacity-70 text-center max-w-md">
+            Silakan pilih laporan dari daftar di sebelah kiri untuk melihat detail data.
+          </p>
+        </div>
+      </Show>
+    </div>
+  )
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex gap-6 flex-1 min-h-0 relative">
-        {/* Sidebar Master List */}
-        <div 
-          className={`transition-all duration-300 shrink-0 flex flex-col h-full overflow-hidden ${
-            isSidebarOpen ? 'w-full md:w-[320px] opacity-100' : 'w-0 opacity-0 md:!p-0 md:!border-0'
-          } rounded-3xl border shadow-xl ${
-            isDark 
-              ? 'bg-[#0f172a] border-white/5 shadow-2xl' 
-              : 'bg-white border-slate-100 shadow-blue-500/5'
-          }`}
-        >
-          <div className="p-4 flex flex-col h-full min-w-[280px]">
-            <div className="flex items-center justify-between mb-4 px-2">
-              <h3 className={`font-bold ${isDark ? "text-slate-200" : "text-slate-700"}`}>Daftar Laporan</h3>
-              <button 
-                onClick={() => setIsSidebarOpen(false)}
-                className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                title="Sembunyikan Daftar Laporan"
-              >
-                <Menu className="w-4 h-4" />
-              </button>
-            </div>
-            
-            {/* Search */}
-            <div className="relative mb-4 px-2 shrink-0">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input 
-                className={`pl-9 h-9 ${isDark ? 'bg-slate-950' : 'bg-slate-50'}`} 
-                placeholder="Cari laporan..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Scrollable list */}
-            <div className="flex flex-col gap-2 overflow-y-auto pr-2 no-scrollbar flex-1">
-              <Show when={!isLoading} fallback={
-                <div className="p-4 text-center text-secondary-400">Memuat...</div>
-              }>
-                {menuItems && menuItems.length > 0 ? (
-                  <div className="space-y-1">
-                    <Each of={menuItems}>
-                      {(item) => (
-                        <MenuNode 
-                          item={item} 
-                          searchQuery={searchQuery} 
-                          selectedKode={selectedKode}
-                          isDark={isDark} 
-                        />
-                      )}
-                    </Each>
-                  </div>
-                ) : (
-                  <div className="p-4 text-center text-secondary-400 text-sm">Tidak ada laporan.</div>
-                )}
-              </Show>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content (Detail) */}
-        <div className="flex-1 flex flex-col min-h-0 relative w-full">
-          {!isSidebarOpen && (
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="absolute -left-3 top-6 z-50 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full shadow-lg text-slate-500 hover:text-primary-500 transition-colors"
-              title="Tampilkan Daftar Laporan"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-          )}
-          <div className={`rounded-3xl border shadow-xl overflow-hidden flex-1 flex flex-col ${
-            isDark 
-              ? 'bg-[#0f172a] border-white/5 shadow-2xl' 
-              : 'bg-white border-slate-100 shadow-blue-500/5'
-          }`}>
-            <Outlet />
-          </div>
-        </div>
-      </div>
+    <div className="h-[calc(100vh-80px)]">
+      <CollapsibleSidebarLayout
+        sidebarTitle="Daftar Laporan"
+        searchPlaceholder="Cari laporan..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        sidebarCustomContent={sidebarCustomContent}
+        mainContent={mainContent}
+      />
     </div>
   )
 }

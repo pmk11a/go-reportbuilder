@@ -5,6 +5,10 @@ import {
   getAllBrowseFn,
   validateBrowseFn,
   validateBrowseBatchFn,
+  listBrowseConfigsFn,
+  createBrowseConfigFn,
+  updateBrowseConfigFn,
+  deleteBrowseConfigFn,
 } from '@/server/functions/shared/browse'
 import type {
   IBrowseType,
@@ -102,13 +106,34 @@ function buildPagedQuery(p: IBrowsePagedSearchParams): string {
  * guaranteed by the typed validator chain in the server function file.
  */
 export const browseService = {
-  /** GET /api/browse/types */
-  async listTypes(): Promise<IBrowseType[]> {
-    const result = (await listBrowseTypesFn()) as IBrowseType[] | null | undefined
-    // Defensive: backend may return either an array or a wrapper
-    // {data: [...]} depending on response envelope. Unwrap if needed.
-    if (Array.isArray(result)) return result
-    return ((result as any)?.data as IBrowseType[] | undefined) ?? []
+  /**
+   * Get all browse types (paginated & searchable)
+   */
+  async listTypes(params?: { q?: string, page?: number, limit?: number }): Promise<{ items: IBrowseType[], meta: { total: number } }> {
+    const sp = new URLSearchParams()
+    if (params?.q) sp.set('q', params.q)
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.limit) sp.set('limit', String(params.limit))
+    
+    const query = sp.toString()
+    const res = await listBrowseTypesFn({ 
+      data: { query: query ? `?${query}` : undefined } 
+    })
+    
+    // Check if the backend returned a paginated response (has data and pagination)
+    if (res && (res as any).data !== undefined && (res as any).pagination !== undefined) {
+      return { 
+        items: (res as any).data || [], 
+        meta: { total: (res as any).pagination.total || 0 } 
+      }
+    }
+    
+    // Fallback if backend hasn't been updated yet or returned an array
+    if (Array.isArray(res)) {
+      return { items: res, meta: { total: res.length } }
+    }
+    
+    return { items: [], meta: { total: 0 } }
   },
 
   /** GET /api/browse/search?kodeBrowse=...&q=...&parent_<col>=... */
@@ -172,5 +197,34 @@ export const browseService = {
       return result as IBrowseValidateBatchResponse
     }
     return ((result as any)?.data as IBrowseValidateBatchResponse | undefined) ?? {}
+  },
+
+  /** GET /api/browse/configs */
+  async listConfigs(params?: { page?: number; limit?: number; search?: string }) {
+    const sp = new URLSearchParams()
+    if (params?.page) sp.set('page', String(params.page))
+    if (params?.limit) sp.set('limit', String(params.limit))
+    if (params?.search) sp.set('search', params.search)
+
+    const query = sp.toString()
+    const result = await listBrowseConfigsFn({
+      data: { query: query ? `?${query}` : undefined },
+    })
+    return result
+  },
+
+  /** POST /api/browse/configs */
+  async createConfig(payload: any): Promise<void> {
+    await createBrowseConfigFn({ data: payload })
+  },
+
+  /** PUT /api/browse/configs/:id */
+  async updateConfig(id: number, payload: any): Promise<void> {
+    await updateBrowseConfigFn({ data: { id, payload } })
+  },
+
+  /** DELETE /api/browse/configs/:id */
+  async deleteConfig(id: number): Promise<void> {
+    await deleteBrowseConfigFn({ data: { id } })
   },
 }

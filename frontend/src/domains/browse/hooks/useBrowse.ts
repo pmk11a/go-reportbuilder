@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { browseService } from '@/domains/browse/services/browseService'
 import type {
   IBrowseSearchParams,
@@ -14,7 +14,7 @@ import type {
  */
 export const browseKeys = {
   all: ['browse'] as const,
-  types: () => ['browse', 'types'] as const,
+  types: (q?: string) => ['browse', 'types', q] as const,
   search: (params: IBrowseSearchParams) => ['browse', 'search', params] as const,
   paged: (params: IBrowsePagedSearchParams) => ['browse', 'paged', params] as const,
   allRecords: (kodeBrowse: string, limit: number, userMode?: string) =>
@@ -30,9 +30,35 @@ export const browseKeys = {
 export function useBrowseTypes() {
   return useQuery({
     queryKey: browseKeys.types(),
-    queryFn: () => browseService.listTypes(),
+    queryFn: async () => {
+      const res = await browseService.listTypes({ limit: 1000 })
+      return res.items
+    },
+    select: (data: any) => {
+      // Handle cases where the old { items, meta } object is still in the local cache
+      return Array.isArray(data) ? data : (data?.items || [])
+    },
     staleTime: 60 * 60 * 1000, // 1 hour
     gcTime: 24 * 60 * 60 * 1000, // 24 hours
+  })
+}
+
+/**
+ * Returns paginated browse types for infinite scroll lists.
+ */
+export function useBrowseTypesInfinite(q?: string, limit: number = 20) {
+  return useInfiniteQuery({
+    queryKey: browseKeys.types(q),
+    queryFn: async ({ pageParam = 1 }) => {
+      return browseService.listTypes({ q, page: pageParam as number, limit })
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const currentCount = allPages.length * limit
+      return currentCount < lastPage.meta.total ? allPages.length + 1 : undefined
+    },
+    staleTime: 60 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
   })
 }
 
@@ -107,5 +133,55 @@ export function useBrowsePaged(
     queryFn: () => browseService.searchPaged(params),
     enabled: options?.enabled ?? !!params.kodeBrowse,
     staleTime: 30 * 1000, // 30s — pagination metadata changes as user scrolls
+  })
+}
+
+/**
+ * Hook to get paginated configs
+ */
+export function useBrowseConfigs(params?: { page?: number; limit?: number; search?: string }) {
+  return useQuery({
+    queryKey: [...browseKeys.all, 'configs', params],
+    queryFn: () => browseService.listConfigs(params),
+  })
+}
+
+/**
+ * Mutation to create a new browse config.
+ */
+export function useBrowseConfigCreate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: any) => browseService.createConfig(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: browseKeys.all })
+    },
+  })
+}
+
+/**
+ * Mutation to update an existing browse config.
+ */
+export function useBrowseConfigUpdate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: any }) =>
+      browseService.updateConfig(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: browseKeys.all })
+    },
+  })
+}
+
+/**
+ * Mutation to delete a browse config.
+ */
+export function useBrowseConfigDelete() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => browseService.deleteConfig(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: browseKeys.all })
+    },
   })
 }

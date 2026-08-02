@@ -38,6 +38,36 @@ export function DatasetFormModal({ isOpen, onClose, reportId, dataset }: Dataset
   const { toast } = useToast()
   const isEdit = !!dataset
 
+  const parseConfigJson = (konfig: any) => {
+    if (!konfig) return []
+    let parsed = konfig
+    if (typeof konfig === 'string') {
+      try {
+        parsed = JSON.parse(konfig)
+      } catch (e) {
+        return []
+      }
+    }
+    return Object.entries(parsed).map(([k, v]) => {
+      let type: 'string' | 'int' | 'array' | 'json' = 'string'
+      let strVal = ''
+      if (Array.isArray(v)) {
+        type = 'array'
+        strVal = JSON.stringify(v)
+      } else if (typeof v === 'object' && v !== null) {
+        type = 'json'
+        strVal = JSON.stringify(v)
+      } else if (typeof v === 'number') {
+        type = 'int'
+        strVal = String(v)
+      } else {
+        type = 'string'
+        strVal = String(v)
+      }
+      return { key: k, value: strVal, type }
+    })
+  }
+
   const form = useForm<FormValues>({
     resolver: zodResolver(datasetSchema),
     defaultValues: {
@@ -46,26 +76,7 @@ export function DatasetFormModal({ isOpen, onClose, reportId, dataset }: Dataset
       query_sumber_data: dataset?.query_sumber_data || '',
       urutan: dataset?.urutan || 1,
       visible: dataset?.visible ?? true,
-      konfigurasi_list: dataset?.config_json ? 
-        Object.entries(dataset.config_json).map(([k, v]) => {
-          let type: 'string' | 'int' | 'array' | 'json' = 'string'
-          let strVal = ''
-          if (Array.isArray(v)) {
-            type = 'array'
-            strVal = JSON.stringify(v)
-          } else if (typeof v === 'object' && v !== null) {
-            type = 'json'
-            strVal = JSON.stringify(v)
-          } else if (typeof v === 'number') {
-            type = 'int'
-            strVal = String(v)
-          } else {
-            type = 'string'
-            strVal = String(v)
-          }
-          return { key: k, value: strVal, type }
-        })
-        : [],
+      konfigurasi_list: parseConfigJson(dataset?.config_json),
     },
   })
 
@@ -82,26 +93,7 @@ export function DatasetFormModal({ isOpen, onClose, reportId, dataset }: Dataset
         query_sumber_data: dataset?.query_sumber_data || '',
         urutan: dataset?.urutan || 1,
         visible: dataset?.visible ?? true,
-        konfigurasi_list: dataset?.config_json ? 
-          Object.entries(dataset.config_json).map(([k, v]) => {
-            let type: 'string' | 'int' | 'array' | 'json' = 'string'
-            let strVal = ''
-            if (Array.isArray(v)) {
-              type = 'array'
-              strVal = JSON.stringify(v)
-            } else if (typeof v === 'object' && v !== null) {
-              type = 'json'
-              strVal = JSON.stringify(v)
-            } else if (typeof v === 'number') {
-              type = 'int'
-              strVal = String(v)
-            } else {
-              type = 'string'
-              strVal = String(v)
-            }
-            return { key: k, value: strVal, type }
-          })
-          : [],
+        konfigurasi_list: parseConfigJson(dataset?.config_json),
       })
     }
   }, [isOpen, dataset, form])

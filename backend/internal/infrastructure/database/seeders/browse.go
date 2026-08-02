@@ -5,13 +5,11 @@ import (
 	"log"
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func seedDbBrowseConfigs(db *gorm.DB) {
-	log.Println("Seeding dbbrowseconfigs...")
-
-	// Clean existing records without dropping the table
-	db.Exec("DELETE FROM dbbrowseconfigs")
+	log.Println("Seeding dbbrowseconfigs (with DoNothing on conflict)...")
 
 	browseConfigs := []models.SDbBrowseConfig{
 
@@ -1250,10 +1248,33 @@ func seedDbBrowseConfigs(db *gorm.DB) {
 			Query: strPtr("Select Isnull(NFix,0)Nfix,A.Isi2,A.KodeBrg,A.Sat1,A.Sat2, A.NamaBrg, Isnull(b.Qnt,0) QntSaldo, Isnull(b.Qnt2,0) Qnt2Saldo from dbBarang A left Outer Join (select Kodebrg,Sum(SaldoQnt)Qnt,Sum(Saldo2Qnt)Qnt2 from DBStockBrg a Left Outer Join dbGudang b On a.KodeGdg=b.KodeGdg where Bulan= and Tahun= group by kodebrg)b On b.kodebrg=a.KodeBrg where a.isAktif=1 and A.KodeGrp<>''BJP'' and (a.KodeBrg like ''%0%'' or a.NamaBrg like ''%0%'') order by A.KodeBrg"),
 			IsActive: 1,
 		},
+		{ KodeBrowse: "1001", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), AdditionalFields: models.StringSlice{"Simbol", "Tipe", "DK"}, Joins: models.StringSlice{"LEFT JOIN DBAKSESPERKIRAAN ak ON ak.Perkiraan = DBPERKIRAAN.Perkiraan AND ak.UserMode = @userMode"}, WhereExtra: strPtr("AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "1005", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), AdditionalFields: models.StringSlice{"Simbol"}, WhereExtra: strPtr("AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "10051", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), AdditionalFields: models.StringSlice{"Simbol", "Tipe", "DK"}, Joins: models.StringSlice{"LEFT JOIN DBAKSESPERKIRAAN ak ON ak.Perkiraan = DBPERKIRAAN.Perkiraan AND ak.UserMode = @userMode"}, WhereExtra: strPtr("AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "100444", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), WhereExtra: strPtr("AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "10053", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), WhereExtra: strPtr("AND DBPERKIRAAN.Kelompok = 3 AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "10054", TargetTable: strPtr("DBLRHPP"), KeyField: strPtr("Nomor"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "10055", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), Joins: models.StringSlice{"LEFT JOIN DBAKSESPERKIRAAN ak ON ak.Perkiraan = DBPERKIRAAN.Perkiraan AND ak.UserMode = @userMode"}, WhereExtra: strPtr("AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "10059", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), Joins: models.StringSlice{"LEFT JOIN DBAKSESPERKIRAAN ak ON ak.Perkiraan = DBPERKIRAAN.Perkiraan AND ak.UserMode = @userMode"}, WhereExtra: strPtr("AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "100408", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), Joins: models.StringSlice{"INNER JOIN DBPOSTHUTPIUT pht ON pht.Perkiraan = DBPERKIRAAN.Perkiraan"}, WhereExtra: strPtr("AND pht.Kode = 'PT'"), IsActive: 1 },
+		{ KodeBrowse: "100409", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), Joins: models.StringSlice{"INNER JOIN DBPOSTHUTPIUT pht ON pht.Perkiraan = DBPERKIRAAN.Perkiraan"}, WhereExtra: strPtr("AND pht.Kode = 'HT'"), IsActive: 1 },
+		{ KodeBrowse: "1007", TargetTable: strPtr("DBDEPART"), KeyField: strPtr("Kode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1008", TargetTable: strPtr("DBBAGIAN"), KeyField: strPtr("Kode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1009", TargetTable: strPtr("DBCUSTSUPP"), KeyField: strPtr("Kode"), LabelField: strPtr("Nama"), AdditionalFields: models.StringSlice{"Alamat", "Kota", "Telepon"}, IsActive: 1 },
+		{ KodeBrowse: "1010", TargetTable: strPtr("DBBARANG"), KeyField: strPtr("Kode"), LabelField: strPtr("Nama"), AdditionalFields: models.StringSlice{"Satuan", "Kelompok"}, IsActive: 1 },
+		{ KodeBrowse: "1011", TargetTable: strPtr("DBAKTIVA"), KeyField: strPtr("Kode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1012", TargetTable: strPtr("DBGIRO"), KeyField: strPtr("Nomor"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1013", TargetTable: strPtr("DBPERKIRAAN"), KeyField: strPtr("Perkiraan"), LabelField: strPtr("Keterangan"), AdditionalFields: models.StringSlice{"Simbol", "Tipe", "DK"}, Joins: models.StringSlice{"LEFT JOIN DBAKSESPERKIRAAN ak ON ak.Perkiraan = DBPERKIRAAN.Perkiraan AND ak.UserMode = @userMode"}, WhereExtra: strPtr("AND DBPERKIRAAN.Kelompok IN (1, 2) AND DBPERKIRAAN.Tipe = 1"), IsActive: 1 },
+		{ KodeBrowse: "1014", TargetTable: strPtr("DBLOCKPERIODE"), KeyField: strPtr("Periode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1015", TargetTable: strPtr("DBFLPASS"), KeyField: strPtr("USERID"), LabelField: strPtr("Nama"), IsActive: 1 },
+		{ KodeBrowse: "1016", TargetTable: strPtr("DBSUBGROUPJNSTAMBAH"), KeyField: strPtr("Kode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1017", TargetTable: strPtr("DBARUSKAS"), KeyField: strPtr("Kode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1018", TargetTable: strPtr("DBAKTIVADET"), KeyField: strPtr("Kode"), LabelField: strPtr("Keterangan"), IsActive: 1 },
+		{ KodeBrowse: "1019", TargetTable: strPtr("DBTRANSAKSI"), KeyField: strPtr("Nomor"), LabelField: strPtr("Keterangan"), IsActive: 1 },
 	}
 
 	for _, cfg := range browseConfigs {
-		if err := db.Create(&cfg).Error; err != nil {
+		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&cfg).Error; err != nil {
 			log.Printf("Failed to seed browse config %s: %v", cfg.KodeBrowse, err)
 		}
 	}

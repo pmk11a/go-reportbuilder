@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
@@ -205,48 +206,57 @@ func NewConfigResolver(db *gorm.DB) *SConfigResolver {
 
 // GetConfig returns the browse config for a kodeBrowse.
 func (r *SConfigResolver) GetConfig(kodeBrowse string) (*Config, error) {
-	// 1. Try database-driven config first
+	// Try database-driven config
 	dbConfig, err := r.getDBConfig(kodeBrowse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get DB config: %w", err)
 	}
 	if dbConfig != nil {
-		// Merge with hardcoded fallback for missing fields
-		hardcoded := r.getHardcodedConfig(kodeBrowse)
-		if hardcoded != nil {
-			r.mergeConfig(dbConfig, hardcoded)
-		}
 		return dbConfig, nil
-	}
-
-	// 2. Fall back to hardcoded config
-	hardcoded := r.getHardcodedConfig(kodeBrowse)
-	if hardcoded != nil {
-		return hardcoded, nil
 	}
 
 	return nil, fmt.Errorf("no browse config for kode: %s", kodeBrowse)
 }
 
-// ListTypes returns all available browse types.
-func (r *SConfigResolver) ListTypes() []BrowseType {
-	hardcoded := r.getAllHardcodedTypes()
+// ListTypes returns all available browse types with search and pagination.
+func (r *SConfigResolver) ListTypes(q string, page, limit int) ([]BrowseType, int64) {
 	dbMap := r.getAllDBTypes()
 
-	// Merge: hardcoded as base, DB overrides
-	merged := make(map[string]BrowseType)
-	for _, t := range hardcoded {
-		merged[t.KodeBrowse] = t
-	}
+	result := make([]BrowseType, 0, len(dbMap))
+	qLower := strings.ToLower(q)
 	for _, t := range dbMap {
-		merged[t.KodeBrowse] = t
+		if q == "" || strings.Contains(strings.ToLower(t.Group), qLower) || strings.Contains(strings.ToLower(t.KodeBrowse), qLower) {
+			result = append(result, t)
+		}
 	}
 
-	result := make([]BrowseType, 0, len(merged))
-	for _, t := range merged {
-		result = append(result, t)
+	// Sort results consistently (by Group, then KodeBrowse)
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Group == result[j].Group {
+			return result[i].KodeBrowse < result[j].KodeBrowse
+		}
+		return result[i].Group < result[j].Group
+	})
+
+	total := int64(len(result))
+
+	if limit <= 0 {
+		limit = 20
 	}
-	return result
+	if page <= 0 {
+		page = 1
+	}
+
+	start := (page - 1) * limit
+	if start > len(result) {
+		start = len(result)
+	}
+	end := start + limit
+	if end > len(result) {
+		end = len(result)
+	}
+
+	return result[start:end], total
 }
 
 // Search executes a browse search.
@@ -416,57 +426,6 @@ func (r *SConfigResolver) getAllDBTypes() []BrowseType {
 	return types
 }
 
-func (r *SConfigResolver) getHardcodedConfig(kodeBrowse string) *Config {
-	cfg, ok := hardcodedConfigs[kodeBrowse]
-	if !ok {
-		return nil
-	}
-	cp := *cfg // shallow copy
-	return &cp
-}
-
-func (r *SConfigResolver) getAllHardcodedTypes() []BrowseType {
-	types := make([]BrowseType, 0, len(hardcodedConfigs))
-	for kode, cfg := range hardcodedConfigs {
-		group := BrowseGroups[kode]
-		types = append(types, BrowseType{
-			KodeBrowse: kode,
-			KeyField:   cfg.KeyField,
-			LabelField: cfg.LabelField,
-			Group:      group,
-			Source:     "hardcoded",
-		})
-	}
-	return types
-}
-
-func (r *SConfigResolver) mergeConfig(target *Config, source *Config) {
-	if len(source.AdditionalFields) > 0 {
-		// Merge additionalFields (deduplicate)
-		existing := make(map[string]bool)
-		for _, f := range target.AdditionalFields {
-			existing[f] = true
-		}
-		for _, f := range source.AdditionalFields {
-			if !existing[f] {
-				target.AdditionalFields = append(target.AdditionalFields, f)
-			}
-		}
-	}
-	if len(source.Joins) > 0 && len(target.Joins) == 0 {
-		target.Joins = source.Joins
-	}
-	if target.WhereExtra == "" && source.WhereExtra != "" {
-		target.WhereExtra = source.WhereExtra
-	}
-	if len(source.AliasFields) > 0 && len(target.AliasFields) == 0 {
-		target.AliasFields = source.AliasFields
-	}
-	if len(source.ParentFilters) > 0 && len(target.ParentFilters) == 0 {
-		target.ParentFilters = source.ParentFilters
-	}
-}
-
 func (r *SConfigResolver) searchTableBased(ctx context.Context, config *Config, q string, limit int, userMode string, parentFilters map[string]interface{}) ([]SearchResult, error) {
 	// Build SELECT columns
 	selectCols := []string{
@@ -551,7 +510,7 @@ func (r *SConfigResolver) searchTableBased(ctx context.Context, config *Config, 
 // Using `:name` would make GORM pass the entire map as `$1`, which SQL Server
 // rejects with "unsupported type map[string]interface {}, a map".
 func substituteParams(s string, userMode string, parentConfigs []models.ParentFilter, parentValues map[string]interface{}, bindings map[string]interface{}) string {
-	if userMode != "" && strings.Contains(s, ":userMode") {
+	if strings.Contains(s, ":userMode") || strings.Contains(s, "@userMode") {
 		bindings["userMode"] = userMode
 		s = strings.ReplaceAll(s, ":userMode", "@userMode")
 	}
@@ -575,9 +534,9 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 	bindings := make(map[string]interface{})
 
 	// If userMode is configured, substitute it
-	if strings.Contains(sql, ":userMode") {
-		sql = strings.ReplaceAll(sql, ":userMode", "@userModeBind")
-		bindings["userModeBind"] = userMode
+	if strings.Contains(sql, ":userMode") || strings.Contains(sql, "@userMode") {
+		sql = strings.ReplaceAll(sql, ":userMode", "@userMode")
+		bindings["userMode"] = userMode
 	}
 
 	// Inject parent_filters: replace ''<P:fieldName>'' with @bindKey, bind values.

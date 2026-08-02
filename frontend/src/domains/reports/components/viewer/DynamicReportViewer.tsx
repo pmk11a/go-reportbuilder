@@ -4,7 +4,8 @@ import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { DynamicFilterPanel } from './DynamicFilterPanel'
-import { DynamicReportTable } from './DynamicReportTable'
+import { SummaryLayout } from './layouts/SummaryLayout'
+import { DetailLayout } from './layouts/DetailLayout'
 
 interface DynamicReportViewerProps {
   kodeMenu: string
@@ -132,6 +133,17 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
   // To determine if Export buttons should be disabled
   const hasAnyData = Object.keys(reportDatasets).some(k => reportDatasets[k] && reportDatasets[k].length > 0)
 
+  // Split datasets into summary and detail
+  const summaryDatasets = config.datasets?.filter(d => d.config_json?.display_role === 'summary' && d.visible) || []
+  const detailDatasetsList = config.datasets?.filter(d => d.config_json?.display_role !== 'summary' && d.visible) || []
+  
+  // Format details for DetailLayout
+  const formattedDetailDatasets = detailDatasetsList.map(ds => ({
+    dataset: ds,
+    columns: config.columns?.[ds.nama_dataset] || [],
+    data: reportDatasets[ds.nama_dataset] || (!executeReport.data ? [] : [])
+  }))
+
   return (
     <div className="flex flex-col h-full bg-transparent">
       <div className="border-b border-secondary-200 dark:border-white/5 px-6 py-4 shadow-sm sticky top-0 z-10 bg-white dark:bg-[#0f172a]">
@@ -167,25 +179,41 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
         </div>
       </div>
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
         <div className="w-full mx-auto space-y-6">
           <DynamicFilterPanel 
             kodeMenu={kodeMenu} 
             executeReport={executeReport} 
           />
           
-          {Object.entries(config.columns || {}).map(([datasetName, columns]) => (
-            <div key={datasetName} className="mb-4">
-              <h3 className="text-lg font-bold mb-3 text-secondary-800 dark:text-slate-200">
-                {config.datasets?.find(d => d.nama_dataset === datasetName)?.deskripsi || datasetName}
-              </h3>
-              <DynamicReportTable 
-                kodeMenu={kodeMenu} 
-                columns={columns}
-                data={reportDatasets[datasetName] || (!executeReport.data ? null : [])} 
-                isLoading={executeReport.isPending} 
-              />
-            </div>
+          {summaryDatasets.map(ds => (
+            <SummaryLayout
+              key={`header-${ds.nama_dataset}`}
+              datasetName={ds.nama_dataset}
+              deskripsi={ds.deskripsi || ''}
+              configJson={ds.config_json}
+              columns={config.columns?.[ds.nama_dataset] || []}
+              data={reportDatasets[ds.nama_dataset] || []}
+              position="header"
+            />
+          ))}
+
+          <DetailLayout
+            kodeMenu={kodeMenu}
+            isLoading={executeReport.isPending}
+            detailDatasets={formattedDetailDatasets}
+          />
+
+          {summaryDatasets.map(ds => (
+            <SummaryLayout
+              key={`footer-${ds.nama_dataset}`}
+              datasetName={ds.nama_dataset}
+              deskripsi={ds.deskripsi || ''}
+              configJson={ds.config_json}
+              columns={config.columns?.[ds.nama_dataset] || []}
+              data={reportDatasets[ds.nama_dataset] || []}
+              position="footer"
+            />
           ))}
         </div>
       </div>

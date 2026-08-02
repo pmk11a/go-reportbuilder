@@ -25,6 +25,19 @@ export interface IBrowseType {
   source: 'hardcoded' | 'database'
 }
 
+export interface IColumnSchema {
+  name: string
+  dataType: string
+  maxLength?: number
+  isNullable: boolean
+  isPrimaryKey: boolean
+}
+
+export interface ITableSchema {
+  tableName: string
+  columns: IColumnSchema[]
+}
+
 /**
  * A single row returned by search/all endpoints. The shape varies per
  * kodeBrowse, so consumers must use the IBrowseType metadata to know which

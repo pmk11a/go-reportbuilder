@@ -142,6 +142,7 @@ export interface IDatasetConfig {
   right_fields?: string[]
   /** Computed columns with expressions */
   computed?: Record<string, IComputedColumn>
+  detail_layout: string
 }
 
 /**

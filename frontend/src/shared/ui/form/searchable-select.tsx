@@ -50,6 +50,7 @@ export interface SearchableSelectProps
   disabled?: boolean;
   onSearchChange?: (value: string) => void;
   disableLocalSearch?: boolean;
+  isLoading?: boolean;
 }
 
 const SearchableSelect = React.forwardRef<
@@ -67,6 +68,7 @@ const SearchableSelect = React.forwardRef<
       disabled = false,
       onSearchChange,
       disableLocalSearch = false,
+      isLoading = false,
       className,
       ...props
     },
@@ -191,7 +193,12 @@ const SearchableSelect = React.forwardRef<
 
             {/* Options List */}
             <div className="max-h-60 overflow-y-auto p-1">
-              {filteredOptions.length > 0 ? (
+              {isLoading ? (
+                <div className="px-3 py-8 text-center flex flex-col items-center justify-center gap-2 text-sm text-slate-400">
+                  <div className="animate-spin h-5 w-5 border-2 border-slate-300 border-t-primary-500 rounded-full" />
+                  Memuat data...
+                </div>
+              ) : filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
                   <button
                     key={option.value}

@@ -62,6 +62,21 @@ type BrowsePagedResponse struct {
 	HasMore bool           `json:"hasMore"`
 }
 
+// ColumnSchema holds the metadata for a single column.
+type ColumnSchema struct {
+	Name       string `json:"name"`
+	DataType   string `json:"dataType"` // e.g. varchar, int, datetime
+	MaxLength  *int   `json:"maxLength,omitempty"`
+	IsNullable bool   `json:"isNullable"`
+	IsPrimaryKey bool `json:"isPrimaryKey"`
+}
+
+// TableSchema holds the metadata for a table.
+type TableSchema struct {
+	TableName string         `json:"tableName"`
+	Columns   []ColumnSchema `json:"columns"`
+}
+
 // ParentFilterEntry is used for query-based browse configs to inject
 // <P:column> placeholders in the query text.
 type ParentFilterEntry struct {

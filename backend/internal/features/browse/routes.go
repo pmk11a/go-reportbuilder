@@ -27,5 +27,12 @@ func RegisterBrowseRoutes(rg *gin.RouterGroup, h *Handler) {
 		g.GET("/all", h.GetAll)
 		g.POST("/validate", h.ValidateCode)
 		g.POST("/validate-batch", h.ValidateBatch)
+
+		// Config management endpoints
+		g.GET("/configs", h.ListConfigs)
+		g.POST("/configs", h.CreateConfig)
+		g.PUT("/configs/:id", h.UpdateConfig)
+		g.DELETE("/configs/:id", h.DeleteConfig)
+
 	}
 }

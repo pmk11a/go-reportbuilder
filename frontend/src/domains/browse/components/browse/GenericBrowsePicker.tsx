@@ -130,7 +130,7 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
 
   const { data: types } = useBrowseTypes()
   const typeMeta = useMemo(
-    () => types?.find((t) => t.kodeBrowse === kodeBrowse),
+    () => types?.find((t:any) => t.kodeBrowse === kodeBrowse),
     [types, kodeBrowse]
   )
 
@@ -174,43 +174,70 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
   const selectedRowFromResults = useMemo(() => {
     if (!value) return undefined
     const safeResults = Array.isArray(searchResults) ? searchResults : []
+    // Helper inline for this useMemo
+    const getFieldValue = (row: any, field: string) => {
+      if (!row || !field) return ''
+      if (row[field] !== undefined) return row[field]
+      const foundKey = Object.keys(row).find(k => k.toLowerCase() === field.toLowerCase())
+      return foundKey ? row[foundKey] : ''
+    }
     // First, try to find in search results
     const found = safeResults.find(
-      (r) => String(r[effKeyField] ?? '') === String(value ?? '')
+      (r) => String(getFieldValue(r, effKeyField) ?? '') === String(value ?? '')
     )
     if (found) return found
     // Then, fall back to validatedRow
     return validatedRow ?? undefined
   }, [value, searchResults, validatedRow, effKeyField])
 
+  // Helper to safely get case-insensitive key from object
+  const getFieldValue = (row: any, field: string) => {
+    if (!row || !field) return ''
+    if (row[field] !== undefined) return row[field]
+    const lowerField = field.toLowerCase()
+    const foundKey = Object.keys(row).find(k => k.toLowerCase() === lowerField)
+    return foundKey ? row[foundKey] : ''
+  }
+
   // Build options from the active mode
   const options: SearchableSelectOption[] = useMemo(() => {
     const makeOpt = (row: IBrowseRow): SearchableSelectOption => ({
-      value: String(row[effKeyField] ?? ''),
+      value: String(getFieldValue(row, effKeyField) ?? ''),
       label: renderLabel
         ? renderLabel(row)
-        : String(row[effLabelField] ?? ''),
+        : String(getFieldValue(row, effLabelField) ?? ''),
     })
 
+    let items: IBrowseRow[] = []
+
     if (usePaged) {
-      const items = pagedQuery.data?.items ?? []
-      return items.map(makeOpt)
+      items = pagedQuery.data?.items ?? []
+    } else {
+      // Default: show search results; if user hasn't typed, prepend the
+      // currently-selected row (by value) from search results so the
+      // dropdown displays the label. Also fall back to validatedRow when
+      // search results are empty but a value is selected.
+      const safeResults: IBrowseRow[] = Array.isArray(searchResults)
+        ? searchResults
+        : []
+      items = [...safeResults]
+      const present = items.some(
+        (r) => String(getFieldValue(r, effKeyField) ?? '') === String(value ?? '')
+      )
+      if (!present && value && selectedRowFromResults) {
+        items.unshift(selectedRowFromResults)
+      }
     }
-    // Default: show search results; if user hasn't typed, prepend the
-    // currently-selected row (by value) from search results so the
-    // dropdown displays the label. Also fall back to validatedRow when
-    // search results are empty but a value is selected.
-    const safeResults: IBrowseRow[] = Array.isArray(searchResults)
-      ? searchResults
-      : []
-    const items = [...safeResults]
-    const present = items.some(
-      (r) => String(r[effKeyField] ?? '') === String(value ?? '')
-    )
-    if (!present && value && selectedRowFromResults) {
-      items.unshift(selectedRowFromResults)
-    }
-    return items.map(makeOpt)
+
+    // Remove duplicates based on value
+    const uniqueOptions = new Map<string, SearchableSelectOption>()
+    items.map(makeOpt).forEach(opt => {
+      if (!uniqueOptions.has(opt.value)) {
+        uniqueOptions.set(opt.value, opt)
+      }
+    })
+
+    return Array.from(uniqueOptions.values())
   }, [
     usePaged,
     pagedQuery.data,

@@ -9,10 +9,14 @@ import { makeBackendRequest } from '../../backend'
  */
 export const listBrowseTypesFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => {
+  .validator((data?: { query?: string }) => data || {})
+  .handler(async ({ data, context }) => {
     const { accessToken } = context as { accessToken: string }
+    const url = data.query
+      ? `/api/browse/types${data.query.startsWith('?') ? data.query : `?${data.query}`}`
+      : '/api/browse/types'
     const result = await makeBackendRequest(
-      '/api/browse/types',
+      url,
       { method: 'GET' },
       accessToken
     )
@@ -110,6 +114,73 @@ export const validateBrowseBatchFn = createServerFn({ method: 'POST' })
     const result = await makeBackendRequest(
       '/api/browse/validate-batch',
       { method: 'POST', body: JSON.stringify(data) },
+      accessToken
+    )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+/**
+ * GET /api/browse/configs
+ */
+export const listBrowseConfigsFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data?: { query?: string }) => data || {})
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const url = data.query
+      ? `/api/browse/configs${data.query.startsWith('?') ? data.query : `?${data.query}`}`
+      : '/api/browse/configs'
+    const result = await makeBackendRequest(url, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+/**
+ * POST /api/browse/configs
+ */
+export const createBrowseConfigFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator((data: any) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const result = await makeBackendRequest(
+      `/api/browse/configs`,
+      { method: 'POST', body: JSON.stringify(data) },
+      accessToken
+    )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+/**
+ * PUT /api/browse/configs/:id
+ */
+export const updateBrowseConfigFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator((data: { id: number; payload: any }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const result = await makeBackendRequest(
+      `/api/browse/configs/${data.id}`,
+      { method: 'PUT', body: JSON.stringify(data.payload) },
+      accessToken
+    )
+    if (!result.success) throw new Error(result.message)
+    return result.data
+  })
+
+/**
+ * DELETE /api/browse/configs/:id
+ */
+export const deleteBrowseConfigFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const result = await makeBackendRequest(
+      `/api/browse/configs/${data.id}`,
+      { method: 'DELETE' },
       accessToken
     )
     if (!result.success) throw new Error(result.message)

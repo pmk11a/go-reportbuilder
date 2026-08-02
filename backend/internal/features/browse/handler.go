@@ -19,10 +19,14 @@ func NewHandler(resolver *SConfigResolver) *Handler {
 }
 
 // ListTypes returns all available browse types.
-// GET /api/browse/types
+// GET /api/browse/types?q=...&page=1&limit=20
 func (h *Handler) ListTypes(c *gin.Context) {
-	types := h.resolver.ListTypes()
-	response.Success(c, "Browse types retrieved", types)
+	q := c.Query("q")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	types, total := h.resolver.ListTypes(q, page, limit)
+	response.Success(c, "Browse types retrieved", response.NewPaginatedResponse(types, total, page, limit))
 }
 
 // Search performs a search on a browse type.

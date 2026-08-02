@@ -40,6 +40,22 @@ export function FilterFormModal({ isOpen, onClose, reportId, filter }: FilterFor
   const { toast } = useToast()
   const isEdit = !!filter
 
+  const parseKonfigurasi = (konfig: any) => {
+    if (!konfig) return []
+    let parsed = konfig
+    if (typeof konfig === 'string') {
+      try {
+        parsed = JSON.parse(konfig)
+      } catch (e) {
+        return []
+      }
+    }
+    return Object.entries(parsed).map(([k, v]) => ({
+      key: k,
+      value: typeof v === 'object' ? JSON.stringify(v) : String(v),
+    }))
+  }
+
   const form = useForm<FormValues>({
     resolver: zodResolver(filterSchema),
     defaultValues: {
@@ -49,11 +65,7 @@ export function FilterFormModal({ isOpen, onClose, reportId, filter }: FilterFor
       wajib_isi: filter?.wajib_isi || false,
       nilai_default: filter?.nilai_default || '',
       posisi: filter?.posisi || 1,
-      posisi: filter?.posisi || 1,
-      konfigurasi_list: filter?.konfigurasi ? 
-        Object.entries(filter.konfigurasi)
-          .map(([k, v]) => ({ key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))
-        : [],
+      konfigurasi_list: parseKonfigurasi(filter?.konfigurasi),
     },
   })
 
@@ -66,11 +78,7 @@ export function FilterFormModal({ isOpen, onClose, reportId, filter }: FilterFor
         wajib_isi: filter?.wajib_isi || false,
         nilai_default: filter?.nilai_default || '',
         posisi: filter?.posisi || 1,
-        posisi: filter?.posisi || 1,
-        konfigurasi_list: filter?.konfigurasi ? 
-          Object.entries(filter.konfigurasi)
-            .map(([k, v]) => ({ key: k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))
-          : [],
+        konfigurasi_list: parseKonfigurasi(filter?.konfigurasi),
       })
     }
   }, [isOpen, filter, form])
@@ -256,10 +264,10 @@ export function FilterFormModal({ isOpen, onClose, reportId, filter }: FilterFor
                         control={form.control}
                         name={`konfigurasi_list.${index}.value`}
                         render={({ field }) => {
-                          const currentKey = form.watch(`konfigurasi_list.${index}.key`)
+                          const currentKey = form.watch(`konfigurasi_list.${index}.key`)  
                           
                           if (currentKey === 'kode_browse') {
-                            const browseOptions = browseTypes.map(t => ({
+                            const browseOptions = browseTypes.map((t:any) => ({
                               value: t.kodeBrowse,
                               label: `${t.kodeBrowse} - ${t.group || t.labelField}`
                             }))

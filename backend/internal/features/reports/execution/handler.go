@@ -52,7 +52,7 @@ func (h *SReportExecutionHandler) GetSidebarMenu(c *gin.Context) {
 
 	menuTree, err := h.getMenuTreeForUser(c.Request.Context(), userId, search)
 	if err != nil {
-		response.InternalError(c, "Failed to retrieve menu")
+		response.InternalError(c, "Failed to retrieve menu: "+err.Error())
 		return
 	}
 
@@ -85,7 +85,7 @@ func (h *SReportExecutionHandler) GetReportConfig(c *gin.Context) {
 	// Get report by kode menu
 	report, err := h.getReportByKodeMenu(c.Request.Context(), kodeMenu)
 	if err != nil {
-		response.NotFound(c, "Report not found")
+		response.NotFound(c, "Report not found: "+err.Error())
 		return
 	}
 
