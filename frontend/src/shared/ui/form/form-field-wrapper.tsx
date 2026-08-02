@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Controller, FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
+import type {  FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react";
 
 import {

@@ -12,7 +12,7 @@ import { Input } from "@/shared/ui/form/input";
 import { Button } from "@/shared/ui/overlay/button";
 import { Alert, AlertDescription } from "@/shared/ui";
 import "./login.css";
-import { getHomePath, getRedirectPath } from "@/shared/auth/auth";
+import {  getRedirectPath } from "@/shared/auth/auth";
 import { useTranslation } from "react-i18next";
 import { LanguageToggle } from "@/shared/components/LanguageToggle";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";

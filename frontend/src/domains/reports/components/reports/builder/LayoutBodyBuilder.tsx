@@ -1,4 +1,4 @@
-import React from 'react';
+;
 import { Plus, X, Settings2 } from 'lucide-react';
 import type { LayoutBody, LayoutTable, TableHeaderCell, TableBodyColumn, ReportDataset } from '@/domains/accounting/types/report';
 import { Button } from '@/shared/ui';

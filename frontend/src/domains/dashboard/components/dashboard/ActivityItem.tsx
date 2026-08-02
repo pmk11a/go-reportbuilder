@@ -1,5 +1,5 @@
 import { useThemeStore } from '@/shared/stores/themeStore'
-import { LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 interface ActivityItemProps {
   title: string

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { menuService } from '@/domains/menu/services/menuService'
-import { IDbMenu } from '@/domains/menu/types/menu';
+import type { IDbMenu } from '@/domains/menu/types/menu';
 import { useToast } from '@/shared/hooks/use-toast'
 
 export const menuKeys = {

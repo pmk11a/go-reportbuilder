@@ -1,7 +1,8 @@
 'use client';
 
-import React, { forwardRef } from 'react';
-import { Pagination, PaginationProps } from './pagination';
+import type React from 'react';
+import { forwardRef } from 'react';
+import { Pagination, type PaginationProps } from './pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/form/select';
 
 interface DataPaginationProps extends React.HTMLAttributes<HTMLDivElement> {

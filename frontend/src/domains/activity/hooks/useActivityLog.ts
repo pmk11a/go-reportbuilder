@@ -1,4 +1,4 @@
-import { useQuery, UseQueryResult } from '@tanstack/react-query'
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { activityLogService } from '@/domains/activity/services/activityLogService'
 import type { IPaginatedResponse } from '@/shared/types/api'
 import type { IActivityLogRes } from '@/domains/activity/types/activity-log'

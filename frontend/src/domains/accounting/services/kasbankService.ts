@@ -98,13 +98,13 @@ export const kasbankService = {
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
-  async setOtorisasi(data: IOtorisasiRequest): Promise<IAPIResponse<any>> {
-    const result = await setOtorisasiFn({ data: { body: data } })
+  async setOtorisasi(noBukti: string, data: IOtorisasiRequest): Promise<IAPIResponse<any>> {
+    const result = await setOtorisasiFn({ data: { noBukti, body: data } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
   async batalOtorisasi(noBukti: string, level: number): Promise<IAPIResponse<any>> {
-    const result = await batalOtorisasiFn({ data: { body: { noBukti, level } } })
+    const result = await batalOtorisasiFn({ data: { noBukti, body: { level } } })
     return { success: true, status: 200, message: 'Success', data: result } as any
   },
 
@@ -114,11 +114,8 @@ export const kasbankService = {
   },
 
   async lookupPerkiraan(q: string, kelompokKas?: string): Promise<IAPIResponse<IPerkiraan[]>> {
-    const sp = new URLSearchParams()
-    if (q) sp.set('q', q)
-    if (kelompokKas) sp.set('kelompokKas', kelompokKas)
-    const result = await lookupPerkiraanFn({ data: { query: `?${sp.toString()}` } })
-    return { success: true, status: 200, message: 'Success', data: result } as any
+    const result = await lookupPerkiraanFn({ data: { q, kelompokKas: kelompokKas === 'true' } })
+    return { success: true, status: 200, message: 'Success', data: result as any }
   },
 
   async lookupDevisi(): Promise<IAPIResponse<any[]>> {

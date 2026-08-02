@@ -1,4 +1,4 @@
-import React from 'react';
+;
 import { useAdminReportStore, defaultLayoutConfig } from '@/domains/reports/stores/adminReportStore';
 import { LayoutHeaderBuilder } from './LayoutHeaderBuilder';
 import { LayoutBodyBuilder } from './LayoutBodyBuilder';

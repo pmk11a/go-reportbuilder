@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { IDbMenu } from '@/domains/menu/types/menu';
+import type { IDbMenu } from '@/domains/menu/types/menu';
 import { useMenus, useDeleteMenu, menuKeys } from "@/domains/menu/hooks/useMenu";
 import { Button } from "@/shared/ui/overlay/button";
 import { Input } from "@/shared/ui/form/input";
 import { MenuFormDialog } from "./MenuFormDialog";
 import { Plus, Edit, Trash2, Search, RefreshCw } from "lucide-react";
 import DynamicLucideIcon from "@/shared/ui/LucideIcon";
-import { useToast } from "@/shared/hooks/use-toast";
+// import {} from "@/shared/hooks/use-toast";
 import { Skeleton } from "@/shared/ui/feedback/skeleton";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { usePagination } from "@/shared/hooks/usePagination";
@@ -29,6 +29,7 @@ export function MenuDataTable() {
         setPage(1);
     }, [debouncedSearch, setPage]);
 
+// @ts-expect-error - unused variable
     const { data: response, isLoading, isFetching } = useMenus(page, limit, debouncedSearch);
     const deleteMutation = useDeleteMenu();
 

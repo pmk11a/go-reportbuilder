@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import type React from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
@@ -23,7 +24,7 @@ import {
 import { Search, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { Each, Show } from '@/shared/ui/layout/Render'
 import { useActivityLogsByUser } from '@/domains/activity/hooks/useActivityLog'
-import { IActivityLogRes } from '@/domains/activity/types/activity-log'
+import type { IActivityLogRes } from '@/domains/activity/types/activity-log'
 
 interface IUserActivityTabProps {
   userId: string

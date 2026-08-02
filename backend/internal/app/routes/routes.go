@@ -13,6 +13,8 @@ import (
 	"github.com/masza1/dapen-backend/internal/features/identity/permission"
 	"github.com/masza1/dapen-backend/internal/features/identity/user"
 	"github.com/masza1/dapen-backend/internal/features/menu"
+	"github.com/masza1/dapen-backend/internal/features/reports"
+	"github.com/masza1/dapen-backend/internal/features/reports/execution"
 	"github.com/masza1/dapen-backend/internal/features/session"
 	"github.com/masza1/dapen-backend/internal/features/settings"
 	"github.com/masza1/dapen-backend/internal/infrastructure/config"
@@ -27,22 +29,24 @@ import (
 // wire them all in one place. Each domain owns its own RegisterRoutes
 // function — the routes file is just a composition root.
 type SRouterConfig struct {
-	Engine              *gin.Engine
-	SAuthHandler        *auth.SAuthHandler
-	SDashboardHandler   *dashboard.SDashboardHandler
-	SFilterHandler      *filters.SFilterHandler
-	SMenuHandler        *menu.SMenuHandler
-	SActivityLogHandler *activity.SActivityLogHandler
-	SPeriodeHandler     *handlers.SPeriodeHandler
-	SSettingHandler     *handlers.SSettingHandler
-	SSettingsHandler    *settings.SSettingHandler
-	SUserHandler        *user.SUserHandler
-	SPermissionHandler  *permission.SPermissionHandler
-	SSessionHandler     *session.SSessionHandler
-	SKasBankHandler     *kasbank.SKasBankHandler
-	SKasBankPermMW      *middleware.PermissionMiddleware
-	SBrowseHandler      *browse.Handler
-	SConfig             *config.SConfig
+	Engine               *gin.Engine
+	SAuthHandler         *auth.SAuthHandler
+	SDashboardHandler    *dashboard.SDashboardHandler
+	SFilterHandler       *filters.SFilterHandler
+	SMenuHandler         *menu.SMenuHandler
+	SActivityLogHandler  *activity.SActivityLogHandler
+	SPeriodeHandler      *handlers.SPeriodeHandler
+	SSettingHandler      *handlers.SSettingHandler
+	SSettingsHandler     *settings.SSettingHandler
+	SUserHandler         *user.SUserHandler
+	SPermissionHandler   *permission.SPermissionHandler
+	SSessionHandler      *session.SSessionHandler
+	SKasBankHandler      *kasbank.SKasBankHandler
+	SKasBankPermMW       *middleware.PermissionMiddleware
+	SBrowseHandler       *browse.Handler
+	SReportsHandler      *reports.SReportsHandler
+	SReportExecHandler   *execution.SReportExecutionHandler
+	SConfig              *config.SConfig
 }
 
 // SetupRoutes wires every domain's routes into the given engine. The structure is:
@@ -126,6 +130,14 @@ func SetupRoutes(rc SRouterConfig) {
 			// calling endpoint (e.g. /lookup-perkiraan gates by 02001).
 			if rc.SBrowseHandler != nil {
 				browse.RegisterBrowseRoutes(protected, rc.SBrowseHandler)
+			}
+
+			// Reports domain (admin management at /api/admin/reports, execution at /api/reports)
+			if rc.SReportsHandler != nil {
+				reports.RegisterRoutes(admin, rc.SReportsHandler)
+			}
+			if rc.SReportExecHandler != nil {
+				execution.RegisterExecutionRoutes(protected, rc.SReportExecHandler)
 			}
 		}
 	}

@@ -4,8 +4,10 @@ import {
   User,
   Clock,
   FileText,
+// // @ts-expect-error - unused variable
+// @ts-expect-error - unused variable
   HelpCircle,
-  LogOut,
+//   LogOut,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'

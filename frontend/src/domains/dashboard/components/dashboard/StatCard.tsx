@@ -1,5 +1,5 @@
 import { useThemeStore } from '@/shared/stores/themeStore'
-import { ArrowUpRight, ArrowDownRight, LucideIcon } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, type LucideIcon } from 'lucide-react'
 
 interface StatCardProps {
   label: string

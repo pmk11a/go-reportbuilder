@@ -1,4 +1,4 @@
-import * as React from 'react';
+import type * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 import { Each } from '@/shared/ui/layout/Render';
 import { cn } from '@/shared/utils/cn';

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/overlay/dialog";
 import { useModalStore } from "@/shared/stores/modalStore";
 import { useToast } from "@/shared/hooks/use-toast";

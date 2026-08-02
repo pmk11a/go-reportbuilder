@@ -575,7 +575,7 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 	bindings := make(map[string]interface{})
 
 	// If userMode is configured, substitute it
-	if userMode != "" {
+	if strings.Contains(sql, ":userMode") {
 		sql = strings.ReplaceAll(sql, ":userMode", "@userModeBind")
 		bindings["userModeBind"] = userMode
 	}

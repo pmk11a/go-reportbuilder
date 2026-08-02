@@ -6,7 +6,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { registerSchema, type IRegisterInput } from "@/domains/auth/schemas/auth";
 import { useThemeStore } from "@/shared/stores/themeStore";
 import { useAuthStore } from "@/shared/stores/authStore";
-import { useAuth } from "@/domains/auth/hooks/use-auth";
+// import {} from "@/domains/auth/hooks/use-auth";
 import { useToast } from "@/shared/hooks/use-toast";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/shared/ui/form";
 import { Input } from "@/shared/ui/form/input";
@@ -37,6 +37,7 @@ export const Route = createFileRoute("/(public)/(auth)/register/")({
 
 function RegisterPage() {
     const { t } = useTranslation();
+// @ts-expect-error - unused variable
     const navigate = useNavigate();
     const { toast } = useToast();
     const isDark = useThemeStore((state) => state.isDark);
@@ -55,6 +56,7 @@ function RegisterPage() {
             confirmPassword: "",
         },
     });
+// @ts-expect-error - unused variable
 
     const onSubmit = async (data: IRegisterInput) => {
         setGlobalError(null);

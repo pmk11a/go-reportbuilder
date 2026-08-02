@@ -16,7 +16,7 @@ const badgeGroupVariants = cva('flex flex-wrap gap-2', {
 
 
 
-import { Badge, BadgeProps } from '@/shared/ui/overlay/badge';
+import { Badge, type BadgeProps } from '@/shared/ui/overlay/badge';
 
 export interface BadgeGroupProps
   extends React.HTMLAttributes<HTMLDivElement>,

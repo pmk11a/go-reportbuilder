@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import  { useEffect } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { AppBackground } from "@/shared/components/layouts/AppBackground";
 import { MainHeader } from "./MainHeader";

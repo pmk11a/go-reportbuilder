@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect,  } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/shared/ui/form/input";
 import { Label } from "@/shared/ui/form/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/form/select";
-import type { IGiro } from "../../types/kasbank";
+import type { IGiro } from "../../../types/kasbank";
 
 const formSchema = z.object({
 	nogiro: z.string().min(1, "No. Giro wajib diisi"),

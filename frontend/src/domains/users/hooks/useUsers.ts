@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { userService } from '@/domains/users/services/userService'
 import { useToast } from '@/shared/hooks/use-toast'
 import { formatAPIError } from '@/shared/utils/errorMapper'
-import {
+import type {
   ICreateUserPayload,
   IUpdateUserPayload,
   IUserPermission,

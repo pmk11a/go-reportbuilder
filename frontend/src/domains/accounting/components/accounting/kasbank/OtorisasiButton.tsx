@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IKasBankHeader } from '@/domains/accounting/types/kasbank';
+import type { IKasBankHeader } from '@/domains/accounting/types/kasbank';
 import { useAuthStore } from '@/shared/stores/authStore';
 import { useSetOtorisasi, useBatalOtorisasi } from '@/domains/accounting/hooks/useKasBank';
 import { Button } from '@/shared/ui/overlay/button';
@@ -16,7 +16,7 @@ import {
   AlertDialogTrigger,
 } from '@/shared/ui/overlay/alert-dialog';
 import { Each, Show } from '@/shared/ui/layout/Render';
-import { Ban, CheckCircle, MinusCircle, ShieldCheck, Undo2, XCircle } from 'lucide-react';
+import { Ban, CheckCircle, MinusCircle, ShieldCheck, Undo2,  } from 'lucide-react';
 import { CustomTooltip } from '@/shared/ui/feedback/custom-tooltip';
 import { useToast } from '@/shared/hooks/use-toast';
 

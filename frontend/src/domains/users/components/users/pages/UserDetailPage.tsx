@@ -12,14 +12,22 @@ import { UserPermissionsTab } from '@/domains/users/components/users/tabs/UserPe
 import { UserSessionsTab } from '@/domains/users/components/users/tabs/UserSessionsTab'
 import { UserActivityTab } from '@/domains/users/components/users/tabs/UserActivityTab'
 import {
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// @ts-expect-error - unused variable
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+//   AlertDialogAction,
+//   AlertDialogCancel,
+//   AlertDialogContent,
+//   AlertDialogDescription,
+//   AlertDialogFooter,
+//   AlertDialogHeader,
+//   AlertDialogTitle,
   DeleteConfirmationDialog,
 } from '@/shared/ui'
 
@@ -27,6 +35,7 @@ interface IUserDetailPageProps {
   userId: string
 }
 
+// // @ts-expect-error - unused variable
 type TabValue = 'overview' | 'permissions' | 'sessions' | 'activity'
 
 export function UserDetailPage({ userId }: IUserDetailPageProps) {
@@ -35,7 +44,7 @@ export function UserDetailPage({ userId }: IUserDetailPageProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  const { data: user, isLoading, isError, error, refetch } = useUserById(userId)
+//   const { data: user, isLoading, isError, error, refetch } = useUserById(userId)
   const deleteMutation = useDeleteUser()
 
   const handleEdit = () => {

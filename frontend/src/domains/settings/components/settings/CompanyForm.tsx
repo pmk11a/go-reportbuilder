@@ -1,7 +1,8 @@
+;
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ISettingsCompany } from '@/domains/settings/types/settings';
+import type { ISettingsCompany } from '@/domains/settings/types/settings';
 import { useSettings } from '@/domains/settings/hooks/useSettings';
 import {
   Form,

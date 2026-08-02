@@ -1,4 +1,4 @@
-import { IUser } from '@/domains/users/types/user'
+import type { IUser } from '@/domains/users/types/user'
 import { z } from 'zod'
 
 export interface IAuthState {

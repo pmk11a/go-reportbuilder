@@ -2,14 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kasbankService } from '@/domains/accounting/services/kasbankService';
 import { sharedFilterService } from '@/shared/services/sharedFilterService';
 import type {
-  IKasBankHeader,
+//   IKasBankHeader,
   IKasBankListParams,
-  IKasBankListResponse,
+//   IKasBankListResponse,
   ICreateKasBankPayload,
   IUpdateKasBankPayload,
   IOtorisasiRequest,
-  IPerkiraan,
-  IKasBankDetail,
+//   IPerkiraan,
+//   IKasBankDetail,
 } from '@/domains/accounting/types/kasbank';
 
 export const kasbankKeys = {
@@ -90,7 +90,7 @@ export function useSetOtorisasi(noBukti: string, onSuccess?: () => void, onError
 export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onError?: (msg: string) => void) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: IOtorisasiRequest) => kasbankService.batalOtorisasi(noBukti, data),
+    mutationFn: (data: IOtorisasiRequest) => kasbankService.batalOtorisasi(noBukti, data.level),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kasbankKeys.all });
       qc.invalidateQueries({ queryKey: kasbankKeys.detail(noBukti) });
@@ -118,7 +118,7 @@ export function useGenerateNoBukti(tipe: string, devisi?: string) {
 export function useLookupPerkiraan(q: string, kelompokKas: boolean = false) {
   return useQuery({
     queryKey: ['kasbank', 'perkiraan', q, kelompokKas] as const,
-    queryFn: () => kasbankService.lookupPerkiraan(q, kelompokKas),
+    queryFn: () => kasbankService.lookupPerkiraan(q, String(kelompokKas)),
     enabled: q.length >= 2,
   });
 }

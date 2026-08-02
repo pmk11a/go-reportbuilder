@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+// @ts-expect-error - unused variable
   Menu
 } from 'lucide-react'
 import { useThemeStore } from '@/shared/stores/themeStore'

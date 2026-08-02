@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test,  } from '@playwright/test';
 
 test.describe('Setup Periode Modal', () => {
   test('should open setup periode modal from sidebar menu', async ({ page }) => {
@@ -7,6 +7,7 @@ test.describe('Setup Periode Modal', () => {
 
     // Find the menu item for Setup Periode. 
     // Wait for the sidebar to load the dynamic menu
+// @ts-ignore - unused variable
     const setupMenu = page.getByText('Setup Periode Kerja');
     
     // Since the menu is loaded dynamically via API, we might need to wait for it

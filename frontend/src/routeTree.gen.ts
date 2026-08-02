@@ -28,14 +28,20 @@ import { Route as AdminLayoutDocumentsIndexRouteImport } from './routes/admin/_l
 import { Route as AdminLayoutDashboardIndexRouteImport } from './routes/admin/_layout/dashboard/index'
 import { Route as publicauthRegisterIndexRouteImport } from './routes/(public)/(auth)/register/index'
 import { Route as publicauthLoginIndexRouteImport } from './routes/(public)/(auth)/login/index'
+import { Route as AdminLayoutReportsLaporanRouteImport } from './routes/admin/_layout/reports/laporan'
 import { Route as AdminLayoutBerkasPerusahaanRouteImport } from './routes/admin/_layout/berkas/perusahaan'
 import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layout/berkas/menu'
+import { Route as KaryawanLayoutBerkasLaporanDinamisIndexRouteImport } from './routes/karyawan/_layout/berkas/laporan-dinamis/index'
 import { Route as AdminLayoutReportsPermissionReportIndexRouteImport } from './routes/admin/_layout/reports/permission-report/index'
+import { Route as AdminLayoutReportsLaporanIndexRouteImport } from './routes/admin/_layout/reports/laporan/index'
 import { Route as AdminLayoutMasterDataUsersIndexRouteImport } from './routes/admin/_layout/master-data/users/index'
+import { Route as AdminLayoutMasterDataLaporanDinamisIndexRouteImport } from './routes/admin/_layout/master-data/laporan-dinamis/index'
 import { Route as AdminLayoutMasterDataDynamicBrowseIndexRouteImport } from './routes/admin/_layout/master-data/dynamic-browse/index'
 import { Route as AdminLayoutMasterDataConfigLogsIndexRouteImport } from './routes/admin/_layout/master-data/config-logs/index'
 import { Route as AdminLayoutMasterDataActivityLogsIndexRouteImport } from './routes/admin/_layout/master-data/activity-logs/index'
 import { Route as AdminLayoutAccountingKasbankIndexRouteImport } from './routes/admin/_layout/accounting/kasbank/index'
+import { Route as KaryawanLayoutBerkasLaporanDinamisKodeRouteImport } from './routes/karyawan/_layout/berkas/laporan-dinamis/$kode'
+import { Route as AdminLayoutReportsLaporanKodeMenuRouteImport } from './routes/admin/_layout/reports/laporan/$kodeMenu'
 import { Route as AdminLayoutAccountingKasbankNobuktiRouteImport } from './routes/admin/_layout/accounting/kasbank/$nobukti'
 import { Route as AdminLayoutMasterDataUsersNewIndexRouteImport } from './routes/admin/_layout/master-data/users/new/index'
 import { Route as AdminLayoutMasterDataUsersIdIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/index'
@@ -139,6 +145,12 @@ const publicauthLoginIndexRoute = publicauthLoginIndexRouteImport.update({
   path: '/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLayoutReportsLaporanRoute =
+  AdminLayoutReportsLaporanRouteImport.update({
+    id: '/reports/laporan',
+    path: '/reports/laporan',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
 const AdminLayoutBerkasPerusahaanRoute =
   AdminLayoutBerkasPerusahaanRouteImport.update({
     id: '/berkas/perusahaan',
@@ -150,16 +162,34 @@ const AdminLayoutBerkasMenuRoute = AdminLayoutBerkasMenuRouteImport.update({
   path: '/berkas/menu',
   getParentRoute: () => AdminLayoutRoute,
 } as any)
+const KaryawanLayoutBerkasLaporanDinamisIndexRoute =
+  KaryawanLayoutBerkasLaporanDinamisIndexRouteImport.update({
+    id: '/berkas/laporan-dinamis/',
+    path: '/berkas/laporan-dinamis/',
+    getParentRoute: () => KaryawanLayoutRoute,
+  } as any)
 const AdminLayoutReportsPermissionReportIndexRoute =
   AdminLayoutReportsPermissionReportIndexRouteImport.update({
     id: '/reports/permission-report/',
     path: '/reports/permission-report/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
+const AdminLayoutReportsLaporanIndexRoute =
+  AdminLayoutReportsLaporanIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutReportsLaporanRoute,
+  } as any)
 const AdminLayoutMasterDataUsersIndexRoute =
   AdminLayoutMasterDataUsersIndexRouteImport.update({
     id: '/master-data/users/',
     path: '/master-data/users/',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
+const AdminLayoutMasterDataLaporanDinamisIndexRoute =
+  AdminLayoutMasterDataLaporanDinamisIndexRouteImport.update({
+    id: '/master-data/laporan-dinamis/',
+    path: '/master-data/laporan-dinamis/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
 const AdminLayoutMasterDataDynamicBrowseIndexRoute =
@@ -185,6 +215,18 @@ const AdminLayoutAccountingKasbankIndexRoute =
     id: '/accounting/kasbank/',
     path: '/accounting/kasbank/',
     getParentRoute: () => AdminLayoutRoute,
+  } as any)
+const KaryawanLayoutBerkasLaporanDinamisKodeRoute =
+  KaryawanLayoutBerkasLaporanDinamisKodeRouteImport.update({
+    id: '/berkas/laporan-dinamis/$kode',
+    path: '/berkas/laporan-dinamis/$kode',
+    getParentRoute: () => KaryawanLayoutRoute,
+  } as any)
+const AdminLayoutReportsLaporanKodeMenuRoute =
+  AdminLayoutReportsLaporanKodeMenuRouteImport.update({
+    id: '/$kodeMenu',
+    path: '/$kodeMenu',
+    getParentRoute: () => AdminLayoutReportsLaporanRoute,
   } as any)
 const AdminLayoutAccountingKasbankNobuktiRoute =
   AdminLayoutAccountingKasbankNobuktiRouteImport.update({
@@ -227,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
+  '/admin/reports/laporan': typeof AdminLayoutReportsLaporanRouteWithChildren
   '/login/': typeof publicauthLoginIndexRoute
   '/register/': typeof publicauthRegisterIndexRoute
   '/admin/dashboard/': typeof AdminLayoutDashboardIndexRoute
@@ -234,12 +277,17 @@ export interface FileRoutesByFullPath {
   '/admin/reports/': typeof AdminLayoutReportsIndexRoute
   '/karyawan/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
+  '/admin/reports/laporan/$kodeMenu': typeof AdminLayoutReportsLaporanKodeMenuRoute
+  '/karyawan/berkas/laporan-dinamis/$kode': typeof KaryawanLayoutBerkasLaporanDinamisKodeRoute
   '/admin/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
   '/admin/master-data/dynamic-browse/': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
+  '/admin/master-data/laporan-dinamis/': typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   '/admin/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/reports/laporan/': typeof AdminLayoutReportsLaporanIndexRoute
   '/admin/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/karyawan/berkas/laporan-dinamis/': typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
   '/admin/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
   '/admin/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
   '/admin/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
@@ -266,12 +314,17 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminLayoutReportsIndexRoute
   '/karyawan/dashboard': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
+  '/admin/reports/laporan/$kodeMenu': typeof AdminLayoutReportsLaporanKodeMenuRoute
+  '/karyawan/berkas/laporan-dinamis/$kode': typeof KaryawanLayoutBerkasLaporanDinamisKodeRoute
   '/admin/accounting/kasbank': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/master-data/activity-logs': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/master-data/config-logs': typeof AdminLayoutMasterDataConfigLogsIndexRoute
   '/admin/master-data/dynamic-browse': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
+  '/admin/master-data/laporan-dinamis': typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   '/admin/master-data/users': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/reports/laporan': typeof AdminLayoutReportsLaporanIndexRoute
   '/admin/reports/permission-report': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/karyawan/berkas/laporan-dinamis': typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
   '/admin/master-data/users/$id': typeof AdminLayoutMasterDataUsersIdIndexRoute
   '/admin/master-data/users/new': typeof AdminLayoutMasterDataUsersNewIndexRoute
   '/admin/master-data/users/$id/edit': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
@@ -293,6 +346,7 @@ export interface FileRoutesById {
   '/(public)/docs/': typeof publicDocsIndexRoute
   '/admin/_layout/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/_layout/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
+  '/admin/_layout/reports/laporan': typeof AdminLayoutReportsLaporanRouteWithChildren
   '/(public)/(auth)/login/': typeof publicauthLoginIndexRoute
   '/(public)/(auth)/register/': typeof publicauthRegisterIndexRoute
   '/admin/_layout/dashboard/': typeof AdminLayoutDashboardIndexRoute
@@ -300,12 +354,17 @@ export interface FileRoutesById {
   '/admin/_layout/reports/': typeof AdminLayoutReportsIndexRoute
   '/karyawan/_layout/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/_layout/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
+  '/admin/_layout/reports/laporan/$kodeMenu': typeof AdminLayoutReportsLaporanKodeMenuRoute
+  '/karyawan/_layout/berkas/laporan-dinamis/$kode': typeof KaryawanLayoutBerkasLaporanDinamisKodeRoute
   '/admin/_layout/accounting/kasbank/': typeof AdminLayoutAccountingKasbankIndexRoute
   '/admin/_layout/master-data/activity-logs/': typeof AdminLayoutMasterDataActivityLogsIndexRoute
   '/admin/_layout/master-data/config-logs/': typeof AdminLayoutMasterDataConfigLogsIndexRoute
   '/admin/_layout/master-data/dynamic-browse/': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
+  '/admin/_layout/master-data/laporan-dinamis/': typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   '/admin/_layout/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/_layout/reports/laporan/': typeof AdminLayoutReportsLaporanIndexRoute
   '/admin/_layout/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
+  '/karyawan/_layout/berkas/laporan-dinamis/': typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
   '/admin/_layout/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
   '/admin/_layout/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
   '/admin/_layout/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
@@ -328,6 +387,7 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/admin/berkas/menu'
     | '/admin/berkas/perusahaan'
+    | '/admin/reports/laporan'
     | '/login/'
     | '/register/'
     | '/admin/dashboard/'
@@ -335,12 +395,17 @@ export interface FileRouteTypes {
     | '/admin/reports/'
     | '/karyawan/dashboard/'
     | '/admin/accounting/kasbank/$nobukti'
+    | '/admin/reports/laporan/$kodeMenu'
+    | '/karyawan/berkas/laporan-dinamis/$kode'
     | '/admin/accounting/kasbank/'
     | '/admin/master-data/activity-logs/'
     | '/admin/master-data/config-logs/'
     | '/admin/master-data/dynamic-browse/'
+    | '/admin/master-data/laporan-dinamis/'
     | '/admin/master-data/users/'
+    | '/admin/reports/laporan/'
     | '/admin/reports/permission-report/'
+    | '/karyawan/berkas/laporan-dinamis/'
     | '/admin/master-data/users/$id/'
     | '/admin/master-data/users/new/'
     | '/admin/master-data/users/$id/edit/'
@@ -367,12 +432,17 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/karyawan/dashboard'
     | '/admin/accounting/kasbank/$nobukti'
+    | '/admin/reports/laporan/$kodeMenu'
+    | '/karyawan/berkas/laporan-dinamis/$kode'
     | '/admin/accounting/kasbank'
     | '/admin/master-data/activity-logs'
     | '/admin/master-data/config-logs'
     | '/admin/master-data/dynamic-browse'
+    | '/admin/master-data/laporan-dinamis'
     | '/admin/master-data/users'
+    | '/admin/reports/laporan'
     | '/admin/reports/permission-report'
+    | '/karyawan/berkas/laporan-dinamis'
     | '/admin/master-data/users/$id'
     | '/admin/master-data/users/new'
     | '/admin/master-data/users/$id/edit'
@@ -393,6 +463,7 @@ export interface FileRouteTypes {
     | '/(public)/docs/'
     | '/admin/_layout/berkas/menu'
     | '/admin/_layout/berkas/perusahaan'
+    | '/admin/_layout/reports/laporan'
     | '/(public)/(auth)/login/'
     | '/(public)/(auth)/register/'
     | '/admin/_layout/dashboard/'
@@ -400,12 +471,17 @@ export interface FileRouteTypes {
     | '/admin/_layout/reports/'
     | '/karyawan/_layout/dashboard/'
     | '/admin/_layout/accounting/kasbank/$nobukti'
+    | '/admin/_layout/reports/laporan/$kodeMenu'
+    | '/karyawan/_layout/berkas/laporan-dinamis/$kode'
     | '/admin/_layout/accounting/kasbank/'
     | '/admin/_layout/master-data/activity-logs/'
     | '/admin/_layout/master-data/config-logs/'
     | '/admin/_layout/master-data/dynamic-browse/'
+    | '/admin/_layout/master-data/laporan-dinamis/'
     | '/admin/_layout/master-data/users/'
+    | '/admin/_layout/reports/laporan/'
     | '/admin/_layout/reports/permission-report/'
+    | '/karyawan/_layout/berkas/laporan-dinamis/'
     | '/admin/_layout/master-data/users/$id/'
     | '/admin/_layout/master-data/users/new/'
     | '/admin/_layout/master-data/users/$id/edit/'
@@ -556,6 +632,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicauthLoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/_layout/reports/laporan': {
+      id: '/admin/_layout/reports/laporan'
+      path: '/reports/laporan'
+      fullPath: '/admin/reports/laporan'
+      preLoaderRoute: typeof AdminLayoutReportsLaporanRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/admin/_layout/berkas/perusahaan': {
       id: '/admin/_layout/berkas/perusahaan'
       path: '/berkas/perusahaan'
@@ -570,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutBerkasMenuRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/karyawan/_layout/berkas/laporan-dinamis/': {
+      id: '/karyawan/_layout/berkas/laporan-dinamis/'
+      path: '/berkas/laporan-dinamis'
+      fullPath: '/karyawan/berkas/laporan-dinamis/'
+      preLoaderRoute: typeof KaryawanLayoutBerkasLaporanDinamisIndexRouteImport
+      parentRoute: typeof KaryawanLayoutRoute
+    }
     '/admin/_layout/reports/permission-report/': {
       id: '/admin/_layout/reports/permission-report/'
       path: '/reports/permission-report'
@@ -577,11 +667,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutReportsPermissionReportIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/reports/laporan/': {
+      id: '/admin/_layout/reports/laporan/'
+      path: '/'
+      fullPath: '/admin/reports/laporan/'
+      preLoaderRoute: typeof AdminLayoutReportsLaporanIndexRouteImport
+      parentRoute: typeof AdminLayoutReportsLaporanRoute
+    }
     '/admin/_layout/master-data/users/': {
       id: '/admin/_layout/master-data/users/'
       path: '/master-data/users'
       fullPath: '/admin/master-data/users/'
       preLoaderRoute: typeof AdminLayoutMasterDataUsersIndexRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
+    '/admin/_layout/master-data/laporan-dinamis/': {
+      id: '/admin/_layout/master-data/laporan-dinamis/'
+      path: '/master-data/laporan-dinamis'
+      fullPath: '/admin/master-data/laporan-dinamis/'
+      preLoaderRoute: typeof AdminLayoutMasterDataLaporanDinamisIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
     '/admin/_layout/master-data/dynamic-browse/': {
@@ -611,6 +715,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/accounting/kasbank/'
       preLoaderRoute: typeof AdminLayoutAccountingKasbankIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
+    }
+    '/karyawan/_layout/berkas/laporan-dinamis/$kode': {
+      id: '/karyawan/_layout/berkas/laporan-dinamis/$kode'
+      path: '/berkas/laporan-dinamis/$kode'
+      fullPath: '/karyawan/berkas/laporan-dinamis/$kode'
+      preLoaderRoute: typeof KaryawanLayoutBerkasLaporanDinamisKodeRouteImport
+      parentRoute: typeof KaryawanLayoutRoute
+    }
+    '/admin/_layout/reports/laporan/$kodeMenu': {
+      id: '/admin/_layout/reports/laporan/$kodeMenu'
+      path: '/$kodeMenu'
+      fullPath: '/admin/reports/laporan/$kodeMenu'
+      preLoaderRoute: typeof AdminLayoutReportsLaporanKodeMenuRouteImport
+      parentRoute: typeof AdminLayoutReportsLaporanRoute
     }
     '/admin/_layout/accounting/kasbank/$nobukti': {
       id: '/admin/_layout/accounting/kasbank/$nobukti'
@@ -669,9 +787,27 @@ const publicDocsRouteWithChildren = publicDocsRoute._addFileChildren(
   publicDocsRouteChildren,
 )
 
+interface AdminLayoutReportsLaporanRouteChildren {
+  AdminLayoutReportsLaporanKodeMenuRoute: typeof AdminLayoutReportsLaporanKodeMenuRoute
+  AdminLayoutReportsLaporanIndexRoute: typeof AdminLayoutReportsLaporanIndexRoute
+}
+
+const AdminLayoutReportsLaporanRouteChildren: AdminLayoutReportsLaporanRouteChildren =
+  {
+    AdminLayoutReportsLaporanKodeMenuRoute:
+      AdminLayoutReportsLaporanKodeMenuRoute,
+    AdminLayoutReportsLaporanIndexRoute: AdminLayoutReportsLaporanIndexRoute,
+  }
+
+const AdminLayoutReportsLaporanRouteWithChildren =
+  AdminLayoutReportsLaporanRoute._addFileChildren(
+    AdminLayoutReportsLaporanRouteChildren,
+  )
+
 interface AdminLayoutRouteChildren {
   AdminLayoutBerkasMenuRoute: typeof AdminLayoutBerkasMenuRoute
   AdminLayoutBerkasPerusahaanRoute: typeof AdminLayoutBerkasPerusahaanRoute
+  AdminLayoutReportsLaporanRoute: typeof AdminLayoutReportsLaporanRouteWithChildren
   AdminLayoutDashboardIndexRoute: typeof AdminLayoutDashboardIndexRoute
   AdminLayoutDocumentsIndexRoute: typeof AdminLayoutDocumentsIndexRoute
   AdminLayoutReportsIndexRoute: typeof AdminLayoutReportsIndexRoute
@@ -680,6 +816,7 @@ interface AdminLayoutRouteChildren {
   AdminLayoutMasterDataActivityLogsIndexRoute: typeof AdminLayoutMasterDataActivityLogsIndexRoute
   AdminLayoutMasterDataConfigLogsIndexRoute: typeof AdminLayoutMasterDataConfigLogsIndexRoute
   AdminLayoutMasterDataDynamicBrowseIndexRoute: typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
+  AdminLayoutMasterDataLaporanDinamisIndexRoute: typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   AdminLayoutMasterDataUsersIndexRoute: typeof AdminLayoutMasterDataUsersIndexRoute
   AdminLayoutReportsPermissionReportIndexRoute: typeof AdminLayoutReportsPermissionReportIndexRoute
   AdminLayoutMasterDataUsersIdIndexRoute: typeof AdminLayoutMasterDataUsersIdIndexRoute
@@ -690,6 +827,7 @@ interface AdminLayoutRouteChildren {
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutBerkasMenuRoute: AdminLayoutBerkasMenuRoute,
   AdminLayoutBerkasPerusahaanRoute: AdminLayoutBerkasPerusahaanRoute,
+  AdminLayoutReportsLaporanRoute: AdminLayoutReportsLaporanRouteWithChildren,
   AdminLayoutDashboardIndexRoute: AdminLayoutDashboardIndexRoute,
   AdminLayoutDocumentsIndexRoute: AdminLayoutDocumentsIndexRoute,
   AdminLayoutReportsIndexRoute: AdminLayoutReportsIndexRoute,
@@ -703,6 +841,8 @@ const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
     AdminLayoutMasterDataConfigLogsIndexRoute,
   AdminLayoutMasterDataDynamicBrowseIndexRoute:
     AdminLayoutMasterDataDynamicBrowseIndexRoute,
+  AdminLayoutMasterDataLaporanDinamisIndexRoute:
+    AdminLayoutMasterDataLaporanDinamisIndexRoute,
   AdminLayoutMasterDataUsersIndexRoute: AdminLayoutMasterDataUsersIndexRoute,
   AdminLayoutReportsPermissionReportIndexRoute:
     AdminLayoutReportsPermissionReportIndexRoute,
@@ -720,10 +860,16 @@ const AdminLayoutRouteWithChildren = AdminLayoutRoute._addFileChildren(
 
 interface KaryawanLayoutRouteChildren {
   KaryawanLayoutDashboardIndexRoute: typeof KaryawanLayoutDashboardIndexRoute
+  KaryawanLayoutBerkasLaporanDinamisKodeRoute: typeof KaryawanLayoutBerkasLaporanDinamisKodeRoute
+  KaryawanLayoutBerkasLaporanDinamisIndexRoute: typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
 }
 
 const KaryawanLayoutRouteChildren: KaryawanLayoutRouteChildren = {
   KaryawanLayoutDashboardIndexRoute: KaryawanLayoutDashboardIndexRoute,
+  KaryawanLayoutBerkasLaporanDinamisKodeRoute:
+    KaryawanLayoutBerkasLaporanDinamisKodeRoute,
+  KaryawanLayoutBerkasLaporanDinamisIndexRoute:
+    KaryawanLayoutBerkasLaporanDinamisIndexRoute,
 }
 
 const KaryawanLayoutRouteWithChildren = KaryawanLayoutRoute._addFileChildren(

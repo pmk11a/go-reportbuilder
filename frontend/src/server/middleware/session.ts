@@ -1,6 +1,6 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/start-server-core'
-import { getSession, getValidAccessToken, SESSION_COOKIE_NAME, type SessionData } from '../session'
+import { getSession, getValidAccessToken, SESSION_COOKIE_NAME } from '../session'
 
 export const sessionMiddleware = createMiddleware({ type: 'request' })
   .server(async ({ next }) => {

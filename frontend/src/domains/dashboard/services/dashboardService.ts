@@ -1,7 +1,7 @@
 import { getDashboardStatsFn, getPensiunanWithoutFilesFn } from '@/server/functions/dashboard'
 import type { IAPIResponse } from '@/shared/types/api'
-import { IDashboardStats } from '../types/dashboard'
-import { IPensiunanWithoutFiles } from '@/domains/users/types/pensiunan'
+import type { IDashboardStats } from '../types/dashboard'
+import type { IPensiunanWithoutFiles } from '@/domains/users/types/pensiunan'
 
 export const dashboardService = {
   async getStats(): Promise<IAPIResponse<IDashboardStats>> {

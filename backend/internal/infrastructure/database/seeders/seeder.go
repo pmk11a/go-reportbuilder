@@ -11,6 +11,7 @@ func SeedDatabase(database *gorm.DB) {
 	seedSuperAdmin(database)
 	seedDBMenu(database)
 	seedDbBrowseConfigs(database)
+	seedReports(database)
 }
 
 

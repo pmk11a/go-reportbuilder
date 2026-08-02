@@ -7,11 +7,11 @@
  * version from `@/domains/browse/components/browse/CustomerPicker`.
  */
 
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/shared/ui/overlay/dialog';
 import { Button } from '@/shared/ui';
-import { sharedFilterService, CustomerData } from '@/shared/services/sharedFilterService';
+import { sharedFilterService, type CustomerData } from '@/shared/services/sharedFilterService';
 
 interface Props {
   jenis: 0 | 1; // 0: Hutang, 1: Piutang

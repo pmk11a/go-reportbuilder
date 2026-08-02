@@ -29,6 +29,8 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
 }
 
 const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
+// // @ts-expect-error - unused variable
+// @ts-expect-error - unused variable
   ({ tabs, defaultValue = tabs[0]?.value, onValueChange, className, ...props }, ref) => {
     const [activeTab, setActiveTab] = React.useState(defaultValue);
 

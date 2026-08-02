@@ -1,8 +1,8 @@
 import { getActivityLogsFn, getActivityLogConfigDetailFn, getActivityLogsByUserFn } from '@/server/functions/admin/activity-logs'
 import { getDatabaseTablesFn, getDatabaseColumnsFn } from '@/server/functions/admin/database'
 import { proxyFn } from '@/server/functions/proxy'
-import { IAPIResponse, IPaginatedResponse } from '@/shared/types/api'
-import { IActivityLogConfig, IActivityLogRes } from '@/domains/activity/types/activity-log'
+import type { IAPIResponse, IPaginatedResponse } from '@/shared/types/api'
+import type { IActivityLogConfig, IActivityLogRes } from '@/domains/activity/types/activity-log'
 
 export const activityLogService = {
   getTables: async (): Promise<IAPIResponse<string[]>> => {

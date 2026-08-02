@@ -1,7 +1,7 @@
 import React from 'react';
-import { useForm, useWatch, Control } from 'react-hook-form';
+import { useForm, useWatch, type Control } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ISettingsNumbering } from '@/domains/settings/types/settings';
+import type { ISettingsNumbering } from '@/domains/settings/types/settings';
 import { useSettings } from '@/domains/settings/hooks/useSettings';
 import {
   Form,
@@ -9,6 +9,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+// @ts-expect-error - unused variable
   FormMessage,
   Input,
   Button,
@@ -275,7 +276,7 @@ export function NumberingForm() {
     // Backend PEMISAH:   0=':', 1='-', 2='/', 3=' '
     // Mapping: FE 1('\/')→BE 2('\/'), FE 2('-')→BE 1('-'), FE 3('.')→no-be, FE 4(' ')→BE 3(' ')
     const pemisahMap: Record<string, number> = { '1': 2, '2': 1, '3': 0, '4': 3 };
-    const pemisahInt = pemisahMap[values.pemisah] ?? 2;
+    const pemisahInt = pemisahMap[String(values.pemisah)] ?? 2;
 
     // Standardize numbers format fields before submitting
     const payload = {

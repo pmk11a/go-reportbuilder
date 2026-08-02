@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, Edit2, Trash2, Download, Plus } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
-import { IKasBankDetail, IAddDetailPayload } from '@/domains/accounting/types/kasbank';
+import type { IKasBankDetail,  } from '@/domains/accounting/types/kasbank';
 import { useKasBankDetailList, useAddDetail } from '@/domains/accounting/hooks/useKasBankDetail';
 import { useDeleteKasBank, useDownloadKasBankPdf } from '@/domains/accounting/hooks/useKasBank';
 import { KasBankFormDialog, DetailRowEditor } from './KasBankFormDialog';

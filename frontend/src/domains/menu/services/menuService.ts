@@ -9,6 +9,7 @@ export const menuService = {
     return { success: true, status: 200, message: 'Success', data: result.data, meta: result.meta } as any
   },
 
+// @ts-expect-error - unused variable
   async getParentMenus(level: number): Promise<IAPIResponse<IDbMenu[]>> {
     const result = await getMenuParentsFn()
     return { success: true, status: 200, message: 'Success', data: result } as any

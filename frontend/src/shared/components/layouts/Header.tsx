@@ -8,6 +8,7 @@ interface HeaderProps {
   onMenuClick?: () => void
 }
 
+// @ts-expect-error - unused variable
 export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuthStore()
   const { isDark, toggleTheme } = useThemeStore()

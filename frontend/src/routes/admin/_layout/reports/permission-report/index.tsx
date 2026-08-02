@@ -26,6 +26,7 @@ const INITIAL_FILTERS: IPermissionReportFilters = {
 }
 
 function PermissionReportPage() {
+// @ts-expect-error - unused variable
   const { t } = useTranslation(['reports', 'common'])
 
   // Draft = the picker state. Applied = the committed filter the table reads.

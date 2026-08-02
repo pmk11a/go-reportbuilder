@@ -32,6 +32,7 @@ interface AktivaSubFormProps {
 }
 
 export function AktivaSubForm({ open, onClose, onConfirm, perkiraan, devisi }: AktivaSubFormProps) {
+// @ts-expect-error - unused variable
   const { t } = useTranslation();
   const [formData, setFormData] = useState<Partial<IAktiva>>({});
 

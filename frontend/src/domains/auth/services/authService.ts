@@ -1,6 +1,6 @@
 import { loginFn, logoutFn, meFn, changePasswordFn } from '@/server/functions/auth'
 import type { IAPIResponse } from '@/shared/types/api'
-import { IAuthResponse } from '../schemas/auth'
+import type { IAuthResponse } from '../schemas/auth'
 
 export const authService = {
   async login(username: string, password: string): Promise<IAPIResponse<IAuthResponse>> {

@@ -4,9 +4,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/masza1/dapen-backend/internal/features/activity"
-	"github.com/masza1/dapen-backend/internal/app/routes"
 	"github.com/masza1/dapen-backend/internal/features/accounting/kasbank"
+	"github.com/masza1/dapen-backend/internal/features/activity"
+	"github.com/masza1/dapen-backend/internal/features/reports"
+	"github.com/masza1/dapen-backend/internal/features/reports/execution"
+	"github.com/masza1/dapen-backend/internal/app/routes"
 	"github.com/masza1/dapen-backend/internal/features/browse"
 	"github.com/masza1/dapen-backend/internal/features/settings"
 	"github.com/masza1/dapen-backend/internal/features/dashboard"
@@ -94,6 +96,14 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	browseResolver := browse.NewConfigResolver(dbConn)
 	browseHandler := browse.NewHandler(browseResolver)
 
+	// 5.7 Initialize Reports domain (admin + execution).
+	reportsRepo := reports.NewReportsRepository(dbConn)
+	reportsService := reports.NewReportsService(reportsRepo)
+	reportsHandler := reports.NewReportsHandler(reportsService)
+	reportExecRepo := execution.NewReportExecutionRepository(dbConn)
+	reportExecService := execution.NewReportExecutionService(reportExecRepo)
+	reportExecHandler := execution.NewReportExecutionHandler(reportExecService, reportsService)
+
 	// 6. Initialize the Gin engine and global middlewares.
 	engine := gin.Default()
 	engine.SetTrustedProxies(nil)
@@ -126,6 +136,8 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 		SKasBankHandler:     kasBankHandler,
 		SKasBankPermMW:      kasBankPermMW,
 		SBrowseHandler:      browseHandler,
+		SReportsHandler:     reportsHandler,
+		SReportExecHandler:  reportExecHandler,
 		SConfig:             cfg,
 	})
 

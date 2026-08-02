@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IKasBankHeader, IKasBankListParams, KasBankTipe } from '@/domains/accounting/types/kasbank';
+import type { IKasBankHeader, IKasBankListParams, KasBankTipe } from '@/domains/accounting/types/kasbank';
 import { useKasBankList, useDeleteKasBank, useDownloadKasBankPdf } from '@/domains/accounting/hooks/useKasBank';
 import { useGetPeriode } from '@/domains/berkas/hooks/useBerkas';
 import { Button } from '@/shared/ui/overlay/button';
@@ -13,7 +13,7 @@ import { useDebounce } from '@/shared/hooks/useDebounce';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { Each, Show } from '@/shared/ui/layout/Render';
 import { KasBankTypeBadge } from './KasBankTypeBadge';
-import { OtorisasiButton, AuthLevelCell, TOtorisasiLevel } from './OtorisasiButton';
+import {  AuthLevelCell, type TOtorisasiLevel } from './OtorisasiButton';
 import { Eye, Plus, Edit, Trash2, Search, RefreshCw, FileDown } from 'lucide-react';
 import { Link } from '@tanstack/react-router';
 
@@ -285,6 +285,7 @@ function KasBankRow({ voucher, onDelete, onEdit, onPdf }: {
   onEdit?: (v: IKasBankHeader) => void;
   onPdf: (v: IKasBankHeader) => void;
 }) {
+// @ts-expect-error - unused variable
   const { t } = useTranslation(['accounting', 'common']);
 
   return (

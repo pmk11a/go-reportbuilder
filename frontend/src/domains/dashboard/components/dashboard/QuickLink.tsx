@@ -1,5 +1,5 @@
 import { useThemeStore } from '@/shared/stores/themeStore'
-import { ArrowRight, LucideIcon } from 'lucide-react'
+import { ArrowRight, type LucideIcon } from 'lucide-react'
 
 interface QuickLinkProps {
   label: string

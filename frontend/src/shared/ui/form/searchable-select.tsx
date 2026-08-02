@@ -49,6 +49,7 @@ export interface SearchableSelectProps
   options: SearchableSelectOption[];
   disabled?: boolean;
   onSearchChange?: (value: string) => void;
+  disableLocalSearch?: boolean;
 }
 
 const SearchableSelect = React.forwardRef<
@@ -65,6 +66,7 @@ const SearchableSelect = React.forwardRef<
       options = [],
       disabled = false,
       onSearchChange,
+      disableLocalSearch = false,
       className,
       ...props
     },
@@ -96,9 +98,11 @@ const SearchableSelect = React.forwardRef<
     };
 
     // Filter options based on search value and limit to 50 for performance
-    const filteredOptions = options.filter((option) =>
-      option.label.toLowerCase().includes(searchValue.toLowerCase())
-    ).slice(0, 50);
+    const filteredOptions = disableLocalSearch 
+      ? options 
+      : options.filter((option) =>
+          option.label.toLowerCase().includes(searchValue.toLowerCase())
+        ).slice(0, 50);
 
     // Get selected option label
     const selectedLabel = options.find((opt) => opt.value === internalValue)?.label || internalValue;

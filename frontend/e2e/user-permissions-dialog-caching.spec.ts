@@ -25,6 +25,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 const BASE_URL = 'http://localhost:3000'
 // Legacy DBFLPASS user_id of the seeded super admin.
+// @ts-ignore - unused variable
 const ADMIN_USER_ID = 'SA'
 
 async function loginAsAdmin(page: Page) {

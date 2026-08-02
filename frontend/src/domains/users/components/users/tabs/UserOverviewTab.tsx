@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { format } from 'date-fns'
+// import {} from 'date-fns'
 import { id, enUS } from 'date-fns/locale'
 import { Skeleton } from '@/shared/ui/feedback/skeleton'
 import { Badge } from '@/shared/ui'
-import { User, IdCard, Shield, Power, Calendar } from 'lucide-react'
+import { User, IdCard, Shield, Power,  } from 'lucide-react'
 import type { IDbflpass } from '@/domains/users/types/user'
 
 interface IUserOverviewTabProps {
@@ -16,6 +16,7 @@ interface IUserOverviewTabProps {
  */
 export function UserOverviewTab({ user, isLoading }: IUserOverviewTabProps) {
   const { t, i18n } = useTranslation(['users', 'common'])
+// @ts-expect-error - unused variable
   const dateLocale = i18n.language === 'id' ? id : enUS
 
   if (isLoading) {

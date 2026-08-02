@@ -241,6 +241,7 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
       disabled={disabled}
       className={className}
       onSearchChange={usePaged ? undefined : onSearchChange}
+      disableLocalSearch={true}
       searchPlaceholder={searchPlaceholder}
     />
   )

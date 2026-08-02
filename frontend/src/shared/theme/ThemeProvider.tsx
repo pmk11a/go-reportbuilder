@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useThemeStore } from "@/shared/stores/themeStore";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

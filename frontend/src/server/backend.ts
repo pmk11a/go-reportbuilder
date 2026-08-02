@@ -1,7 +1,7 @@
 import { getEnv, parseEnvTime } from './utils'
 
 const BACKEND_URL = getEnv('BACKEND_URL', 'http://127.0.0.1:8080')
-const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 10000)
+const BACKEND_TIMEOUT = parseEnvTime('BFF_BACKEND_TIMEOUT', 60000)
 const IS_DEV = process.env.NODE_ENV !== 'production'
 
 export interface BackendResponse<T = any> {
@@ -108,7 +108,7 @@ export async function makeBackendRequest<T = any>(
     const success = response.ok && (backendResponse?.success !== false)
     const data = (backendResponse?.success !== undefined) ? backendResponse.data : backendResponse
 
-    let message = backendResponse?.message || (response.ok ? 'Success' : 'Backend Error')
+    const message = backendResponse?.message || (response.ok ? 'Success' : 'Backend Error')
 
     return {
       status: response.status,

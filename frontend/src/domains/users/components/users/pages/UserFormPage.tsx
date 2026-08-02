@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
@@ -20,6 +20,7 @@ export const UserFormPage: React.FC<IUserFormPageProps> = ({ mode, userEid }) =>
 
   const userQuery = useUser(userEid ?? '', { enabled: isEdit && !!userEid })
 
+// @ts-expect-error - unused variable
   const handleSuccess = (user: IDbflpass) => {
     navigate({ to: '/admin/master-data/users' })
   }

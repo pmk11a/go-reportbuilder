@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import  { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUsers } from '@/domains/users/hooks/useUsers'
 import { useToast } from '@/shared/hooks/use-toast'
@@ -16,6 +16,7 @@ import {
   Checkbox,
   Skeleton,
   Tabs,
+// @ts-expect-error - unused variable
   Spinner,
 } from '@/shared/ui'
 import { Each, Show } from '@/shared/ui/layout/Render'
@@ -43,6 +44,7 @@ export function UserPermissionsTab({
     useUserCoaAccess,
     useUpdateUserPermissions,
   } = useUsers()
+// @ts-expect-error - unused variable
 
   const [activeTab, setActiveTab] = useState<TPermissionTab>('menu')
 

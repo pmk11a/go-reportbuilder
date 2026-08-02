@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute,  } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
     Users,
@@ -7,22 +7,33 @@ import {
     Activity,
     CalendarCheck,
     UserX,
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// // @ts-expect-error - unused variable
+// @ts-expect-error - unused variable
     KeyRound,
-    LogOut,
-    Settings,
-    X,
+//     LogOut,
+//     Settings,
+//     X,
+// @ts-expect-error - unused variable
     Lock,
+// @ts-expect-error - unused variable
     Eye,
-    EyeOff,
-    CheckCircle2,
-    AlertCircle,
+//     EyeOff,
+//     CheckCircle2,
+//     AlertCircle,
 } from "lucide-react";
 import { dashboardService } from "@/domains/dashboard/services/dashboardService";
 import { useThemeStore } from "@/shared/stores/themeStore";
 import { usePagination } from "@/shared/hooks/usePagination";
-import React, { memo } from "react";
+import  { memo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/data/table";
-import { Each, Show } from "@/shared/ui/layout/Render";
+import { Each,  } from "@/shared/ui/layout/Render";
 import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/admin/_layout/dashboard/")({

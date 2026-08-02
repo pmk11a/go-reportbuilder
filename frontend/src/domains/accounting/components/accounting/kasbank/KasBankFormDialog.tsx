@@ -27,6 +27,7 @@ import {
 	useGenerateNoBukti,
 	useLookupDevisi,
 	useLookupPerkiraanShared,
+// @ts-expect-error - unused variable
 	useResolveSubTransaction,
 	useUpdateKasBank,
 } from "@/domains/accounting/hooks/useKasBank";

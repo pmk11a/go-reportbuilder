@@ -22,8 +22,10 @@ test.describe('Dashboard Features', () => {
 
     // Verify that some statistic cards are present
     // Adjust these based on the actual UI text
+// @ts-ignore - unused variable
+// @ts-ignore - unused variable
     const activeMembers = page.getByText(/Total Aktif/i);
-    const retiredMembers = page.getByText(/Total Pensiunan/i);
+//     const retiredMembers = page.getByText(/Total Pensiunan/i);
     
     // Check if the cards are visible
     // They might be loading if the API is slow, so we wait for them

@@ -1,4 +1,4 @@
-import React from 'react';
+;
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -8,6 +8,7 @@ import { useSettings } from '@/domains/settings/hooks/useSettings';
 // Mock translation
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
+// @ts-expect-error - unused variable
     t: (key: string, fallback: string) => fallback,
   }),
 }));

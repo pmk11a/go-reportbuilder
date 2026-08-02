@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, memo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import DynamicLucideIcon from "@/shared/ui/LucideIcon";
-import { useMenuStore, MenuItemType } from "@/domains/menu/stores/menuStore";
+import { useMenuStore, type MenuItemType } from "@/domains/menu/stores/menuStore";
 import { Search, Grid, X, ArrowLeft, Loader2 } from "lucide-react";
 import { useThemeStore } from "@/shared/stores/themeStore";
 import { useModalStore } from "@/shared/stores/modalStore";

@@ -4,7 +4,7 @@ import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { Each, Show } from '@/shared/ui/layout/Render';
 import { Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/ui/overlay/button';
-import { IKasBankDetail } from '@/domains/accounting/types/kasbank';
+import type { IKasBankDetail } from '@/domains/accounting/types/kasbank';
 
 interface KasBankDetailTableProps {
   details: IKasBankDetail[];

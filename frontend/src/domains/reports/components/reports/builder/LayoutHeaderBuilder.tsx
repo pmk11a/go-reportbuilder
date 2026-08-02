@@ -1,4 +1,4 @@
-import React from 'react';
+;
 import { Plus, X } from 'lucide-react';
 import type { LayoutHeader, HeaderColumn } from '@/domains/accounting/types/report';
 import { Button } from '@/shared/ui';

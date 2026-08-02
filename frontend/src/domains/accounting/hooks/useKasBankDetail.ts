@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kasbankService } from '@/domains/accounting/services/kasbankService';
-import type { IKasBankDetail, IAddDetailPayload, IUpdateDetailPayload } from '@/domains/accounting/types/kasbank';
+import type {  IAddDetailPayload, IUpdateDetailPayload } from '@/domains/accounting/types/kasbank';
 import { kasbankKeys } from './useKasBank';
 
 export function useKasBankDetailList(noBukti: string) {

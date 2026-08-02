@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import  { useState, useCallback } from 'react';
 import { DataPagination } from '@/shared/ui/navigation/data-pagination';
 
 export function usePagination(defaultLimit: number = 10) {
