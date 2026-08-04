@@ -5,7 +5,6 @@ import { useThemeStore } from "@/shared/stores/themeStore"
 import { useMenuStore } from "@/domains/menu/stores/menuStore"
 import { LanguageToggle } from "@/shared/components/LanguageToggle"
 import { ThemeToggle } from "@/shared/components/ThemeToggle"
-// import {} from "@/domains/auth/services/"
 import { Settings, KeyRound, LogOut, CheckCircle2 } from "lucide-react"
 import { useModalStore } from "@/shared/stores/modalStore"
 import { useTranslation } from "react-i18next"
@@ -105,14 +104,14 @@ export function MainHeader() {
       )}
 
       {/* Top Header */}
-      <div className="flex justify-between items-start w-full">
-        <div>
-          <h1 className={`text-[32px] font-black tracking-tight ${isDark ? "text-white" : "text-[#1e293b]"} leading-tight`}>
+      <div className="flex justify-between items-start w-full gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className={`text-2xl sm:text-[32px] font-black tracking-tight ${isDark ? "text-white" : "text-[#1e293b]"} leading-tight break-words`}>
             {title}
           </h1>
-          <p className={`${isDark ? "text-slate-500" : "text-[#475569]"} text-lg font-medium mt-1`}>{subtitle}</p>
+          <p className={`${isDark ? "text-slate-500" : "text-[#475569]"} text-sm sm:text-lg font-medium mt-1 sm:mt-2 line-clamp-2`}>{subtitle}</p>
         </div>
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex items-center gap-2 sm:gap-3 pt-1 shrink-0">
           <LanguageToggle />
           <ThemeToggle />
           <div className="relative">

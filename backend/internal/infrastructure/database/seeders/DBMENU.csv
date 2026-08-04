@@ -53,7 +53,7 @@
 "03004","Perhitungan Manfaat Pensiun","1","3015","0","","",""
 "03005","Upload PPH-21","1","3016","0","","",""
 "08","Laporan-laporan","0","0","0","","file-bar-chart",""
-"08001","Laporan","1","8001","0","","laporan-laporan.laporan.erp.dashboard","FileText"
+"08001","Laporan","1","8001","0","","/admin/reports/laporan","FileText"
 "081","Utilitas","0","0","0","","circle",""
 "08101","Proses Tutup Buku","1","8101","0","","utilitas.tutup-buku.index","book-lock"
 "08105","Aktivitas Pemakai","1","8005","0","",".activity",""

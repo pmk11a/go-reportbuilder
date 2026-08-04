@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Link } from '@tanstack/react-router'
+import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
 import { Search, FileText, Folder, Menu } from 'lucide-react'
 import { useState } from 'react'
 import { Input } from '@/shared/ui'
@@ -21,9 +21,9 @@ function LaporanDinamisLayout() {
 
   // We could extract the active ID to highlight it
   // Since we don't have access to the matched route params directly here without a hook,
-  // we'll rely on active link styling if possible, but manually checking is better.
-  const params = Route.useParams() as any
-  const selectedKode = params?.kodeMenu || ''
+  const location = useLocation()
+  const pathParts = location.pathname.split('/')
+  const selectedKode = pathParts[pathParts.length - 1] !== 'laporan' ? pathParts[pathParts.length - 1] : ''
   const sidebarCustomContent = (
     <Show when={!isLoading} fallback={
       <div className="p-4 text-center text-secondary-400">Memuat...</div>
@@ -54,19 +54,6 @@ function LaporanDinamisLayout() {
         : 'bg-white border-slate-100 shadow-blue-500/5'
     }`}>
       <Outlet />
-      
-      {/* Jika tidak ada laporan yang dipilih, tampilkan default view */}
-      <Show when={!selectedKode}>
-        <div className="h-full flex flex-col items-center justify-center text-secondary-400 p-8">
-          <div className={`p-6 rounded-full mb-6 ${isDark ? 'bg-slate-800' : 'bg-slate-50'}`}>
-            <FileText className="w-16 h-16 opacity-50" />
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Pilih Laporan</h2>
-          <p className="text-sm opacity-70 text-center max-w-md">
-            Silakan pilih laporan dari daftar di sebelah kiri untuk melihat detail data.
-          </p>
-        </div>
-      </Show>
     </div>
   )
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import { Each, Show } from '@/shared/ui/layout'
 
 interface SummaryLayoutProps {
   datasetName: string
@@ -16,10 +16,13 @@ export function SummaryLayout({ deskripsi, configJson, columns, data, position }
   const layoutType = configJson?.summary_layout || 'grid_2col'
   const isFooterOnly = layoutType === 'footer_only'
 
-  // If this component is placed as header but config says footer_only, skip render
-  if (position === 'header' && isFooterOnly) return null
-  // If placed as footer but config is not footer_only, skip render (it's already in header)
-  if (position === 'footer' && !isFooterOnly) return null
+  // If config says footer_only, it means the summary data is only used for the ReportFooterBands
+  // (like the signature and complex footer table), so we don't render the basic grid at all.
+  if (isFooterOnly) return null
+
+  // If this component is placed as header but config wants it in footer, skip render
+  // (Though currently we just use footer_only to hide it completely, leaving this for future 'footer_grid' type)
+  if (position === 'footer') return null // For now, all basic grids are rendered as header, unless explicitly defined otherwise
 
   // Determine left and right fields
   const allFields = columns.map(c => c.nama_kolom)
@@ -42,15 +45,15 @@ export function SummaryLayout({ deskripsi, configJson, columns, data, position }
     return val
   }
 
-  const renderField = (fieldName: string) => {
+  const renderFieldNode = (fieldName: string) => {
     const colDef = columns.find(c => c.nama_kolom === fieldName)
     const label = colDef?.label_tampil || fieldName
     const value = rowData[fieldName]
     
     return (
-      <div key={fieldName} className="flex flex-col py-2 border-b border-secondary-100 dark:border-slate-800 last:border-0">
-        <span className="text-xs font-semibold text-secondary-500 uppercase tracking-wider">{label}</span>
-        <span className="text-base font-medium text-secondary-900 dark:text-slate-200 mt-1">
+      <div key={fieldName} className="flex flex-col py-2 border-b border-slate-200 dark:border-slate-800 last:border-0">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{label}</span>
+        <span className="text-base font-medium text-slate-800 dark:text-slate-200 mt-1">
           {formatValue(value)}
         </span>
       </div>
@@ -58,19 +61,33 @@ export function SummaryLayout({ deskripsi, configJson, columns, data, position }
   }
 
   return (
-    <div className="mb-6 bg-white dark:bg-[#0f172a] rounded-xl border border-secondary-200 dark:border-white/5 shadow-sm p-5">
-      {deskripsi && <h3 className="text-lg font-bold mb-4 text-secondary-800 dark:text-slate-200">{deskripsi}</h3>}
+    <div className="mb-6 bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 p-6">
+      <Show when={deskripsi}>
+        <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200">{deskripsi}</h3>
+      </Show>
       
-      {layoutType === 'grid_2col' ? (
+      <Show when={layoutType === 'grid_2col'}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>{leftFields.map(renderField)}</div>
-          <div>{rightFields.map(renderField)}</div>
+          <div>
+            <Each of={leftFields as string[]}>
+              {(fieldName) => renderFieldNode(fieldName)}
+            </Each>
+          </div>
+          <div>
+            <Each of={rightFields as string[]}>
+              {(fieldName) => renderFieldNode(fieldName)}
+            </Each>
+          </div>
         </div>
-      ) : (
+      </Show>
+
+      <Show when={layoutType !== 'grid_2col'}>
         <div className="grid grid-cols-1 gap-0">
-          {leftFields.map(renderField)}
+          <Each of={leftFields as string[]}>
+            {(fieldName) => renderFieldNode(fieldName)}
+          </Each>
         </div>
-      )}
+      </Show>
     </div>
   )
 }
