@@ -26,7 +26,9 @@ import (
 // When `database/sql` later calls `convertAssignRows(**[]byte, src, rows)`,
 // the type switch and reflection path can leave the destination in an
 // intermediate state that produces
-//   `sql: Scan error on column index 0, name "Perkiraan": destination not a pointer`.
+//
+//	`sql: Scan error on column index 0, name "Perkiraan": destination not a pointer`.
+//
 // Other column types (varchar/nvarchar, int) work fine because they have
 // dedicated type-switch cases in `convertAssignRows`.
 //
@@ -498,11 +500,11 @@ func (r *SConfigResolver) searchTableBased(ctx context.Context, config *Config, 
 	return rows, nil
 }
 
-// substituteParams replaces :userMode and <P:col> / ''<P:col>'' placeholders.
+// substituteParams replaces :userMode and <P:col> / ”<P:col>” placeholders.
 // parentConfigs is the config's parent_filters array (ordered); parentValues is the
 // runtime values keyed by source_column. Bindings are named parent0, parent1, ...
 // to match Laravel's stable indexing.
-// substituteParams replaces Delphi-style placeholders (``<P:col>''`, `:userMode`)
+// substituteParams replaces Delphi-style placeholders (“<P:col>”`, `:userMode`)
 // with bind keys and populates `bindings` for GORM named bindings.
 //
 // IMPORTANT: keys are emitted with the `@` prefix (not `:`) because GORM's
@@ -522,6 +524,7 @@ func substituteParams(s string, userMode string, parentConfigs []models.ParentFi
 		key := fmt.Sprintf("parent%d", pfIdx)
 		bindings[key] = val
 		s = strings.ReplaceAll(s, fmt.Sprintf("''<P:%s>''", pf.SourceColumn), "@"+key)
+		s = strings.ReplaceAll(s, fmt.Sprintf("'<P:%s>'", pf.SourceColumn), "@"+key)
 		s = strings.ReplaceAll(s, fmt.Sprintf("<P:%s>", pf.SourceColumn), "@"+key)
 		s = strings.ReplaceAll(s, fmt.Sprintf("''<P:%s>", pf.SourceColumn), "@"+key)
 		s = strings.ReplaceAll(s, fmt.Sprintf("<P:%s>''", pf.SourceColumn), "@"+key)
@@ -555,11 +558,14 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 				val = ""
 			}
 			placeholderInQuote := fmt.Sprintf("''<P:%s>''", pf.SourceColumn)
+			placeholderSingleQuote := fmt.Sprintf("'<P:%s>'", pf.SourceColumn)
 			placeholderPlain := fmt.Sprintf("<P:%s>", pf.SourceColumn)
 			bindKey := fmt.Sprintf("qparent%d", pfIdx)
 
 			if strings.Contains(sql, placeholderInQuote) {
 				sql = strings.ReplaceAll(sql, placeholderInQuote, "@"+bindKey)
+			} else if strings.Contains(sql, placeholderSingleQuote) {
+				sql = strings.ReplaceAll(sql, placeholderSingleQuote, "@"+bindKey)
 			} else if strings.Contains(sql, placeholderPlain) {
 				sql = strings.ReplaceAll(sql, placeholderPlain, "@"+bindKey)
 			} else {
@@ -666,7 +672,8 @@ func (r *SConfigResolver) searchQueryBased(ctx context.Context, config *Config, 
 		return nil, err
 	}
 
-	// In-memory filter by q if provided (defensive)
+	// In-memory filter by q if provided (defensive).
+	// Match against key (code) OR label (description) — mirrors SQL LIKE behavior.
 	if q != "" && len(rows) > 0 {
 		filtered := make([]SearchResult, 0)
 		search := strings.ToLower(q)

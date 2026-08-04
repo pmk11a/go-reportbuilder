@@ -30,7 +30,7 @@ type SDBAKTIVA struct {
 	NoAktivaHd *string `gorm:"column:NoAktivaHd;size:35" json:"noaktivahd"`
 	Kelompok int `gorm:"column:Kelompok" json:"kelompok"`
 	GroupAktiva string `gorm:"column:GroupAktiva;size:15" json:"groupaktiva"`
-	NoBuktiSem *string `gorm:"column:NoBuktiSem;size:30" json:"nobuktisem"`
+	NoBuktiSem *string `gorm:"column:NoBuktiSem;size:30;->;<-:false" json:"nobuktisem"` // Optional legacy column; skipped on inserts if column missing in DB
 
 	// Relationships
 	NoMukaPerkiraan *SDbPerkiraan `gorm:"foreignKey:NoMuka;references:Perkiraan" json:"nomuka_perkiraan,omitempty"`

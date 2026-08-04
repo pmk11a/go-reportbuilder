@@ -2,14 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { kasbankService } from '@/domains/accounting/services/kasbankService';
 import { sharedFilterService } from '@/shared/services/sharedFilterService';
 import type {
-//   IKasBankHeader,
+  //   IKasBankHeader,
   IKasBankListParams,
-//   IKasBankListResponse,
+  //   IKasBankListResponse,
   ICreateKasBankPayload,
   IUpdateKasBankPayload,
   IOtorisasiRequest,
-//   IPerkiraan,
-//   IKasBankDetail,
+  //   IPerkiraan,
+  //   IKasBankDetail,
 } from '@/domains/accounting/types/kasbank';
 
 export const kasbankKeys = {
@@ -106,31 +106,42 @@ export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onErr
 export function useGenerateNoBukti(tipe: string, devisi?: string) {
   return useQuery({
     queryKey: kasbankKeys.noBukti(tipe, devisi ?? ''),
-    queryFn: () => kasbankService.generateNoBukti(tipe, devisi),
-    // Only fire the query once both tipe and devisi are known — the backend
-    // rejects empty devisi ("devisi wajib diisi"), so we gate on it to
-    // avoid a noisy failed request before the user picks the kas/bank
-    // account and the devisi.
-    enabled: !!tipe && !!devisi && devisi.trim().length > 0,
+    queryFn: () => kasbankService.generateNoBuktiPreview(tipe),
+    // Only fire once tipe is known — uses the preview endpoint so no counter
+    // is consumed while the user is filling in the form.
+    enabled: !!tipe,
   });
 }
 
 export function useLookupPerkiraan(q: string, kelompokKas: boolean = false) {
   return useQuery({
     queryKey: ['kasbank', 'perkiraan', q, kelompokKas] as const,
-    queryFn: () => kasbankService.lookupPerkiraan(q, String(kelompokKas)),
-    enabled: q.length >= 2,
+    queryFn: () => kasbankService.lookupPerkiraan(q, kelompokKas ? 'Y' : 'N'),
+    // Always fetch so the dropdown is populated on first open. The 5-minute
+    // staleTime keeps the cached list reusable across keystrokes.
+    enabled: true,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 // useLookupPerkiraanShared uses the shared FilterService which is the
 // canonical Perkiraan lookup endpoint (POSTHUTPIUT/Kelompok aware).
 // Prefer this over the legacy kasbank-specific lookup for new code.
-export function useLookupPerkiraanShared(q: string, posthutpiut: string = 'Y') {
+// The optional `without` parameter excludes a specific account (e.g. the
+// already-selected Perkiraan) from the results — useful for the Lawan
+// dropdown so users cannot pick the same account as both Perkiraan and Lawan.
+export function useLookupPerkiraanShared(
+  q: string,
+  posthutpiut: string = 'Y',
+  without?: string,
+) {
   return useQuery({
-    queryKey: ['shared', 'perkiraan', q, posthutpiut] as const,
-    queryFn: () => sharedFilterService.getPerkiraan(q, undefined, posthutpiut),
-    enabled: q.length >= 2,
+    queryKey: ['shared', 'perkiraan', q, posthutpiut, without ?? null] as const,
+    queryFn: () => sharedFilterService.getPerkiraan(q, without, posthutpiut),
+    // Always fetch so the dropdown is populated on first open. The 5-minute
+    // staleTime keeps the cached list reusable across keystrokes.
+    enabled: true,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -153,7 +164,7 @@ export function useResolveSubTransaction(perkiraan: string, dk: string) {
     queryFn: async () => {
       if (!perkiraan || !dk) return null;
       const res = await kasbankService.resolveSubTransaction(perkiraan, dk);
-      return res.data;
+      return res ?? null;
     },
     enabled: !!perkiraan && !!dk,
   });
@@ -164,7 +175,7 @@ export function useLookupDevisi() {
     queryKey: ['devisi', 'lookup'],
     queryFn: async () => {
       const res = await kasbankService.lookupDevisi();
-      return res.data;
+      return res ?? [];
     },
   });
 }

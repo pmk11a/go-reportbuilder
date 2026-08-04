@@ -253,17 +253,15 @@ func padN(n int, width int) string {
 }
 
 // GenerateNoBuktiResult is what the API returns when previewing the next
-// document number for a given transaction type. The caller can decide
-// whether to commit (persist the new counter) later.
+// document number for a given transaction type.
 type GenerateNoBuktiResult struct {
-	Jns         string `json:"jns"`
-	NoBukti     string `json:"noBukti"`
-	KodeTrans   string `json:"kodeTrans"`
-	NewCounter  string `json:"newCounter"`  // The next full counter string ("YYYYMM/0001")
-	Seq         string `json:"seq"`         // Just the 4-digit sequence
-	Tahun       int    `json:"tahun"`
-	Bulan       int    `json:"bulan"`
-	Format      string `json:"format"`      // Human-readable template, e.g. "ALIAS/KODE_TRAN/NOMOR_URUT/MMYY"
+	Jns       string `json:"jns"`
+	NoBukti   string `json:"noBukti"`
+	KodeTrans string `json:"kodeTrans"`
+	Seq       string `json:"seq"`         // The padded sequence number (e.g. "00004")
+	Tahun     int    `json:"tahun"`
+	Bulan     int    `json:"bulan"`
+	Format    string `json:"format"`      // Human-readable template, e.g. "ALIAS/KODE_TRAN/NOMOR_URUT/MMYY"
 }
 
 // Service is the application-layer entry point. The handler stays thin;
@@ -277,8 +275,8 @@ func NewService(db *gorm.DB) *Service {
 }
 
 // GenerateNoBukti previews the next document number for `jns` (e.g. "BKK")
-// in the given accounting period. The counter in DBNOMOR is NOT yet
-// committed — call CommitCounter afterwards to persist.
+// in the given accounting period. It reads the max NoUrut from dbTrans
+// (matching Delphi's Check_NomorKasBank) and builds the formatted number.
 //
 // This mirrors the legacy `generateNoBukti` helper in trade-exchange.
 func (s *Service) GenerateNoBukti(jns string, tahun int, bulan int) (*GenerateNoBuktiResult, error) {
@@ -286,22 +284,26 @@ func (s *Service) GenerateNoBukti(jns string, tahun int, bulan int) (*GenerateNo
 		return nil, errors.New("jns is required")
 	}
 
-	field, ok := lookupNomorField(jns)
-	if !ok {
-		return nil, fmt.Errorf("unknown transaction type: %s", jns)
-	}
-
 	var nomor models.SDBNOMOR
 	if err := s.db.First(&nomor).Error; err != nil {
 		return nil, fmt.Errorf("failed to load DBNOMOR: %w", err)
 	}
 
-	kodeTrans := readStringField(&nomor, field.PrefixField)
-	currentCounter := readStringField(&nomor, field.CounterField)
-
+	kodeTrans := readStringField(&nomor, jns)
 	t := time.Date(tahun, time.Month(bulan), 1, 0, 0, 0, 0, time.UTC)
-	width := parseDigitWidth(derefStr(nomor.DigitNomor))
-	seq, y, m := nextSequence(currentCounter, tahun, bulan, derefInt(nomor.Reset), width)
+
+	// Query max NoUrut from dbTrans (matching Delphi's Check_NomorKasBank).
+	// The SQL already scopes to the target (tahun, bulan), so there's no need
+	// for nextSequence-based reset logic here — if the period changes, the
+	// query simply returns 0 and we start from 1.
+	maxRaw, _ := s.maxNoUrutRawFromDbTrans(s.db, jns, tahun, bulan)
+
+	var seq string
+	if maxRaw == 0 {
+		seq = padN(1, 5)
+	} else {
+		seq = padN(maxRaw+1, 5)
+	}
 
 	formats := []int{
 		derefInt(nomor.FORMAT1),
@@ -320,83 +322,62 @@ func (s *Service) GenerateNoBukti(jns string, tahun int, bulan int) (*GenerateNo
 	}
 	noBukti := strings.Join(parts, "")
 
-	// Build the next full counter string to write back. Same layout
-	// legacy uses: YYYYMM{sep-pemisah?}NNNN.
-	newCounter := fmt.Sprintf("%04d%02d%s%s", y, m, sep, seq)
-
 	formatDesc := describeFormats(formats)
 
 	return &GenerateNoBuktiResult{
-		Jns:        jns,
-		NoBukti:    noBukti,
-		KodeTrans:  kodeTrans,
-		NewCounter: newCounter,
-		Seq:        seq,
-		Tahun:      tahun,
-		Bulan:      bulan,
-		Format:     formatDesc,
+		Jns:     jns,
+		NoBukti: noBukti,
+		KodeTrans: kodeTrans,
+		Seq:     seq,
+		Tahun:   tahun,
+		Bulan:   bulan,
+		Format:  formatDesc,
 	}, nil
 }
 
-// CommitCounter persists the new counter for `jns` so subsequent
-// `GenerateNoBukti` calls advance from the right position. It is the
-// caller's responsibility to only commit after the transaction that
-// consumed the number has actually been written.
+// CommitCounter is kept for backward-compatibility but is now a no-op.
+//
+// In the old implementation (pre-Delphi-match), this wrote the incremented
+// counter back into DBNOMOR.NOBKK / NOBKM / etc. After matching the Delphi
+// behaviour (Check_NomorKasBank reads MAX(NoUrut) from dbTrans directly,
+// never touching DBNOMOR), this function does nothing.
 func (s *Service) CommitCounter(jns string, newCounter string) error {
-	field, ok := lookupNomorField(jns)
-	if !ok {
-		return fmt.Errorf("unknown transaction type: %s", jns)
-	}
-	// DBNOMOR is a single-row settings table and the model declares no
-	// primary key; see CommitCounterTx for the rationale.
-	res := s.db.Model(&models.SDBNOMOR{}).
-		Session(&gorm.Session{AllowGlobalUpdate: true}).
-		Update(field.CounterField, newCounter)
-	if res.Error != nil {
-		return res.Error
-	}
-	if res.RowsAffected == 0 {
-		// No row matched (DBNOMOR is empty). Insert one with this counter
-		// so subsequent reads work.
-		insert := map[string]interface{}{
-			field.CounterField: newCounter,
-			field.PrefixField:  "",
-		}
-		return s.db.Model(&models.SDBNOMOR{}).Create(insert).Error
-	}
 	return nil
 }
 
 // GenerateNoBuktiTx is the transaction-aware variant of GenerateNoBukti.
 //
-// It exists so callers (e.g. kasbank.Repo) can compose "render the next
-// voucher number" + "persist the new counter" + "insert DBTRANS row" all
-// inside a single atomic transaction. Without this, a crash between the
-// render step and the persist step would leave the counter drifted from
-// the actual rows in DBTRANS.
+// It matches Delphi's Check_NomorKasBank which reads MAX(NoUrut) from
+// dbTrans directly — NOT from DBNOMOR.NOBKK. The formatted NoBukti is
+// built using DBNOMOR template settings (FORMAT1..4, PEMISAH, ALIAS).
 //
-// The returned `NewCounter` is what the caller should pass to
-// CommitCounterTx inside the same transaction.
+// Callers use the returned Seq in the DBTRANS.NoUrut field.
 func (s *Service) GenerateNoBuktiTx(tx *gorm.DB, jns string, tahun int, bulan int) (*GenerateNoBuktiResult, error) {
 	if jns == "" {
 		return nil, errors.New("jns is required")
 	}
-	field, ok := lookupNomorField(jns)
-	if !ok {
-		return nil, fmt.Errorf("unknown transaction type: %s", jns)
-	}
 
+	// Load DBNOMOR settings (FORMAT1..4, PEMISAH, Reset, ALIAS, DigitNomor)
 	var nomor models.SDBNOMOR
-	if err := tx.First(&nomor).Error; err != nil {
+	if err := tx.Raw("SELECT * FROM DBNOMOR").Scan(&nomor).Error; err != nil {
 		return nil, fmt.Errorf("failed to load DBNOMOR: %w", err)
 	}
 
-	kodeTrans := readStringField(&nomor, field.PrefixField)
-	currentCounter := readStringField(&nomor, field.CounterField)
-
+	kodeTrans := readStringField(&nomor, jns)
 	t := time.Date(tahun, time.Month(bulan), 1, 0, 0, 0, 0, time.UTC)
-	width := parseDigitWidth(derefStr(nomor.DigitNomor))
-	seq, y, m := nextSequence(currentCounter, tahun, bulan, derefInt(nomor.Reset), width)
+
+	// Query max NoUrut from dbTrans (matching Delphi's Check_NomorKasBank).
+	// The SQL already scopes to the target (tahun, bulan), so there's no need
+	// for nextSequence-based reset logic here — if the period changes, the
+	// query simply returns 0 and we start from 1.
+	maxRaw, _ := s.maxNoUrutRawFromDbTrans(tx, jns, tahun, bulan)
+
+	var seq string
+	if maxRaw == 0 {
+		seq = padN(1, 5)
+	} else {
+		seq = padN(maxRaw+1, 5)
+	}
 
 	formats := []int{
 		derefInt(nomor.FORMAT1),
@@ -419,53 +400,75 @@ func (s *Service) GenerateNoBuktiTx(tx *gorm.DB, jns string, tahun int, bulan in
 		parts = append(parts, slot)
 	}
 	noBukti := strings.Join(parts, "")
-	newCounter := fmt.Sprintf("%04d%02d%s%s", y, m, sep, seq)
 
 	return &GenerateNoBuktiResult{
-		Jns:        jns,
-		NoBukti:    noBukti,
-		KodeTrans:  kodeTrans,
-		NewCounter: newCounter,
-		Seq:        seq,
-		Tahun:      tahun,
-		Bulan:      bulan,
-		Format:     describeFormats(formats),
+		Jns:       jns,
+		NoBukti:   noBukti,
+		KodeTrans: kodeTrans,
+		Seq:       seq,
+		Tahun:     tahun,
+		Bulan:     bulan,
+		Format:    describeFormats(formats),
 	}, nil
 }
 
-// CommitCounterTx is the transaction-aware variant of CommitCounter. It
-// must be called from inside the same transaction that called
-// GenerateNoBuktiTx so that the counter write is atomic with the row
-// insert that consumed the number.
+// maxNoUrutFromDbTrans finds the highest NoUrut in dbTrans for the given
+// tipe group, year, and month — exactly what Delphi's Check_NomorKasBank
+// does. Returns (seq, simbole) where seq is the padded zero-padded string
+// for the NEXT number.
+func (s *Service) maxNoUrutFromDbTrans(tx *gorm.DB, jns string, tahun, bulan int, pemisah, inisialCab string) (string, string) {
+	maxRaw, _ := s.maxNoUrutRawFromDbTrans(tx, jns, tahun, bulan)
+	next := maxRaw + 1
+	return padN(next, 5), ""
+}
+
+// maxNoUrutRawFromDbTrans finds the highest NoUrut in dbTrans for the given
+// tipe group, year, and month. Returns the raw max value (not incremented).
+// This is used by GenerateNoBuktiTx so nextSequence can correctly apply
+// ResetMode logic without double-incrementing.
+func (s *Service) maxNoUrutRawFromDbTrans(tx *gorm.DB, jns string, tahun, bulan int) (int, string) {
+	groupClause := ""
+	switch jns {
+	case "BKK", "BKM":
+		groupClause = "TipeTransHd IN ('BKK','BKM')"
+	case "BBM", "BBK":
+		groupClause = "TipeTransHd IN ('BBK','BBM')"
+	default:
+		groupClause = fmt.Sprintf("TipeTransHd = '%s'", jns)
+	}
+
+	sql := fmt.Sprintf(`
+		SELECT TOP 1 CAST(NoUrut AS INT)
+		FROM dbTrans
+		WHERE %s
+		  AND MONTH(Tanggal) = %d
+		  AND YEAR(Tanggal) = %d
+		  AND ISNUMERIC(NoUrut) = 1
+		ORDER BY NoUrut DESC
+	`, groupClause, bulan, tahun)
+
+	var maxNo int
+	row := tx.Raw(sql).Row()
+	if row != nil {
+		if err := row.Scan(&maxNo); err != nil {
+			maxNo = 0
+		}
+	}
+
+	return maxNo, ""
+}
+
+// CommitCounterTx is kept for backward-compatibility but is now a no-op.
 //
-// The column name is whitelisted via lookupNomorField so dynamic-SQL
-// injection is not possible (the jns→column mapping is a build-time constant).
+// In the old implementation (pre-Delphi-match), this wrote the incremented
+// counter back into DBNOMOR.NOBKK / NOBKM / etc. After matching the Delphi
+// behaviour (Check_NomorKasBank reads MAX(NoUrut) from dbTrans directly,
+// never touching DBNOMOR), this function does nothing.
+//
+// Callers that still invoke this method will not get an error — the call
+// simply becomes a harmless no-op.
 func (s *Service) CommitCounterTx(tx *gorm.DB, jns string, newCounter string) error {
-	field, ok := lookupNomorField(jns)
-	if !ok {
-		return fmt.Errorf("unknown transaction type: %s", jns)
-	}
-	// DBNOMOR is a single-row settings table and the model declares no
-	// primary key (every column is a nullable pointer because the legacy
-	// Delphi schema made every column optional). GORM's safety check
-	// refuses UPDATE-without-WHERE on a model with no PK, so we explicitly
-	// allow the global update — the table physically holds exactly one row
-	// by design (read by `tx.First(&nomor)` in GenerateNoBuktiTx).
-	res := tx.Model(&models.SDBNOMOR{}).
-		Session(&gorm.Session{AllowGlobalUpdate: true}).
-		Update(field.CounterField, newCounter)
-	if res.Error != nil {
-		return fmt.Errorf("commit counter to DBNOMOR.%s: %w", field.CounterField, res.Error)
-	}
-	if res.RowsAffected == 0 {
-		insert := map[string]interface{}{
-			field.CounterField: newCounter,
-			field.PrefixField:  "",
-		}
-		if err := tx.Model(&models.SDBNOMOR{}).Create(insert).Error; err != nil {
-			return fmt.Errorf("insert DBNOMOR.%s: %w", field.CounterField, err)
-		}
-	}
+	// No-op: counter is derived from dbTrans.NoUrut, not DBNOMOR.
 	return nil
 }
 
@@ -490,16 +493,28 @@ func readStringField(n *models.SDBNOMOR, name string) string {
 	switch name {
 	case "BKK":
 		return derefStr(n.BKK)
+	case "NOBKK":
+		return derefStr(n.NOBKK)
 	case "BKM":
 		return derefStr(n.BKM)
+	case "NOBKM":
+		return derefStr(n.NOBKM)
 	case "BBM":
 		return derefStr(n.BBM)
+	case "NOBBM":
+		return derefStr(n.NOBBM)
 	case "BBK":
 		return derefStr(n.BBK)
+	case "NOBBK":
+		return derefStr(n.NOBBK)
 	case "BMM":
 		return derefStr(n.BMM)
+	case "NOBMM":
+		return derefStr(n.NOBMM)
 	case "BJK":
 		return derefStr(n.BJK)
+	case "NOBJK":
+		return derefStr(n.NOBJK)
 	case "PJL":
 		return derefStr(n.PJL)
 	case "NoPJL":

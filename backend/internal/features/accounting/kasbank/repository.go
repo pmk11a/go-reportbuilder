@@ -8,14 +8,14 @@
 package kasbank
 
 import (
-	"github.com/masza1/dapen-backend/internal/features/settings"
-	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
-
 	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/masza1/dapen-backend/internal/features/settings"
+	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 
 	"github.com/masza1/dapen-backend/internal/shared/pagination"
 	"gorm.io/gorm"
@@ -36,9 +36,19 @@ type IKasBankRepository interface {
 	InsertHeader(ctx context.Context, h *SDbTrans) error
 	// UpdateHeader overwrites the header (GORM Save) by primary key NoBukti.
 	UpdateHeader(ctx context.Context, h *SDbTrans) error
-	// DeleteHeader removes the header and cascades to its detail rows in
-	// DBTRANSAKSI. The cascade is implemented explicitly (DELETE FROM
-	// DBTRANSAKSI WHERE NoBukti = ?) — there is no FK in the legacy schema.
+	// DeleteHeader removes the header and cascades to every dependent row
+	// in DBTRANSAKSI/DBGIRO/DBDEPOSITO/DBHUTPIUT/DBTempHUTPIUT that
+	// references the voucher. The legacy schema has no FK, so we cascade
+	// explicitly inside a single transaction:
+	//
+	//   - DBTRANSAKSI by NoBukti
+	//   - DBGIRO by BuktiBuka=NoBukti (when not yet cair)
+	//     and BuktiCair=NoBukti (cair only — clear, do not delete)
+	//   - DBDEPOSITO by BuktiBuka/BuktiCair (same convention)
+	//   - DBHUTPIUT by nobukti=NoBukti
+	//   - DBTempHUTPIUT by IDUser+NoBukti staging rows
+	//
+	// Mirrors FrmKasBank.pas HapusBtnClick (lines 2270–2450).
 	DeleteHeader(ctx context.Context, noBukti string) error
 	// ListDetail returns all detail rows for a given NoBukti, ordered by Urut ASC.
 	ListDetail(ctx context.Context, noBukti string) ([]SDbTransaksi, error)
@@ -57,16 +67,40 @@ type IKasBankRepository interface {
 	SetOtorisasi(ctx context.Context, noBukti string, level int, userID string) error
 	// CancelOtorisasi clears the flag, user and timestamp for the given level.
 	CancelOtorisasi(ctx context.Context, noBukti string, level int) error
-	// GenerateNoBukti atomically reserves the next sequence number for a
-	// voucher of the given tipe, devisi, and active accounting period, and
-	// returns the formatted voucher number plus the assigned NoUrut.
+	// GenerateNoBukti atomically reads MAX(NoUrut) from dbTrans for the
+	// given tipe group and period, increments it, and returns the formatted
+	// voucher number plus the assigned NoUrut.
 	//
 	// bulan/tahun come from DBPERIODE (user's active period). devisi is the
 	// unit code ("Simbol" in the legacy Delphi form).
 	//
-	// The voucher number format mirrors MyProcedure.pas::Check_NomorKasBank
-	// and is described in detail on the GenerateNoBukti helper in nomor.go.
-	GenerateNoBukti(ctx context.Context, tipe, devisi string, bulan, tahun int) (string, error)
+	// The algorithm matches Delphi's Check_NomorKasBank which queries
+	// MAX(NoUrut) from dbTrans directly — NOT from DBNOMOR.NOBKK.
+	//
+	// Returns: (noBukti string, seq string, "", err error)
+	GenerateNoBukti(ctx context.Context, tipe, devisi string, bulan, tahun int) (noBukti, seq, newCounter string, err error)
+
+	// GenerateNoBuktiWithinTx is the transaction-aware variant used by
+	// CreateHeader so the number generation and the DBTRANS INSERT
+	// happen inside ONE atomic transaction.
+	//
+	// The caller MUST pass an open *gorm.DB transaction (e.g. `tx` from
+	// db.Transaction(...)) — the implementation does NOT open its own
+	// transaction. Doing so would cause:
+	//
+	//   - Counter consumption to leak if the outer transaction rolls back,
+	//     producing skipped (loncat) voucher numbers on retry.
+	//
+	// Inside the passed tx, the implementation queries MAX(NoUrut) from
+	// dbTrans (matching Delphi's Check_NomorKasBank), computes the next
+	// NoBukti, and returns it — all before the caller inserts DBTRANS.
+	// If the insert fails, the entire tx rolls back naturally.
+	GenerateNoBuktiWithinTx(ctx context.Context, tx *gorm.DB, tipe, devisi string, bulan, tahun int) (noBukti, seq, newCounter string, err error)
+
+	// GenerateNoBuktiPreview generates the next voucher number WITHOUT
+	// committing the counter. Used by the preview endpoint so that merely
+	// opening the form does not consume a sequence number.
+	GenerateNoBuktiPreview(ctx context.Context, tipe string, bulan, tahun int) (noBukti, seq string, err error)
 	// LookupPerkiraan returns DBPERKIRAAN rows whose Perkiraan or Keterangan
 	// matches the query substring. When kelompokKas is true the result is
 	// restricted to Kelompok in ("1", "2") — the cash/bank groups in the
@@ -91,6 +125,28 @@ type IKasBankRepository interface {
 	InsertDeposito(ctx context.Context, d *models.SDBDEPOSITO) error
 	UpdateDeposito(ctx context.Context, d *models.SDBDEPOSITO) error
 	DeleteDeposito(ctx context.Context, noDeposito string) error
+
+	// LookupBagian returns DBBAGIAN rows matching the substring query.
+	// Used by the Aktiva sub-form's "Bagian (Kode)" lookup, mirroring
+	// Delphi FrmSubAktiva.BagianExit (browse 1002).
+	LookupBagian(ctx context.Context, query string) ([]models.SDBBAGIAN, error)
+
+	// LookupAkumulasiAktiva returns DBPERKIRAAN rows whose Perkiraan is
+	// referenced by DBPOSTHUTPIUT with Kode='AKM'. Used by the Aktiva
+	// sub-form's "Akumulasi Penyusutan" lookup.
+	LookupAkumulasiAktiva(ctx context.Context, query string) ([]models.SDbPerkiraan, error)
+
+	// LookupBiayaAktiva returns DBPERKIRAAN rows where Tipe=1 (biaya).
+	// Used by the Aktiva sub-form's three "Biaya Penyusutan" lookups.
+	LookupBiayaAktiva(ctx context.Context, query string) ([]models.SDbPerkiraan, error)
+
+	// GenerateNoUrutAktiva returns the next 5-digit sequence for the
+	// Aktiva sub-form's No. Urut input. Mirrors Delphi UrutAktiva().
+	GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (string, error)
+
+	// GenerateNoUrutAktiva2 returns the next 5-digit sub-sequence (for
+	// Sub Aktiva). Mirrors Delphi UrutAktiva2().
+	GenerateNoUrutAktiva2(ctx context.Context, prefix, devisi string) (string, error)
 }
 
 // SAggregateTotals holds per-NoBukti aggregated totals computed from
@@ -185,18 +241,24 @@ func (r *SKasBankRepository) List(ctx context.Context, q SListKasBankQuery) ([]S
 	// Default period restriction: when the caller did not pass an explicit
 	// date range, mirror trade-exchange's behaviour and scope the list to
 	// the user's active accounting period (DBPERIODE).
+	// NOTE: We use Tanggal >= startOfMonth AND Tanggal < startOfNextMonth
+	// instead of YEAR()/MONTH() functions because function calls on columns
+	// prevent SQL Server from using the index (indexed on Tanggal, not on expressions).
 	if !hasExplicitDate && q.UserID != "" {
 		bulan, tahun, err := r.GetPeriode(ctx, q.UserID)
 		if err != nil {
 			return nil, 0, fmt.Errorf("resolving active period for user %q: %w", q.UserID, err)
 		}
 		if bulan != 0 && tahun != 0 {
-			whereSQL += " AND YEAR(Tanggal) = ? AND MONTH(Tanggal) = ?"
-			args = append(args, tahun, bulan)
+			// Compute first day of next month for the upper bound
+			startOfMonth := time.Date(tahun, time.Month(bulan), 1, 0, 0, 0, 0, time.UTC)
+			startOfNextMonth := startOfMonth.AddDate(0, 1, 0)
+			whereSQL += " AND Tanggal >= ? AND Tanggal < ?"
+			args = append(args, startOfMonth, startOfNextMonth)
 		}
 	}
 
-	baseSQL = "SELECT * FROM DBTRANS"
+	baseSQL = "SELECT * FROM DBTRANS WITH (NOLOCK)"
 	if whereSQL != "" {
 		baseSQL += " WHERE " + whereSQL[5:]
 	}
@@ -251,13 +313,90 @@ func (r *SKasBankRepository) UpdateHeader(ctx context.Context, h *SDbTrans) erro
 	return nil
 }
 
-// DeleteHeader removes the header and its detail rows in a single transaction.
-// The legacy schema has no FK, so we have to cascade explicitly.
+// DeleteHeader removes the header and every dependent row in
+// DBTRANSAKSI/DBGIRO/DBDEPOSITO/DBHUTPIUT/DBTempHUTPIUT that references
+// the voucher. The legacy schema has no FK, so we cascade explicitly
+// inside a single transaction.
+//
+// Cascade order (legacy Delphi FrmKasBank.pas HapusBtnClick 2270–2450):
+//  1. DBTRANSAKSI: DELETE WHERE NoBukti=?
+//  2. DBGIRO:     DELETE WHERE BuktiBuka=? AND TglCair IS NULL
+//                 AND UPDATE BuktiCair rows — clear cair fields (we keep
+//                 the historical giro record)
+//  3. DBDEPOSITO: same pattern as GIRO
+//  4. DBHUTPIUT:  DELETE WHERE nobukti=?
+//  5. DBTempHUTPIUT: DELETE WHERE NoBukti=? (staging per-user rows)
+//  6. DBTRANS:    DELETE WHERE NoBukti=? (last — header is the parent)
+//
+// The SQL Server schema uses BuktiBuka / BuktiCair / urutBuktiBuka /
+// urutBuktiCair columns on DBGIRO and DBDEPOSITO. We can't use raw GORM
+// joins for the "open giro only" rule because of the legacy column
+// shape, so we run explicit SQL inside the same transaction.
 func (r *SKasBankRepository) DeleteHeader(ctx context.Context, noBukti string) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. DBTRANSAKSI cascade — header's detail rows.
 		if err := tx.Where("NoBukti = ?", noBukti).Delete(&SDbTransaksi{}).Error; err != nil {
 			return fmt.Errorf("cascading delete of details for %q: %w", noBukti, err)
 		}
+
+		// 2. DBGIRO. Two distinct cases:
+		//    - BuktiBuka = this voucher AND giro is still OPEN
+		//      (TglCair IS NULL) → safe to delete.
+		//    - BuktiCair = this voucher → giro belongs to an earlier
+		//      voucher; clearing the cair fields keeps the buku besar
+		//      consistent (mirrors FrmKasBank.pas HapusBtnClick line 2358).
+		if err := tx.Exec(
+			`DELETE FROM DBGIRO WHERE BuktiBuka = ? AND TglCair IS NULL`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("cascading delete of open giro for %q: %w", noBukti, err)
+		}
+		if err := tx.Exec(
+			`UPDATE DBGIRO
+				SET BuktiCair = '', urutBuktiCair = 0, TglCair = NULL,
+				    Kredit = 0, KreditRp = 0, KeteranganCair = ''
+				WHERE BuktiCair = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing giro cair link for %q: %w", noBukti, err)
+		}
+
+		// 3. DBDEPOSITO — same convention as DBGIRO.
+		if err := tx.Exec(
+			`DELETE FROM DBDEPOSITO WHERE BuktiBuka = ? AND TglCair IS NULL`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("cascading delete of open deposito for %q: %w", noBukti, err)
+		}
+		if err := tx.Exec(
+			`UPDATE DBDEPOSITO
+				SET BuktiCair = '', urutBuktiCair = 0, TglCair = NULL,
+				    Kredit = 0, KreditRp = 0, KeteranganCair = ''
+				WHERE BuktiCair = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("clearing deposito cair link for %q: %w", noBukti, err)
+		}
+
+		// 4. DBHUTPIUT — staging of sub-ledger settlements.
+		// Use LTRIM/RTRIM to handle trailing/leading whitespace that may exist
+		// in legacy data where NoBukti was stored with padding (e.g. '00003/BKK/PWT/012023 ').
+		if err := tx.Exec(
+			`DELETE FROM DBHUTPIUT WHERE LTRIM(RTRIM(nobukti)) = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("cascading delete of hutpiut for %q: %w", noBukti, err)
+		}
+
+		// 5. DBTempHUTPIUT — per-user staging.
+		if err := tx.Exec(
+			`DELETE FROM DBTempHUTPIUT WHERE LTRIM(RTRIM(NoBukti)) = ?`,
+			noBukti,
+		).Error; err != nil {
+			return fmt.Errorf("cascading delete of temp hutpiut for %q: %w", noBukti, err)
+		}
+
+		// 6. Finally, the header row.
 		if err := tx.Where("NoBukti = ?", noBukti).Delete(&SDbTrans{}).Error; err != nil {
 			return fmt.Errorf("deleting kasbank header %q: %w", noBukti, err)
 		}
@@ -291,27 +430,59 @@ func (r *SKasBankRepository) GetDetail(ctx context.Context, noBukti string, urut
 }
 
 // InsertDetail appends a new detail row.
+//
+// Routes through safeCreateByReflection instead of a plain GORM Create, so
+// any DBTRANSAKSI columns that exist on the Go model but are missing on a
+// legacy DB (currently XSusut, PerlakuanAktiva on the dev environment) are
+// transparently omitted from the INSERT. On production (all columns
+// present) the call collapses to a normal GORM Create with zero overhead.
+//
+// This mirrors the protection applied in service.go at line ~481 (full
+// voucher Create) and line ~637 (full voucher UpdateHeader): without it,
+// a single-row AddDetail that includes Aktiva sub-form fields would fail
+// with "Invalid column name 'XSusut'" on the dev DB.
 func (r *SKasBankRepository) InsertDetail(ctx context.Context, d *SDbTransaksi) error {
-	if err := r.db.WithContext(ctx).Create(d).Error; err != nil {
+	tx := r.db.WithContext(ctx)
+	// Use GORM Create with Omit to exclude columns that may not exist in some database schemas
+	// (XSusut and PerlakuanAktiva are optional in legacy DBs; Omit prevents "invalid column name" errors)
+	if err := tx.Model(&SDbTransaksi{}).Omit("XSusut", "PerlakuanAktiva").Create(d).Error; err != nil {
 		return fmt.Errorf("inserting kasbank detail (%q, %d): %w", d.NoBukti, d.Urut, err)
 	}
 	return nil
 }
 
 // UpdateDetail overwrites a single detail row by composite PK.
+// FlagSimbol is always omitted because it is not stored in DBTRANSAKSI.
 func (r *SKasBankRepository) UpdateDetail(ctx context.Context, d *SDbTransaksi) error {
-	if err := r.db.WithContext(ctx).Save(d).Error; err != nil {
+	// Omit FlagSimbol, XSusut, and PerlakuanAktiva as these may not exist in all DB schemas
+	if err := r.db.WithContext(ctx).Omit("FlagSimbol", "XSusut", "PerlakuanAktiva").Save(d).Error; err != nil {
 		return fmt.Errorf("updating kasbank detail (%q, %d): %w", d.NoBukti, d.Urut, err)
 	}
 	return nil
 }
 
-// DeleteDetail removes a single detail row.
+// DeleteDetail removes a single detail row and cascades to DBHUTPIUT
+// rows tied to that detail (NoBukti + NoMsk = Urut). Mirrors Delphi
+// FrmKasBank.pas HapusBtnClick which deletes the matching hutpiut rows
+// before the detail row.
 func (r *SKasBankRepository) DeleteDetail(ctx context.Context, noBukti string, urut int) error {
-	if err := r.db.WithContext(ctx).Where("NoBukti = ? AND Urut = ?", noBukti, urut).Delete(&SDbTransaksi{}).Error; err != nil {
-		return fmt.Errorf("deleting kasbank detail (%q, %d): %w", noBukti, urut, err)
-	}
-	return nil
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. DBHUTPIUT — sub-ledger entries tied to this detail row.
+		// Use LTRIM/RTRIM to handle trailing/leading whitespace that may exist
+		// in legacy data (mirrors DeleteHeader cascade).
+		if err := tx.Exec(
+			`DELETE FROM DBHUTPIUT WHERE LTRIM(RTRIM(nobukti)) = ? AND nomsk = ?`,
+			noBukti, urut,
+		).Error; err != nil {
+			return fmt.Errorf("cascading delete of hutpiut for %q urut=%d: %w", noBukti, urut, err)
+		}
+
+		// 2. DBTRANSAKSI — the detail row itself.
+		if err := tx.Where("NoBukti = ? AND Urut = ?", noBukti, urut).Delete(&SDbTransaksi{}).Error; err != nil {
+			return fmt.Errorf("deleting kasbank detail (%q, %d): %w", noBukti, urut, err)
+		}
+		return nil
+	})
 }
 
 // SetOtorisasi sets the IsOtorisasiN flag to 1, OtoUserN to the caller,
@@ -361,27 +532,75 @@ func (r *SKasBankRepository) CancelOtorisasi(ctx context.Context, noBukti string
 // the same transaction — if the commit fails the generated NoBukti is
 // discarded by the transaction rollback.
 //
+// IMPORTANT: This method ONLY handles the counter reservation. It does NOT
+// insert into DBTRANS. For the atomic "generate + insert" flow used by
+// CreateHeader, use GenerateNoBuktiWithinTx so both ops land in the same
+// transaction. This standalone variant remains for endpoints that just
+// preview / reserve a number without yet persisting the voucher (the
+// `GET /generate-no-bukti` endpoint relies on it).
+//
 // `devisi` is accepted for backward-compat with the previous signature
 // (the legacy FrmKasBank.pas treated "Simbol" / devisi as one of the
 // configurable slots). It is not part of the DBNOMOR FORMAT template, so
 // the algorithm does not consult it — callers can still log it.
-func (r *SKasBankRepository) GenerateNoBukti(ctx context.Context, tipe, devisi string, bulan, tahun int) (string, error) {
-	var generated string
-	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+func (r *SKasBankRepository) GenerateNoBukti(ctx context.Context, tipe, devisi string, bulan, tahun int) (noBukti, seq, newCounter string, err error) {
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		result, errGen := r.settingsSvc.GenerateNoBuktiTx(tx, tipe, tahun, bulan)
 		if errGen != nil {
 			return errGen
 		}
-		if errCommit := r.settingsSvc.CommitCounterTx(tx, tipe, result.NewCounter); errCommit != nil {
-			return errCommit
-		}
-		generated = result.NoBukti
+		// CommitCounterTx is now a no-op (counter derived from dbTrans.NoUrut)
+		r.settingsSvc.CommitCounterTx(tx, tipe, "")
+		noBukti = result.NoBukti
+		seq = result.Seq
 		return nil
 	})
-	if err != nil {
-		return "", err
+	return noBukti, seq, "", err
+}
+
+// GenerateNoBuktiWithinTx runs GenerateNoBuktiTx + CommitCounterTx inside
+// the caller's transaction. The caller MUST pass an open *gorm.DB
+// transaction (the `tx` yielded by s.db.WithContext(ctx).Transaction(...)).
+//
+// This is the variant used by CreateHeader — counter increment and DBTRANS
+// INSERT share one transaction, so:
+//   - If the outer transaction commits, BOTH the new counter and the
+//     DBTRANS row become durable.
+//   - If it rolls back (e.g. duplicate PK, FK violation), BOTH are
+//     discarded — no skipped numbers, no phantom counters.
+//   - Concurrent callers contend on UPDLOCK, HOLDLOCK held for the life of
+//     the transaction (ROWLOCK would release too early).
+//
+// `devisi` is accepted for backward-compat — see GenerateNoBukti for the
+// rationale on why it is not yet part of the counter computation (Tahap 4).
+func (r *SKasBankRepository) GenerateNoBuktiWithinTx(ctx context.Context, tx *gorm.DB, tipe, devisi string, bulan, tahun int) (noBukti, seq, newCounter string, err error) {
+	if tx == nil {
+		return "", "", "", fmt.Errorf("GenerateNoBuktiWithinTx: tx must not be nil")
 	}
-	return generated, nil
+	result, errGen := r.settingsSvc.GenerateNoBuktiTx(tx, tipe, tahun, bulan)
+	if errGen != nil {
+		return "", "", "", fmt.Errorf("generating no-bukti for %s/%d/%d: %w", tipe, tahun, bulan, errGen)
+	}
+	// CommitCounterTx is now a no-op (counter derived from dbTrans.NoUrut)
+	r.settingsSvc.CommitCounterTx(tx, tipe, "")
+	return result.NoBukti, result.Seq, "", nil
+}
+
+// GenerateNoBuktiPreview generates the next voucher number WITHOUT
+// committing the counter. Used by the preview endpoint so that merely
+// opening the form does not consume a sequence number.
+func (r *SKasBankRepository) GenerateNoBuktiPreview(ctx context.Context, tipe string, bulan, tahun int) (noBukti, seq string, err error) {
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result, errGen := r.settingsSvc.GenerateNoBuktiTx(tx, tipe, tahun, bulan)
+		if errGen != nil {
+			return errGen
+		}
+		noBukti = result.NoBukti
+		seq = result.Seq
+		// NOTE: deliberately do NOT call CommitCounterTx here.
+		return nil
+	})
+	return noBukti, seq, err
 }
 
 // LookupPerkiraan returns DBPERKIRAAN rows matching the substring search.
@@ -563,4 +782,137 @@ func (r *SKasBankRepository) UpdateDeposito(ctx context.Context, d *models.SDBDE
 
 func (r *SKasBankRepository) DeleteDeposito(ctx context.Context, noDeposito string) error {
 	return r.db.WithContext(ctx).Where("NoDeposito = ?", noDeposito).Delete(&models.SDBDEPOSITO{}).Error
+}
+
+// LookupBagian returns DBBAGIAN rows whose KodeBag or NamaBag contains the
+// query substring. Used by the Aktiva sub-form's "Bagian (Kode)" field —
+// mirrors Delphi FrmSubAktiva.BagianExit which opens browse 1002.
+//
+// SQL Server 2008 R2: uses TOP-N via a parameter rather than OFFSET/FETCH
+// (which the legacy DB does not understand).
+func (r *SKasBankRepository) LookupBagian(ctx context.Context, query string) ([]models.SDBBAGIAN, error) {
+	var (
+		whereSQL string
+		args     []any
+	)
+	if query != "" {
+		whereSQL = " AND ([KodeBag] LIKE ? OR [NamaBag] LIKE ?)"
+		pattern := "%" + query + "%"
+		args = append(args, pattern, pattern)
+	}
+	sql := `SELECT TOP 50 [KodeBag], [NamaBag], [Perkiraan], [Biaya], [BiayaJasaKom], [BiayaJasaAlat]
+	        FROM DBBAGIAN WHERE 1=1` + whereSQL + ` ORDER BY [KodeBag] ASC`
+	var rows []models.SDBBAGIAN
+	if err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("looking up bagian (query=%q): %w", query, err)
+	}
+	return rows, nil
+}
+
+// LookupAkumulasiAktiva returns DBPERKIRAAN rows referenced from
+// DBPOSTHUTPIUT WHERE Kode='AKM'. Mirrors FrmSubAktiva.AkSusutExit which
+// fires the SQL:
+//
+//   SELECT a.*, b.Keterangan
+//   FROM dbposthutpiut a, dbperkiraan b
+//   WHERE a.perkiraan = b.perkiraan AND a.perkiraan = :0 AND a.Kode = 'AKM'
+func (r *SKasBankRepository) LookupAkumulasiAktiva(ctx context.Context, query string) ([]models.SDbPerkiraan, error) {
+	var (
+		whereSQL string
+		args     []any
+	)
+	if query != "" {
+		whereSQL = " AND (b.[Perkiraan] LIKE ? OR b.[Keterangan] LIKE ?)"
+		pattern := "%" + query + "%"
+		args = append(args, pattern, pattern)
+	}
+	sql := `SELECT TOP 50 b.[Perkiraan], b.[Kelompok], b.[Tipe], b.[DK], b.[Valas],
+	        b.[KodeAK], b.[KodeSAK], b.[Keterangan], b.[Simbol],
+	        CAST(COALESCE(NULLIF(CAST(b.[FlagCashFlow] AS VARCHAR(50)), ''), '0') AS INT) AS FlagCashFlow,
+	        b.[Neraca],
+	        CAST(COALESCE(NULLIF(CAST(b.[IsPPN] AS VARCHAR(50)), ''), '0') AS INT) AS IsPPN,
+	        b.[GroupPerkiraan], b.[Lokasi], b.[MyID]
+	        FROM DBPOSTHUTPIUT a
+	        INNER JOIN DBPERKIRAAN b ON b.[Perkiraan] = a.[Perkiraan]
+	        WHERE a.[Kode] = 'AKM'` + whereSQL + ` ORDER BY b.[Perkiraan] ASC`
+	var rows []models.SDbPerkiraan
+	if err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("looking up akumulasi aktiva (query=%q): %w", query, err)
+	}
+	return rows, nil
+}
+
+// LookupBiayaAktiva returns DBPERKIRAAN rows where Tipe='1' (biaya/expense
+// accounts). Mirrors FrmSubAktiva.BiayaSusutExit / BiayaSusut2Exit /
+// BiayaSusut3Exit, all of which open browse 1005 with the same constraint:
+//
+//   SELECT * FROM dbperkiraan WHERE perkiraan = :0 AND tipe = 1
+func (r *SKasBankRepository) LookupBiayaAktiva(ctx context.Context, query string) ([]models.SDbPerkiraan, error) {
+	var (
+		whereSQL string
+		args     []any
+	)
+	if query != "" {
+		whereSQL = " AND ([Perkiraan] LIKE ? OR [Keterangan] LIKE ?)"
+		pattern := "%" + query + "%"
+		args = append(args, pattern, pattern)
+	}
+	// Tipe column is int in the DBPERKIRAAN model; bind the value as int so
+	// SQL Server gets the right type and indexes (if any) are used.
+	args = append(args, 1)
+	sql := `SELECT TOP 50 [Perkiraan], [Kelompok], [Tipe], [DK], [Valas], [KodeAK], [KodeSAK],
+	        [Keterangan], [Simbol],
+	        CAST(COALESCE(NULLIF(CAST([FlagCashFlow] AS VARCHAR(50)), ''), '0') AS INT) AS FlagCashFlow,
+	        [Neraca],
+	        CAST(COALESCE(NULLIF(CAST([IsPPN] AS VARCHAR(50)), ''), '0') AS INT) AS IsPPN,
+	        [GroupPerkiraan], [Lokasi], [MyID] FROM DBPERKIRAAN WHERE 1=1` + whereSQL + ` AND [Tipe] = ? ORDER BY [Perkiraan] ASC`
+	var rows []models.SDbPerkiraan
+	if err := r.db.WithContext(ctx).Raw(sql, args...).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("looking up biaya aktiva (query=%q): %w", query, err)
+	}
+	return rows, nil
+}
+
+// GenerateNoUrutAktiva returns the next 5-digit counter for a (perkiraan,
+// devisi) pair. It counts existing rows in DBAKTIVA whose Perkiraan (prefix)
+// matches the supplied account code, then returns count+1 zero-padded to 5.
+//
+// Mirrors Delphi `UrutAktiva(perkiraan, devisi, 5)` in MyProcedure.pas.
+// We do NOT persist a counter row here — the DBAKTIVA.NoBelakang is the
+// sequence of last write, just like the legacy form reads it.
+func (r *SKasBankRepository) GenerateNoUrutAktiva(ctx context.Context, perkiraan, devisi string) (string, error) {
+	if perkiraan == "" {
+		return "", fmt.Errorf("perkiraan is required to generate NoUrut")
+	}
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Raw(`SELECT COUNT(*) FROM DBAKTIVA WHERE [Perkiraan] = ? AND [Devisi] = ?`,
+			perkiraan, devisi).
+		Scan(&count).Error; err != nil {
+		return "", fmt.Errorf("counting aktiva for NoUrut (perkiraan=%q, devisi=%q): %w", perkiraan, devisi, err)
+	}
+	next := count + 1
+	// 5-digit zero-pad, e.g. "00001", "00042"
+	return fmt.Sprintf("%05d", next), nil
+}
+
+// GenerateNoUrutAktiva2 returns the next 5-digit counter for a sub-aktiva.
+// `prefix` is the parent KodeAktiva (e.g. "1111.1.00001"). The function
+// matches DBAKTIVA rows by prefix-on-[NoAktivaHd].
+//
+// Mirrors Delphi `UrutAktiva2(perkiraan+'.'+nourut, devisi, 5)`.
+func (r *SKasBankRepository) GenerateNoUrutAktiva2(ctx context.Context, prefix, devisi string) (string, error) {
+	if prefix == "" {
+		return "", fmt.Errorf("prefix is required to generate NoUrut2")
+	}
+	pattern := prefix + "%"
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Raw(`SELECT COUNT(*) FROM DBAKTIVA WHERE [NoAktivaHd] LIKE ? AND [Devisi] = ?`,
+			pattern, devisi).
+		Scan(&count).Error; err != nil {
+		return "", fmt.Errorf("counting sub-aktiva for NoUrut2 (prefix=%q, devisi=%q): %w", prefix, devisi, err)
+	}
+	next := count + 1
+	return fmt.Sprintf("%05d", next), nil
 }

@@ -17,7 +17,7 @@ const serverLogger = {
     if (!IS_DEV) return
     const ts = new Date().toISOString().slice(11, 23)
     console.groupCollapsed(`\n→ [${ts}] ${method} ${path}`)
-    
+
     if (body) {
       try {
         const parsed = typeof body === 'string' ? JSON.parse(body) : body
@@ -26,27 +26,27 @@ const serverLogger = {
         console.log(`  Body:`, body)
       }
     }
-    
+
     // log query params if present in the path
     const url = new URL(path, getEnv('VITE_APP_URL', 'http://localhost:3000'))
     const queryParams = Object.fromEntries(url.searchParams.entries())
     if (Object.keys(queryParams).length > 0) {
       console.log(`  Query Params:`, queryParams)
     }
-    
+
     console.groupEnd()
   },
   logResponse(method: string, path: string, status: number, data: any, duration: number) {
     if (!IS_DEV) return
     const ts = new Date().toISOString().slice(11, 23)
     const ok = status < 400
-    
+
     console.groupCollapsed(`\n← [${ts}] ${method} ${path} ${status} (${duration}ms)${ok ? '' : ' ← ERROR'}`)
-    
+
     if (data !== null && data !== undefined) {
       console.log(`  Data:`, data)
     }
-    
+
     console.groupEnd()
   },
   logError(method: string, path: string, error: any, duration: number) {

@@ -1,0 +1,8 @@
+--- FAIL: TestHandler_GetKasBank_Ok (0.03s)
+    handler_test.go:228: 
+        	Error Trace:	D:/TestLaB/Golang/backend/internal/features/accounting/kasbank/handler_test.go:228
+        	Error:      	"{\"success\":true,\"status\":200,\"message\":\"Kas/Bank voucher retrieved successfully\",\"data\":{\"nobukti\":\"\",\"tanggal\":null,\"note\":\"\",\"tgljurnal\":null,\"nojurnal\":\"\",\"nobuktisem\":\"\",\"tphc\":\"\",\"nobon\":\"\",\"devisi\":\"\",\"tipetranshd\":null,\"perkiraanhd\":null,\"totald\":0,\"totalk\":0,\"jumlahvalas\":0,\"jumlahrupiah\":0,\"otorisasi1\":false,\"otorisasi2\":false,\"otorisasi3\":false,\"otorisasi4\":false,\"otorisasi5\":false,\"otouser1\":\"\",\"otouser2\":\"\",\"otouser3\":\"\",\"otouser4\":\"\",\"otouser5\":\"\",\"tgloto1\":null,\"tgloto2\":null,\"tgloto3\":null,\"tgloto4\":null,\"tgloto5\":null,\"maxol\":0,\"locked\":false,\"cetak\":0}}" does not contain "BKK-1"
+        	Test:       	TestHandler_GetKasBank_Ok
+FAIL
+FAIL	github.com/masza1/dapen-backend/internal/features/accounting/kasbank	3.362s
+FAIL

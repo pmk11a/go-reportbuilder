@@ -101,7 +101,6 @@ export function GiroSubForm({
 			statusgiro: values.statusgiro,
 			tipe: values.tipe,
 			keterangan: values.keterangan,
-			nobukti: "", // to be filled by parent
 		});
 	};
 

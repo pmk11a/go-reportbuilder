@@ -7,11 +7,11 @@ import (
 // SDBTRANS represents the DBTRANS table
 type SDBTRANS struct {
 	NoBukti string `gorm:"column:NoBukti;primaryKey;size:30" json:"nobukti"`
-	NOURUT string `gorm:"column:NOURUT;size:5" json:"nourut"`
+	NOURUT  string `gorm:"column:NOURUT;primaryKey;size:10" json:"nourut"`
 	Tanggal *time.Time `gorm:"column:Tanggal" json:"tanggal"`
-	Note string `gorm:"column:Note;size:500" json:"note"`
-	Lampiran int `gorm:"column:Lampiran" json:"lampiran"`
-	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
+	Note    string `gorm:"column:Note;size:500" json:"note"`
+	Lampiran string `gorm:"column:Lampiran;size:50" json:"lampiran"`
+	MyID    *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	IsOtorisasi1 bool `gorm:"column:IsOtorisasi1" json:"isotorisasi1"`
 	OtoUser1 string `gorm:"column:OtoUser1;size:15" json:"otouser1"`
 	TglOto1 *time.Time `gorm:"column:TglOto1" json:"tgloto1"`
@@ -35,7 +35,12 @@ type SDBTRANS struct {
 	NoJurnal *string `gorm:"column:NoJurnal;size:30" json:"nojurnal"`
 	NoUrutJurnal *string `gorm:"column:NoUrutJurnal;size:5" json:"nourutjurnal"`
 	TglJurnal *time.Time `gorm:"column:TglJurnal" json:"tgljurnal"`
-	Flagtipe *int `gorm:"column:Flagtipe" json:"flagtipe"`
+	Flagtipe int `gorm:"column:Flagtipe" json:"flagtipe"`
+	// Additional fields from Delphi FrmKasBank.pas
+	// These columns exist in DBTRANS but are excluded from GORM's AutoMigrate/scan.
+	// They are written via raw SQL UPDATE in the service layer (CreateHeader/UpdateHeader).
+	NoBuktiSem *string `gorm:"column:NoBuktiSem;size:30;->;<-:false" json:"-"`
+	Nobon      *string `gorm:"column:Nobon;size:20;->;<-:false" json:"-"`
 }
 
 // TableName overrides the default table name for SDBTRANS

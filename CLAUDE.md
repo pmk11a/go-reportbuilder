@@ -347,6 +347,279 @@ See `tasks/CLAUDE.md` for full task lifecycle documentation.
 
 ---
 
+## Lessons Learned — Browse Autocomplete
+
+> **Date:** 2026-07-12 · **Status:** Resolved (commit `a13c6a9`)
+> **Symptom:** `Cannot read properties of undefined (reading 'spread')` on `KasBankFormDialog` Perkiraan autocomplete.
+
+### TL;DR
+Backend handlers returned mixed response envelopes (raw array vs wrapped `{success,status,message,data}`). The frontend service/hook/picker layer was typed for one shape but received the other, causing `Array.isArray` to fail silently and `...spread` of `undefined` to crash.
+
+### Root Cause Chain
+1. **`handler.go` used `c.JSON(http.StatusOK, results)`** — raw array, no envelope.
+2. **`makeBackendRequest`** expects `{success, message, data}` and only unwraps when `success !== undefined`. Bare arrays slip through unchanged.
+3. **`browseService.search`** typed as `Promise<IBrowseRow[]>` but received `{data: [...]}` → `Array.isArray` returned `false`.
+4. **`useBrowseSearch`** and **`GenericBrowsePicker`** then spread an object literal → runtime crash.
+
+### The Fix (one-shot pattern — apply to ALL list endpoints)
+**Backend handler — always use `response.Success` / `response.Error`:**
+```go
+// ✅ Correct
+c.JSON(http.StatusOK, response.Success(c, "Browse search results", results))
+c.JSON(http.StatusInternalServerError, response.Error(c, 500, err.Error()))
+
+// ❌ Wrong (envelope drift)
+c.JSON(http.StatusOK, results)
+c.JSON(http.StatusOK, gin.H{"results": results})
+```
+
+**Frontend service — defensive unwrap for both shapes:**
+```ts
+async search(params: IBrowseSearchParams): Promise<IBrowseRow[]> {
+  const result = await searchBrowseFn({ data: { query: buildSearchQuery(params) } })
+  // Belt-and-suspenders: handle raw array OR wrapper OR null
+  if (Array.isArray(result)) return result
+  return ((result as any)?.data as IBrowseRow[] | undefined) ?? []
+}
+```
+
+**Frontend hooks/components — coerce to array BEFORE spread:**
+```ts
+// useBrowseSearch
+const options: IBrowseRow[] = Array.isArray(query.data) ? query.data : []
+
+// GenericBrowsePicker
+const safeResults: IBrowseRow[] = Array.isArray(searchResults) ? searchResults : []
+const items = [...safeResults]
+```
+
+### Files Touched (commit `a13c6a9`)
+- `backend/internal/features/browse/handler.go` — all 5 endpoints normalized to `response.Success`
+- `frontend/src/domains/browse/services/browseService.ts` — defensive unwraps in 5 methods
+- `frontend/src/domains/browse/hooks/useBrowseSearch.ts` — `Array.isArray` coercion
+- `frontend/src/domains/browse/components/browse/GenericBrowsePicker.tsx` — `safeResults` guard
+
+### Detection Signals (if this EVER recurs)
+1. Console error contains: `'undefined' is not iterable` / `Cannot read properties of undefined (reading 'spread')` / `map of undefined`
+2. Network tab shows bare `[...]` array OR `{success: undefined, data: [...]}` from a Go handler
+3. Autocomplete dropdown shows nothing OR label "undefined"
+
+### Debug Procedure (5 minutes)
+```bash
+# 1. Hit endpoint directly with JWT
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"superadmin","password":"superadmin123"}' | jq -r '.data.access_token')
+
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8080/api/browse/search?kodeBrowse=1001&q=test" | head -c 200
+
+# 2. If response is bare array → handler missing response.Success wrapper
+# 3. If response is {success:true, data:[...]} → FE service missing unwrap
+# 4. If response is null/undefined → server function validator throwing
+```
+
+### Related Issues (not yet fixed but catalogued)
+- **Browse 1001 (Perkiraan global):** `mssql: Incorrect syntax near ':'` — a browse config has legacy Delphi `<P:` placeholder that mssql can't parse. Affects only `kodeBrowse=1001`, not used by KasBank (we use 20011/1005).
+- **NoBukti generation** depends on `dbNomor` config row — verify before relying on autonumber.
+
+### Rule Going Forward
+**Any new browse/list handler MUST use `response.Success(c, msg, data)`.** When reviewing PRs, reject any handler returning raw arrays or custom wrappers.
+
+---
+
+## Lessons Learned — Lookup Autocomplete (CustSupp)
+
+> **Date:** 2026-07-23 · **Status:** Resolved
+> **Symptom:** Dropdown item di `HutangPiutangSubForm` menampilkan literal `"undefined - undefined"` saat user membuka picker Customer/Supplier.
+
+### TL;DR
+Frontend `ICustSupp` interface menggunakan **lowercase fields** (`kode`, `nama`) sedangkan backend `SDBCUSTSUPP` mengembalikan **PascalCase camelized JSON** (`KodeCustSupp`, `NamaCustSupp`). Karena TypeScript `as ICustSupp[]` adalah runtime no-op assertion, field yang missing hanya jadi `undefined` — bukan type error. Template literal render `"undefined - undefined"` di dropdown.
+
+### Root Cause Chain
+1. **`backend/internal/features/accounting/kasbank/handler.go`** pakai `response.Success(c, "Success", res)` — envelope `{success, message, data: []}` ✓
+2. **`serverFn` `lookupCustSupp`** extract `result.data` → raw array `SDBCUSTSUPP[]` (PascalCase) ✓
+3. **`kasbankService.lookupCustSupp`** return `result as ICustSupp[]` ⚠ — shape array OK, tapi field names PascalCase
+4. **`ICustSupp` interface** salah: `{ kode: string; nama: string }` (lowercase) — tidak match
+5. **`HutangPiutangSubForm` line 58**: `label: \`${c.kode} - ${c.nama}\`` → literal `"undefined - undefined"`
+
+### The Fix (surgical, 3 files)
+**`types/kasbank.ts`** — interface match backend JSON:
+```ts
+export interface ICustSupp {
+  KodeCustSupp: string;
+  NamaCustSupp: string;
+}
+```
+
+**`HutangPiutangSubForm.tsx`** — use PascalCase field accessors:
+```tsx
+const options = res.map((c) => ({
+  label: `${c.KodeCustSupp} - ${c.NamaCustSupp}`,
+  value: c.KodeCustSupp,
+}))
+```
+
+**`kasbankService.lookupCustSupp`** — belt-and-suspenders defensive unwrap (same pattern as Browse):
+```ts
+if (Array.isArray(result)) return result as ICustSupp[]
+return ((result as any)?.data as ICustSupp[] | undefined) ?? []
+```
+
+### Detection Signals (if this EVER recurs)
+1. Dropdown/select items show literal `"undefined"` (atau `"- undefined"`, `"undefined - undefined"`)
+2. Backend response Network tab JSON berisi PascalCase keys (`KodeCustSupp`)
+3. TypeScript `as IFoo[]` cast di service layer (silencing runtime shape mismatch)
+
+### Rule Going Forward (extended)
+**Every new lookup/list endpoint that has a dedicated FE `IXxx` interface MUST:**
+1. Backend handler returns `response.Success(c, msg, data)` (envelope)
+2. FE interface field names = exact backend camelized JSON keys (case-sensitive)
+3. FE service uses defensive unwrap: `Array.isArray(result) ? result : result?.data ?? []`
+
+### Pattern Variant Map (rename field `f` in feature `X`)
+| Endpoint | Interface | Component where it surfaced | Status |
+|---|---|---|---|
+| `/api/browse/search?kodeBrowse=...` | `IBrowseRow` | `GenericBrowsePicker` | Fixed (a13c6a9) |
+| `/api/accounting/kasbank/lookup-custsupp` | `ICustSupp` | `HutangPiutangSubForm` | Fixed (this lesson) |
+| `/api/accounting/kasbank/outstanding-hutpiut` | `IOutstandingHutPiut` | `HutangPiutangSubForm` invoices list | Defensive unwrap added (no shape drift, JSON tags match) |
+
+When adding any new lookup endpoint → assume the same shape drift can occur → apply all 3 fixes proactively.
+
+---
+
+## Lessons Learned — Invalid Column Name (DBHUTPIUT Outstanding)
+
+> **Date:** 2026-07-23 · **Status:** Resolved
+> **Symptom:** Frontend dropdown "Tidak ada tagihan tertunda" displays even after user picks a CustSupp with open invoices. Network tab shows 500 error with `Invalid column name 'NoUrut'`.
+
+### TL;DR
+Backend `service.GetOutstandingHutPiut` SQL referenced `MAX(NoUrut)` but the DBHUTPIUT table has `NoUrutJurnal` (not `NoUrut`). SQL Server rejected the query with 500. Frontend `loadInvoices()` caught the error → setInvoices([]) → blank table with "Tidak ada tagihan tertunda".
+
+### Root Cause
+- `dbhutpiut.go:57` declares `NoUrutJurnal *string`
+- `service.go:1779` (pre-fix) referenced `MAX(NoUrut) AS NoUrut` — wrong column name
+- DBSPK has `NoUrut` (different table) → copy-paste confusion
+
+### The Fix
+**`backend/internal/features/accounting/kasbank/service.go:1779`**
+```sql
+MAX(NoUrutJurnal) AS NoUrutJurnal,
+```
+
+**`backend/internal/features/accounting/kasbank/subtrans_test.go:281,312,327,354,380,406,435`** — updated 7 sqlmock column lists from `"NoUrut"` to `"NoUrutJurnal"` so unit tests match the corrected query.
+
+### Detection Signals (if this EVER recurs)
+1. Frontend list endpoint returns empty (no rows, no error UI)
+2. Network tab shows 500 response with `Invalid column name 'X'`
+3. SQL `MAX(X)` / `SUM(X)` / `WHERE X` — `X` not in `models/dbx.go` struct
+
+### Debug Procedure (5 minutes)
+```bash
+# 1. Find the actual model column name
+grep -n "NoXxx" backend/internal/infrastructure/persistence/models/dbhutpiut.go
+
+# 2. Find the SQL reference
+grep -rn "NoXxx" backend/internal/features/
+
+# 3. If SQL column != model column → fix SQL to match model
+```
+
+### Rule Going Forward
+**Before adding `MAX(col)` / `SUM(col)` / `WHERE col` to any SQL query:**
+1. Check `models/<table>.go` for exact column name (case-sensitive, PascalCase for legacy tables)
+2. Don't copy-paste column names from other tables — verify in target model
+3. Update both SQL and any test sqlmock column lists in the same commit
+
+### Related Files (commit pending)
+- `backend/internal/features/accounting/kasbank/service.go` — SQL column rename
+- `backend/internal/features/accounting/kasbank/subtrans_test.go` — 7 sqlmock column lists updated
+
+---
+
+## Lessons Learned — Aktiva Sub-Form Delphi Parity
+
+> **Date:** 2026-07-23 · **Status:** Resolved
+> **Symptom:** React `AktivaSubForm.tsx` diverges sharply from Delphi `FrmSubAktiva.pas`:
+> no `KodeAktiva` display, no auto-NoUrut, no validation, missing `% Pajak`, wrong
+> lookup response shape, missing backend endpoints entirely.
+
+### TL;DR
+The component and its backend lookups had drifted in 3 directions:
+
+1. **Routes were never registered** — `lookup-bagian`, `lookup-akumulasi-aktiva`,
+   `lookup-biaya-aktiva`, `generate-no-urut-aktiva`, `generate-no-urut-aktiva2`
+   were called from the FE but had no handlers → silent 404s → empty arrays.
+2. **Defensive unwraps were inverted** — FE stored `(result as any[])[0]` on a
+   wrapped `{success, message, data}` object, returning `undefined` and never
+   triggering the `alert("Tidak ditemukan!")` branch.
+3. **Form behaviour was a thin shell** — the user had to type a 5-digit number
+   manually, no KodeAktiva preview, no save-time validation, no `% Pajak` field.
+
+### The Fix (one-shot, 8 files)
+**Backend** — register the missing endpoints:
+- `repo.LookupBagian`, `repo.LookupAkumulasiAktiva`, `repo.LookupBiayaAktiva`,
+  `repo.GenerateNoUrutAktiva`, `repo.GenerateNoUrutAktiva2` — SQL Server 2008 R2-
+  compatible, `response.Success` envelopes only.
+- `service.*` thin pass-through; `handler.*` with godoc; `routes.go` new entries
+  under `PermHasAccess`.
+
+**Frontend types** — extend `IAktiva` with `persenpajak: number` (Delphi
+`PersenPajak`).
+
+**Frontend service** — replace brittle `(result as any[])[0]` with the
+browse/custsupp pattern:
+```ts
+const rows = Array.isArray(result) ? result : (result as any)?.data ?? []
+return rows[0] ?? null
+```
+
+**AktivaSubForm.tsx** — full rewrite to match Delphi:
+- `useMemo` to derive `kodeAktiva` from `Perkiraan.NoUrut[.NoUrut2]`
+  (mirrors `NourutChange` / `isHeaderExit`).
+- `useEffect` to trigger `generateNoUrutAktiva` once both Perkiraan and Devisi
+  are present (mirrors `UrutAktiva`).
+- Field-level description labels for ALL 7 lookup fields (Perkiraan, Devisi,
+  Bagian, Akumulasi, Biaya, Biaya2, Biaya3).
+- `Biaya 2 / 3` empty-sentinel `'-'` zeroes the matching `PersenSusut` (Delphi
+  `BiayaSusut2Exit` / `BiayaSusut3Exit`).
+- Conditional `% Pajak` input (renders only when `metode === 'P'`).
+- `<Textarea>` for Keterangan (was `<Input>`) — Delphi `TMemo`.
+- Full `BitBtn3Click` validation:
+  - `PersenBiaya1 + PersenBiaya2 + PersenBiaya3 == 100`
+  - `% Susut != 0`, Metode/Akumulasi/Biaya required
+  - `PersenBiaya1 != 0`
+  - `NoUrut` / `NoUrut2` >= 5 chars
+
+### Detection Signals (if this EVER recurs)
+1. Network tab shows 404 on `/api/accounting/kasbank/lookup-*` after a user
+   types an Enter-key code.
+2. Form auto-populates `NoUrut` but `Kode Aktiva (otomatis)` stays empty.
+3. Save alert: `"undefined is not iterable"` (the old `(result as any[])[0]`
+   bug, if the defensive unwrap is ever removed).
+
+### Rule Going Forward (extended)
+**Every Delphi sub-form** (Aktiva, Giro, Deposito, HutangPiutang) MUST have:
+1. A read-only derived `KodeAktiva`-style display field when the form builds a
+   composite code.
+2. An auto-generated sequence that mirrors Delphi `UrutXxx(...)` (server-side
+   `COUNT+1`).
+3. Full `BitBtn3Click`-equivalent validation on the save handler.
+4. All lookup helpers use `Array.isArray(result) ? result : (result as any)?.data ?? []` —
+   never direct array indexing of a wrapped envelope.
+5. Every lookup endpoint registered in `routes.go` before the FE can call it.
+
+### Pattern Variant Map (this lesson)
+| Endpoint | Interface | Component where it surfaced | Status |
+|---|---|---|---|
+| `/api/accounting/kasbank/lookup-bagian` | (`any`) | `AktivaSubForm` Bagian | Fixed (this lesson) |
+| `/api/accounting/kasbank/lookup-akumulasi-aktiva` | `SDbPerkiraan` | `AktivaSubForm` Akumulasi | Fixed (this lesson) |
+| `/api/accounting/kasbank/lookup-biaya-aktiva` | `SDbPerkiraan` (Tipe=1) | `AktivaSubForm` Biaya 1/2/3 | Fixed (this lesson) |
+| `/api/accounting/kasbank/generate-no-urut-aktiva` | `gin.H{nourut: string}` | `AktivaSubForm` NoUrut auto-fill | Fixed (this lesson) |
+| `/api/accounting/kasbank/generate-no-urut-aktiva2` | `gin.H{nourut2: string}` | `AktivaSubForm` NoUrut2 auto-fill | Fixed (this lesson) |
+
+---
+
 ## Slash Commands
 
 - `/architect TASK-XXX` — Orchestrate full feature (backend → frontend → QA). The orchestrator only **reviews** artifacts the user ran; it never executes `check-all.sh` itself.

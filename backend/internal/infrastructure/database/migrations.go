@@ -8,6 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// RunMigrations executes all database schema changes required by the application.
+// This includes:
+//   - Legacy constraint fixes for SQL Server compatibility
+//   - Table auto-migration via GORM
+//   - Index creation for performance optimization
+//
+// The legacy DBTRANS table is NOT auto-migrated (it belongs to the Delphi system).
+// Instead, performance-critical indexes are created via raw SQL.
 func RunMigrations(database *gorm.DB) {
 	log.Println("Running selective migrations...")
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import { Button } from "@/shared/ui/overlay/button";
 import { Input } from "@/shared/ui/form/input";
 import { Label } from "@/shared/ui/form/label";
 import { kasbankService } from "../../../services/kasbankService";
-// using any for now as they are not defined in types/kasbank
-import { SearchableSelect } from "@/shared/ui/form/searchable-select";
+import { IOutstandingHutPiut, ICustSupp } from "../../../types/kasbank";
+import { SearchableSelect, SearchableSelectOption } from "@/shared/ui/form/searchable-select";
 import {
   Table,
   TableBody,
@@ -25,66 +25,81 @@ interface HutangPiutangSubFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   perkiraan: string;
+  kodeCustSupp?: string;
+  tipeTrans?: string; // BKM/BKK/BBM/BBK — used to pick which field maps to Hutang/Piutang account
   isPiutang: boolean; // true for Piutang, false for Hutang (can be determined by trigger/kode)
   onSave: (selected: any[]) => void;
   // If editing an existing detail row that already has selected HutPiut items
   initialData?: any[];
+  nomsk?: number; // NoMsk: Urut of the detail row that triggered this sub-form (optional if from BE)
 }
 
 export function HutangPiutangSubForm({
   open,
   onOpenChange,
   perkiraan,
+  kodeCustSupp: initialKodeCustSupp,
+  tipeTrans,
   isPiutang,
   onSave,
-// @ts-expect-error - unused variable
-  initialData = [],
+  nomsk,
 }: HutangPiutangSubFormProps) {
-  const [kodeCustSupp, setKodeCustSupp] = useState("");
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [kodeCustSupp, setKodeCustSupp] = useState(initialKodeCustSupp ?? "");
+  const [invoices, setInvoices] = useState<IOutstandingHutPiut[]>([]);
   const [loading, setLoading] = useState(false);
+  const [custSuppOptions, setCustSuppOptions] = useState<SearchableSelectOption[]>([]);
+  const [custSuppLoading, setCustSuppLoading] = useState(false);
 
-  // Search CustSupp
-  const loadCustSupp = async (q: string) => {
+  // Search CustSupp - loads options based on search text and perkiraan
+  const handleCustSuppSearch = useCallback(async (search: string) => {
+    setCustSuppLoading(true);
     try {
-      const res: any[] = await (kasbankService as any).lookupCustSupp(q);
-      return res.map((c) => ({
-        label: `${c.kodecustsupp} - ${c.namacustsupp}`,
-        value: c.kodecustsupp,
+      const res: ICustSupp[] = await kasbankService.lookupCustSupp(search, perkiraan);
+      const options = res.map((c) => ({
+        label: `${c.KodeCustSupp} - ${c.NamaCustSupp}`,
+        value: c.KodeCustSupp,
       }));
+      setCustSuppOptions(options);
     } catch (err) {
       console.error(err);
-      return [];
+      setCustSuppOptions([]);
+    } finally {
+      setCustSuppLoading(false);
     }
-  };
+  }, [perkiraan]);
 
   useEffect(() => {
     if (open) {
       setKodeCustSupp("");
       setInvoices([]);
+      // Populate the CustSupp dropdown with the top 50 records so the picker
+      // shows options before the user types. Mirrors the always-fetch pattern
+      // used in useLookupPerkiraanShared.
+      handleCustSuppSearch("");
     }
-  }, [open]);
+  }, [open, handleCustSuppSearch]);
 
   useEffect(() => {
     if (kodeCustSupp && perkiraan) {
       loadInvoices(kodeCustSupp, perkiraan);
     }
-  }, [kodeCustSupp, perkiraan]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kodeCustSupp, perkiraan, tipeTrans]);
 
   const loadInvoices = async (custSupp: string, perk: string) => {
     setLoading(true);
     try {
-      const res: any[] = await (kasbankService as any).getOutstandingHutPiut(custSupp, perk);
-      // Map them to local state with jmlBayar = 0 by default
+      const res: IOutstandingHutPiut[] = await kasbankService.getOutstandingHutPiut(custSupp, perk);
+      // Map them to local state with jmlbayar = 0 by default
       const mapped = res.map(inv => {
         const saldo = (inv.kredit || 0) - (inv.debet || 0); // Outstanding
         return {
           ...inv,
-          jmlBayar: 0,
+          jmlbayar: 0,
           saldo: Math.abs(saldo)
         };
       });
-      setInvoices(mapped as any);
+      setInvoices(mapped);
     } catch (error) {
       console.error("Failed to load invoices", error);
     } finally {
@@ -96,9 +111,10 @@ export function HutangPiutangSubForm({
     const newInv = [...invoices];
     if (checked) {
       // Auto pay full
-      newInv[index].jmlBayar = (newInv[index] as any).saldo;
+      const saldo = newInv[index].saldo || 0;
+      newInv[index] = { ...newInv[index], jmlbayar: saldo };
     } else {
-      newInv[index].jmlBayar = 0;
+      newInv[index] = { ...newInv[index], jmlbayar: 0 };
     }
     setInvoices(newInv);
   };
@@ -107,27 +123,46 @@ export function HutangPiutangSubForm({
     const newInv = [...invoices];
     let num = parseFloat(val);
     if (isNaN(num)) num = 0;
-    if (num > ((newInv[index] as any).saldo || 0)) num = ((newInv[index] as any).saldo || 0);
-    newInv[index].jmlBayar = num;
+    const saldo = newInv[index].saldo || 0;
+    if (num > saldo) num = saldo;
+    newInv[index] = { ...newInv[index], jmlbayar: num };
     setInvoices(newInv);
   };
 
   const handleSave = () => {
-    const selected = invoices.filter(i => (i.jmlBayar || 0) > 0).map(i => {
-      // Create DBHUTPIUT payload for Pelunasan
-      // If Piutang (Kredit balances Piutang/Debet), we set Kredit. 
-      // If Hutang (Debet balances Hutang/Kredit), we set Debet.
+    const selected = invoices.filter(i => (i.jmlbayar || 0) > 0).map(i => {
+      // Build the DBHUTPIUT payload mirroring Delphi sp_TempHutPiut semantics:
+      //   - `Tipe` is the base type ONLY ("PT"/"HT"/"UPT"/"UHT") without the
+      //     +/- suffix. The suffix is stored separately as `TipeDK`.
+      //   - `TipeDK` = 'K' when the payment sits on the Kredit side (Pelunasan
+      //     Piutang = PT+, Delphi derives this from StatusHutPiut='PT+').
+      //   - `TipeDK` = 'D' when the payment sits on the Debet side (Pelunasan
+      //     Hutang = HT-).
+      const tipeBase = isPiutang ? "PT" : "HT";
+      const tipeDK = isPiutang ? "K" : "D";
+      // Inherit the parent detail's customer/supplier code when the per-invoice
+      // row was returned with an empty KodeCustSupp (older BE responses omit
+      // it; the FK_DBHUTPIUT_DBCUSTSUPP FK requires a non-empty value).
+      const custSupp =
+        (i.kodecustsupp && i.kodecustsupp.trim()) ||
+        (initialKodeCustSupp && initialKodeCustSupp.trim()) ||
+        "";
       const payload: any = {
         nofaktur: i.nofaktur,
-        kodecustsupp: kodeCustSupp,
+        kodecustsupp: custSupp,
         perkiraan: perkiraan,
-        debet: isPiutang ? 0 : i.jmlBayar,
-        kredit: isPiutang ? i.jmlBayar : 0,
-        // The backend CreateHeader will fill NoBukti and Urut
+        debet: isPiutang ? 0 : i.jmlbayar,
+        kredit: isPiutang ? i.jmlbayar : 0,
+        tipe: tipeBase,
+        tipedk: tipeDK,
+        tipetrans: "L",
+        nomsk: nomsk,
       };
+      // Preserve saldo for frontend display/editing purposes
+      payload.saldo = i.saldo;
       return payload;
     });
-    
+
     if (selected.length === 0) {
       alert("Pilih minimal satu tagihan untuk dilunasi!");
       return;
@@ -148,9 +183,13 @@ export function HutangPiutangSubForm({
             <Label>Pilih Customer / Supplier</Label>
             <SearchableSelect
               value={kodeCustSupp}
-              onChange={(val) => setKodeCustSupp(val ?? "")}
-              loadOptions={loadCustSupp}
-              placeholder="Ketik untuk mencari..."
+              onValueChange={(val) => {
+                setKodeCustSupp(val ?? "");
+              }}
+              onSearchChange={handleCustSuppSearch}
+              placeholder={custSuppLoading ? "Mencari..." : "Ketik untuk mencari..."}
+              options={custSuppOptions}
+              disabled={custSuppLoading}
             />
           </div>
 
@@ -182,30 +221,29 @@ export function HutangPiutangSubForm({
                   </TableRow>
                 ) : (
                   invoices.map((inv, idx) => {
-                    const isChecked = (inv.jmlBayar || 0) > 0;
+                    const isChecked = (inv.jmlbayar || 0) > 0;
                     return (
                       <TableRow key={inv.nofaktur}>
                         <TableCell className="text-center">
                           <Checkbox
                             checked={isChecked}
-                            onCheckedChange={(c) => toggleInvoice(idx, !!c)}
+                            onChange={(e) => toggleInvoice(idx, e.target.checked)}
                           />
                         </TableCell>
                         <TableCell>{inv.nofaktur}</TableCell>
                         <TableCell>{inv.tanggal?.split("T")[0]}</TableCell>
                         <TableCell>{inv.jatuhtempo?.split("T")[0]}</TableCell>
                         <TableCell className="text-right">
-                           {/* Simplified display, depending on original debet/kredit logic */}
-                           {(Math.abs((inv.kredit || 0) + (inv.debet || 0))).toLocaleString()}
+                           {((inv.kredit || 0) - (inv.debet || 0)).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          {((inv as any).saldo || 0).toLocaleString()}
+                          {(inv.saldo || 0).toLocaleString()}
                         </TableCell>
                         <TableCell>
                           <Input
                             type="number"
                             className="text-right h-8"
-                            value={inv.jmlBayar || ""}
+                            value={inv.jmlbayar || ""}
                             onChange={(e) => handleJmlBayarChange(idx, e.target.value)}
                           />
                         </TableCell>

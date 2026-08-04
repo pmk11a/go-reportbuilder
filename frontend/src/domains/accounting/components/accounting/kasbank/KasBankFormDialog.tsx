@@ -34,9 +34,11 @@ import {
 import { useKasBankDetailList } from "@/domains/accounting/hooks/useKasBankDetail";
 import type {
 	IAddDetailPayload,
+	IAktiva,
 	ICreateKasBankPayload,
 	IDeposito,
 	IGiro,
+	IHutPiut,
 	IKasBankHeader,
 	KasBankTipe,
 } from "@/domains/accounting/types/kasbank";
@@ -137,6 +139,12 @@ function detailsToPayload(
 		tphc: d.tphc,
 		kodebag: d.kodebag,
 		kode_cust_supp: d.kode_cust_supp,
+		// New fields for Aktiva sub-form data (stored in DBTRANSAKSI columns):
+		custSuppL: d.custSuppL,
+		noAktivaP: d.noAktivaP,
+		noAktivaL: d.noAktivaL,
+		xSusut: d.xSusut,
+		perlakuanAktiva: d.perlakuanAktiva,
 	}));
 }
 
@@ -160,8 +168,8 @@ export function KasBankFormDialog({
 
 	const [giroList, setGiroList] = useState<IGiro[]>([]);
 	const [depositoList, setDepositoList] = useState<IDeposito[]>([]);
-	const [hutPiutList, setHutPiutList] = useState<any[]>([]);
-	const [aktivaList, setAktivaList] = useState<any[]>([]);
+	const [hutPiutList, setHutPiutList] = useState<IHutPiut[]>([]);
+	const [aktivaList, setAktivaList] = useState<IAktiva[]>([]);
 
 	const [giroModalOpen, setGiroModalOpen] = useState(false);
 	const [depositoModalOpen, setDepositoModalOpen] = useState(false);
@@ -170,6 +178,8 @@ export function KasBankFormDialog({
 	const [pendingDetailRow, setPendingDetailRow] = useState<{
 		row: IAddDetailPayload;
 		trigger: "giro" | "deposito" | "hutpiut" | "aktiva";
+		detailIdx: number; // 0-based index in detailRows; used to derive NoMsk for hutPiut
+		nomsk: number; // 1-based Urut in DBTRANSAKSI that triggered this sub-form
 	} | null>(null);
 	const [pendingSubTransResult, setPendingSubTransResult] = useState<any>(null);
 
@@ -227,19 +237,25 @@ export function KasBankFormDialog({
 			tipeTransHd: "BKK",
 			perkiraanHd: "",
 			note: "",
-			devisi: "",
+			devisi: "01",
 		},
 	});
 
-	// Generate NoBukti only after `watch` is available (useForm above) and
-	// only when both `tipe` and `devisi` are populated — the backend rejects
-	// empty devisi ("devisi wajib diisi").
-	const {
-		data: noBuktiData,
-		error: noBuktiError,
-		isLoading: noBuktiLoading,
-		refetch: refetchNoBukti,
-	} = useGenerateNoBukti(selectedTipe, watch("devisi"));
+		// Generate NoBukti only after `watch` is available (useForm above) and
+		// only when both `tipe` and `devisi` are populated — the backend rejects
+		// empty devisi ("devisi wajib diisi").
+		// NOTE: devisiVal is intentionally read fresh below via watch() in useEffect;
+		// the initial value here is a fallback — the real trigger is Effect 5.
+		const initialDevisiVal = editData ? (watch("devisi") || "KANTOR PUSAT") : watch("devisi");
+		const {
+			data: noBuktiData,
+			error: noBuktiError,
+			isLoading: noBuktiLoading,
+			refetch: refetchNoBukti,
+		} = useGenerateNoBukti(selectedTipe, initialDevisiVal);
+
+	// DEBUG: Trace NoBukti data shape
+	console.log("[KasBank] noBuktiData:", noBuktiData, "selectedTipe:", selectedTipe, "initialDevisiVal:", initialDevisiVal);
 
 	// Effect 1: fires immediately when dialog opens — populate header fields
 	useEffect(() => {
@@ -261,7 +277,7 @@ export function KasBankFormDialog({
 					tipeTransHd: "BKK",
 					perkiraanHd: "",
 					note: "",
-					devisi: "KANTOR PUSAT",
+					devisi: "01",
 				});
 				setDetailRows([]);
 				setGiroList([]);
@@ -282,7 +298,10 @@ export function KasBankFormDialog({
 		// Fill detail-specific header fields from first detail row
 		if (details.length > 0) {
 			const first = details[0];
-			setValue("devisi", first.devisi ?? "");
+			setValue("devisi", first.devisi ?? "01");
+		} else {
+			// Fallback: if no details, set default devisi so NoBukti can generate
+			setValue("devisi", "KANTOR PUSAT");
 		}
 
 		// Map detail rows
@@ -295,6 +314,8 @@ export function KasBankFormDialog({
 			valas: d.valas,
 			kurs: d.kurs,
 			kodebag: d.kodebag,
+			kode_cust_supp: d.kodecustsupp || "",
+			hutpiut_selected: d.hutpiut_selected || [],
 		}));
 		setDetailRows(mappedRows);
 	}, [open, editData, detailListRes, setValue]);
@@ -309,13 +330,33 @@ export function KasBankFormDialog({
 	// ErrTanggalDiLuarPeriode if today is past the active period.
 	useEffect(() => {
 		if (!open || editData) return;
-		const generatedAt = (noBuktiData as any)?.data?.generatedAt;
+		const generatedAt = (noBuktiData as any)?.generatedAt;
 		if (!generatedAt) return;
 		const isoDate = String(generatedAt).split("T")[0];
 		if (isoDate && /^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
 			setValue("tanggal", isoDate, { shouldValidate: false, shouldDirty: false });
 		}
 	}, [open, editData, noBuktiData, setValue]);
+
+	// Effect 4: when devisi becomes available (edit mode), refetch NoBukti
+	useEffect(() => {
+		if (!open || !editData) return;
+		const devisiVal = watch("devisi");
+		if (devisiVal && devisiVal.trim().length > 0) {
+			refetchNoBukti();
+		}
+	}, [open, editData, watch("devisi"), refetchNoBukti]);
+
+	// Effect 5: when devisi becomes available (new mode), refetch NoBukti.
+	// The initial `useGenerateNoBukti` call fires with empty devisi (disabled),
+	// so we need this effect to trigger after Effect 1 sets devisi to "KANTOR PUSAT".
+	useEffect(() => {
+		if (!open || editData) return;
+		const devisiVal = watch("devisi");
+		if (devisiVal && devisiVal.trim().length > 0) {
+			refetchNoBukti();
+		}
+	}, [open, editData, watch("devisi"), refetchNoBukti]);
 
 	const isPending = createMutation.isPending || updateMutation.isPending;
 	const apiError = createMutation.error ?? updateMutation.error;
@@ -354,30 +395,37 @@ export function KasBankFormDialog({
 		subTransResult?: any,
 	) {
 		const trigger = subTransResult?.trigger;
+		console.log("[KasBank] handleConfirmDetail trigger =", trigger, "row.perkiraan =", newRow?.perkiraan);
+
+		const detailIdx =
+			editingDetailIdx !== null ? editingDetailIdx : detailRows.length;
+		const nomsk = detailIdx + 1; // 1-based Urut
+		const pending = { row: newRow, trigger, detailIdx, nomsk };
 
 		if (trigger === "giro") {
-			setPendingDetailRow({ row: newRow, trigger });
+			setPendingDetailRow(pending);
 			setPendingSubTransResult(subTransResult);
 			setGiroModalOpen(true);
 			// We don't close detail modal yet or add row yet
 			return;
 		} else if (trigger === "deposito") {
-			setPendingDetailRow({ row: newRow, trigger });
+			setPendingDetailRow(pending);
 			setPendingSubTransResult(subTransResult);
 			setDepositoModalOpen(true);
 			return;
 		} else if (trigger === "hutpiut") {
-			setPendingDetailRow({ row: newRow, trigger });
+			setPendingDetailRow(pending);
 			setPendingSubTransResult(subTransResult);
 			setHutPiutModalOpen(true);
 			return;
 		} else if (trigger === "aktiva") {
-			setPendingDetailRow({ row: newRow, trigger });
+			setPendingDetailRow(pending);
 			setPendingSubTransResult(subTransResult);
 			setAktivaModalOpen(true);
 			return;
 		}
 
+		// No sub-transaction needed (regular detail row).
 		_finishDetailRow(newRow);
 	}
 
@@ -395,7 +443,18 @@ export function KasBankFormDialog({
 	}
 
 	function handleConfirmGiro(giro: IGiro) {
-		setGiroList([...giroList, giro]);
+		// StatusGiro comes from pendingSubTransResult (mirrors Delphi's THPCChange):
+		//   H+ = Hutang Giro Buka for BKM  -> Debet on DBTRANSAKSI (D side)
+		//   H- = Hutang Giro Cair for BKK   -> Kredit on DBTRANSAKSI (K side)
+		//   P+ = Piutang Giro Buka for BKM  -> Debet on DBTRANSAKSI (D side)
+		//   P- = Piutang Giro Cair for BKK   -> Kredit on DBTRANSAKSI (K side)
+		const statusGiro =
+			pendingSubTransResult?.statusP ?? pendingSubTransResult?.statusL ?? "";
+		const giroWithStatus: IGiro = {
+			...giro,
+			statusgiro: statusGiro,
+		};
+		setGiroList([...giroList, giroWithStatus]);
 		setGiroModalOpen(false);
 		if (pendingDetailRow) {
 			_finishDetailRow(pendingDetailRow.row);
@@ -403,26 +462,83 @@ export function KasBankFormDialog({
 	}
 
 	function handleConfirmDeposito(deposito: IDeposito) {
-		setDepositoList([...depositoList, deposito]);
+		// StatusDeposito: DP+ = Buka Deposito for BKM, DP- = Cair Deposito for BKK.
+		const statusDeposito =
+			pendingSubTransResult?.statusP ?? pendingSubTransResult?.statusL ?? "";
+		const depositoWithStatus: IDeposito = {
+			...deposito,
+			statusdeposito: statusDeposito,
+		};
+		setDepositoList([...depositoList, depositoWithStatus]);
 		setDepositoModalOpen(false);
 		if (pendingDetailRow) {
 			_finishDetailRow(pendingDetailRow.row);
 		}
 	}
 
-	function handleConfirmHutPiut(selected: any[]) {
-		setHutPiutList([...hutPiutList, ...selected]);
-		setHutPiutModalOpen(false);
+	function handleConfirmHutPiut(selected: IHutPiut[]) {
+		// Persist the selected items as DBHUTPIUT rows (hutPiutList).
+		// Also update the pending detail row with custSuppL from the selected items
+		// and store the selection for display.
 		if (pendingDetailRow) {
-			_finishDetailRow(pendingDetailRow.row);
+			const updatedRows = [...detailRows];
+			const targetIdx = editingDetailIdx ?? updatedRows.length;
+			if (!updatedRows[targetIdx]) {
+				updatedRows[targetIdx] = pendingDetailRow.row;
+			}
+			// Derive custSuppL from the first selected item (Lawan/K side).
+			const first = selected[0];
+			const custL = first ? first.kodecustsupp : pendingDetailRow.row.custSuppL;
+			// For D/Perkiraan side, also update kode_cust_supp.
+			const custP = first ? first.kodecustsupp : pendingDetailRow.row.kode_cust_supp;
+			updatedRows[targetIdx] = {
+				...updatedRows[targetIdx],
+				kode_cust_supp: custP,
+				custSuppL: custL,
+				hutpiut_selected: selected,
+			};
+			setDetailRows(updatedRows);
+		}
+		// Append to hutPiutList — each item maps to a DBHUTPIUT row.
+		// The service layer will derive Tipe (PT/HT/UPT/UHT) from the sub-trans result.
+		const withNomsk = selected.map(item => ({
+			...item,
+			nomsk: pendingDetailRow?.nomsk,
+		}));
+		setHutPiutList([...hutPiutList, ...withNomsk]);
+		setHutPiutModalOpen(false);
+		// Cleanup state directly instead of using _finishDetailRow,
+		// because we've already updated detailRows above to include
+		// hutpiut_selected, custSuppL, and kode_cust_supp.
+		if (pendingDetailRow) {
+			 handleCloseDetailModal();
+			 setPendingDetailRow(null);
+			 setPendingSubTransResult(null);
 		}
 	}
 
-	function handleConfirmAktiva(aktiva: any) {
+	function handleConfirmAktiva(aktiva: IAktiva) {
 		setAktivaList([...aktivaList, aktiva]);
 		setAktivaModalOpen(false);
 		if (pendingDetailRow) {
-			_finishDetailRow(pendingDetailRow.row);
+			// Wire Aktiva sub-form data back to the pending detail row so it gets
+			// persisted to DBTRANSAKSI as NoAktivaP/L, XSusut, PerlakuanAktiva.
+			// The perkiraan from Aktiva sub-form is the NoAktiva code (e.g. "1-11.001").
+			//
+			// Determine which side (Perkiraan or Lawan) carries the aktiva posting:
+			// In BKK/BBM: perkiraan=Kas/Bank, lawan=aktiva → aktiva on Lawan side → noAktivaL
+			// In BKM/BBK: perkiraan=aktiva, lawan=Kas/Bank → aktiva on Perkiraan side → noAktivaP
+			// This matches the Delphi sub-transaction resolution (CekLawanDiPosting).
+			const row = pendingDetailRow.row;
+			const aktivaIsOnPerkiraanSide = row.perkiraan === aktiva.perkiraan;
+			const updatedRow: IAddDetailPayload = {
+				...row,
+				noAktivaP: aktivaIsOnPerkiraanSide ? aktiva.perkiraan : undefined,
+				noAktivaL: !aktivaIsOnPerkiraanSide ? aktiva.perkiraan : undefined,
+				xSusut: aktiva.xsusut,
+				perlakuanAktiva: aktiva.perlakuanaktiva,
+			};
+			_finishDetailRow(updatedRow);
 		}
 	}
 
@@ -484,7 +600,9 @@ export function KasBankFormDialog({
 				</DialogHeader>
 
 				<Show when={apiError}>
-					<Alert variant="destructive">{String(apiError)}</Alert>
+					<Alert variant="destructive">
+						{apiError instanceof Error ? apiError.message : String(apiError)}
+					</Alert>
 				</Show>
 
 				<form
@@ -538,10 +656,10 @@ export function KasBankFormDialog({
 					{/* Row 1.5: No Bukti — shown only after Kas/Bank is chosen */}
 					<Show when={editData || currentPerkiraanHd}>
 						<div className="grid grid-cols-12 gap-4">
-							<div className="col-span-3">
+							<div className="col-span-6">
 								<Label>{t("fields.no_bukti")}</Label>
 								<Input
-									value={editData?.nobukti ?? noBuktiData?.data?.nobukti ?? ""}
+									value={editData?.nobukti ?? noBuktiData?.noBukti ?? ""}
 									disabled
 									className="bg-slate-50"
 								/>
@@ -562,9 +680,15 @@ export function KasBankFormDialog({
 										</button>
 									</p>
 								</Show>
+								{/* Diagnostic: backend returned data but NoBukti is empty */}
+								<Show when={!editData && !noBuktiLoading && !noBuktiError && noBuktiData && !noBuktiData.noBukti}>
+									<p className="text-xs text-amber-600 mt-1">
+										Backend returned empty NoBukti. Periksa konfigurasi DBNOMOR.FORMAT1..4, PEMISAH, dan ALIAS untuk tipe <b>{selectedTipe}</b>.
+									</p>
+								</Show>
+								</div>
 							</div>
-						</div>
-					</Show>
+						</Show>
 
 					{/* Row 2: Tanggal | Note (dynamic label) | No Invoice */}
 					<div className="grid grid-cols-12 gap-4">
@@ -632,10 +756,7 @@ export function KasBankFormDialog({
 													Lawan
 												</th>
 												<th className="text-right px-3 py-2 font-medium">
-													Debet
-												</th>
-												<th className="text-right px-3 py-2 font-medium">
-													Kredit
+													Jumlah
 												</th>
 												<th className="text-left px-3 py-2 font-medium">
 													Sumber
@@ -652,15 +773,8 @@ export function KasBankFormDialog({
 													<td className="px-3 py-2">{row.perkiraan}</td>
 													<td className="px-3 py-2">{row.lawan}</td>
 													<td className="px-3 py-2 text-right font-mono">
-														{row.debet > 0
-															? row.debet.toLocaleString("id-ID", {
-																	minimumFractionDigits: 2,
-																})
-															: "—"}
-													</td>
-													<td className="px-3 py-2 text-right font-mono">
-														{row.kredit > 0
-															? row.kredit.toLocaleString("id-ID", {
+														{(row.debet || 0) + (row.kredit || 0) > 0
+															? ((row.debet || 0) + (row.kredit || 0)).toLocaleString("id-ID", {
 																	minimumFractionDigits: 2,
 																})
 															: "—"}
@@ -691,12 +805,7 @@ export function KasBankFormDialog({
 													Total
 												</td>
 												<td className="px-3 py-2 text-right font-mono">
-													{totalDebet.toLocaleString("id-ID", {
-														minimumFractionDigits: 2,
-													})}
-												</td>
-												<td className="px-3 py-2 text-right font-mono">
-													{totalKredit.toLocaleString("id-ID", {
+													{(totalDebet + totalKredit).toLocaleString("id-ID", {
 														minimumFractionDigits: 2,
 													})}
 												</td>
@@ -718,7 +827,7 @@ export function KasBankFormDialog({
 					{/* Balance summary */}
 					<Show when={detailRows.length > 0}>
 						<div className="flex items-center justify-between p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
-							<div className="flex items-center gap-4">
+							{/*<div className="flex items-center gap-4">
 								<span className="text-sm">
 									Total Debet:{" "}
 									<span className="font-mono font-semibold">
@@ -735,15 +844,15 @@ export function KasBankFormDialog({
 										})}
 									</span>
 								</span>
-							</div>
-							<div className="flex items-center gap-2">
+							</div>*/}
+							{/* <div className="flex items-center gap-2">
 								<Calculator className="h-4 w-4 text-slate-500" />
 								<span
 									className={`text-sm font-medium ${isBalanced ? "text-emerald-600" : "text-rose-500"}`}
 								>
 									{isBalanced ? "Seimbang ✓" : "Tidak Seimbang ✗"}
 								</span>
-							</div>
+							</div> */}
 						</div>
 					</Show>
 
@@ -806,18 +915,40 @@ export function KasBankFormDialog({
 				<HutangPiutangSubForm
 					open={hutPiutModalOpen}
 					onOpenChange={setHutPiutModalOpen}
-					perkiraan={pendingDetailRow?.row?.perkiraan || ""}
-					isPiutang={pendingSubTransResult?.statusP === "PT"} // Simple check based on resolver
+					perkiraan={pendingDetailRow?.row?.lawan || pendingDetailRow?.row?.perkiraan || ""}
+					kodeCustSupp={pendingDetailRow?.row?.kode_cust_supp || ""}
+					isPiutang={
+						pendingSubTransResult?.statusP?.startsWith("PT") || pendingSubTransResult?.statusP?.startsWith("UPT") || pendingSubTransResult?.statusL?.startsWith("PT") || pendingSubTransResult?.statusL?.startsWith("UPT") ||
+						pendingDetailRow?.row?.perkiraan?.includes("1-13") ||
+						false
+					}
+					initialData={
+						editingDetailIdx !== null && detailRows[editingDetailIdx]?.hutpiut_selected
+							? detailRows[editingDetailIdx].hutpiut_selected
+							: []
+					}
+					nomsk={pendingDetailRow?.nomsk || undefined}
 					onSave={handleConfirmHutPiut}
 				/>
 
 				{/* Aktiva Sub-Form Modal */}
+				{/* Pre-fill perkiraan from parent row's lawan account — the contra-side
+					account is what carries the sub-ledger posting for aktiva (matches
+					Delphi FrmKasBankAktiva where Lawan determines the aktiva group). */}
 				<AktivaSubForm
 					open={aktivaModalOpen}
 					onClose={() => setAktivaModalOpen(false)}
 					onConfirm={handleConfirmAktiva}
-					perkiraan={pendingDetailRow?.row?.perkiraan || ""}
 					devisi={getValues("devisi")}
+					initialData={pendingDetailRow ? {
+						perkiraan: pendingDetailRow.row.lawan || '',
+						kelompok: 0, nobelakang: '', nobelakang2: '',
+						tglpengakuan: new Date().toISOString().split('T')[0], tipeaktiva: 0,
+						keterangan: '', kuantum: 1, persen: 0, metode: 'L', akumulasi: '',
+						biaya: '', persenbiaya1: 0, biaya2: '', persenbiaya2: 0, biaya3: '',
+						persenbiaya3: 0, persenpajak: 0, xsusut: 1, perlakuanaktiva: 0,
+						kodebag: '', devisi: getValues("devisi") || '', noAktivahd: '',
+					} : undefined}
 				/>
 			</DialogContent>
 		</Dialog>
@@ -852,22 +983,12 @@ export function DetailRowEditor({
 }: DetailRowEditorProps) {
 	const { t } = useTranslation(["accounting", "common"]);
 	const [perkiraanSearch, setPerkiraanSearch] = useState("");
-	const { data: detailPerkiraanData } = useLookupPerkiraanShared(
-		perkiraanSearch,
-		"T",
-	);
-
-	const perkiraanOpts = useMemo(
-		() =>
-			(detailPerkiraanData ?? []).map((p: { id: string; text: string }) => ({
-				value: p.id,
-				label: p.text,
-			})),
-		[detailPerkiraanData],
-	);
-
+	const [lawanSearch, setLawanSearch] = useState("");
 	const isMasuk = tipe === "BKM" || tipe === "BBM";
 
+	// Form state must be declared BEFORE the useLookupPerkiraanShared calls
+	// because the Lawan dropdown passes `form.perkiraan` as the `without`
+	// argument to exclude the already-selected account.
 	const [form, setForm] = useState<IAddDetailPayload>({
 		perkiraan: "",
 		lawan: "",
@@ -881,16 +1002,57 @@ export function DetailRowEditor({
 		kode_cust_supp: "",
 	});
 
+	// Perkiraan (Kas/Bank side) lookup — "N" skips the KelompokKas preload (an
+	// optimisation since we don't need DBPOSTHUTPIUT metadata here). The backend
+	// perkiraan endpoint does not filter by posthutpiut either way; both
+	// dropdowns surface the full perkiraan master so the user can pick any
+	// account (Kas/Bank, expense/revenue, Hutang/Piutang/Aktiva, etc.).
+	const { data: detailPerkiraanData } = useLookupPerkiraanShared(
+		perkiraanSearch,
+		"N",
+	);
+	// Lawan (contra-account side) lookup. Pass `form.perkiraan` as `without` so
+	// the currently selected Perkiraan account is excluded from the Lawan list —
+	// a perkiraan cannot be both the Kas/Bank side and the contra side of the
+	// same transaction (accounting invariant).
+	const { data: lawanPerkiraanData } = useLookupPerkiraanShared(
+		lawanSearch,
+		"N",
+		form.perkiraan || undefined,
+	);
+
+	const perkiraanOpts = useMemo(
+		() =>
+			(detailPerkiraanData ?? []).map((p: { id?: string; text?: string }) => ({
+				value: String(p.id ?? ''),
+				label: String(p.text ?? p.id ?? ''),
+			})),
+		[detailPerkiraanData],
+	);
+
+	const lawanOpts = useMemo(
+		() =>
+			(lawanPerkiraanData ?? []).map((p: { id?: string; text?: string }) => ({
+				value: String(p.id ?? ''),
+				label: String(p.text ?? p.id ?? ''),
+			})),
+		[lawanPerkiraanData],
+	);
+
 	// Reset form when modal opens
 	useEffect(() => {
 		if (open) {
 			if (existingRow) {
 				setForm(existingRow);
 			} else {
-				// New row: auto-fill lawan from header perkiraanHd
+				// New row: prefill Perkiraan from the header Kas/Bank account so the
+				// user only has to pick the Lawan (contra-account). Lawan is left
+				// blank on purpose — the user MUST pick a HutPiut/Aktiva/etc account
+				// as Lawan for the sub-transaction trigger to work (mirrors Delphi
+				// FrmKasBank.pas where mLawan is typed in by the user, not copied).
 				setForm({
 					perkiraan: perkiraanHd,
-					lawan: perkiraanHd,
+					lawan: "",
 					debet: 0,
 					kredit: 0,
 					keterangan: "",
@@ -905,16 +1067,26 @@ export function DetailRowEditor({
 	}, [open, existingRow, perkiraanHd]);
 
 	function handleJumlahChange(val: number) {
-		if (isMasuk) {
-			setForm((f) => ({ ...f, debet: val, kredit: 0 }));
-		} else {
-			setForm((f) => ({ ...f, debet: 0, kredit: val }));
-		}
+		// TODO: restore isMasuk logic when tipe D/K setting is re-enabled
+		// if (isMasuk) {
+		// 	setForm((f) => ({ ...f, debet: val, kredit: 0 }));
+		// } else {
+		// 	setForm((f) => ({ ...f, debet: 0, kredit: val }));
+		// }
+		// Temporary: always write to Debet regardless of tipe
+		setForm((f) => ({ ...f, debet: val, kredit: 0 }));
 	}
 
-	// When perkiraan changes in detail, auto-update lawan
+	// Perkiraan change: do NOT auto-copy to Lawan. The user must explicitly pick
+	// the contra-account (Lawan) — only then does the sub-transaction trigger
+	// fire (Delphi's CekLawanDiPosting(mLawan, DK) is called on Lawan, not on
+	// Perkiraan).
 	function handlePerkiranChange(code: string) {
-		setForm((f) => ({ ...f, perkiraan: code, lawan: code }));
+		setForm((f) => ({ ...f, perkiraan: code }));
+	}
+
+	function handleLawanChange(code: string) {
+		setForm((f) => ({ ...f, lawan: code }));
 	}
 
 	const jumlah = form.debet + form.kredit;
@@ -923,14 +1095,28 @@ export function DetailRowEditor({
 		if (!form.perkiraan) return;
 		try {
 			const dk = form.debet > 0 ? "D" : "K";
+			// Resolve sub-transaction by looking up DBPOSTHUTPIUT by the contra account (Lawan).
+			// The contra account is what carries the sub-ledger posting for HutPiut/Aktiva/Giro.
+			// This applies to ALL tipe (BKM/BKK/BBM/BBK) - always use form.lawan.
+			const lookupPerk = form.lawan ? form.lawan : form.perkiraan;
 			const result = await kasbankService.resolveSubTransaction(
-				form.perkiraan,
+				lookupPerk,
 				dk,
 			);
-			onConfirm(form, result.data as ISubTransactionResult);
+			console.log("[KasBank] resolveSubTransaction result:", result);
+			// kasbankService.resolveSubTransaction returns the SSubTransactionResult
+			// directly (already unwrapped in resolveSubTransactionFn). Be defensive
+			// in case the response shape ever changes — accept both `{ data: {...} }`
+			// and the bare object.
+			const subTrans: ISubTransactionResult =
+				(result && (result as any).data) || (result as ISubTransactionResult) || {};
+			console.log("[KasBank] subTrans.trigger =", subTrans?.trigger);
+			onConfirm(form, subTrans);
 		} catch (error) {
 			console.error("Failed to resolve sub-transaction", error);
-			onConfirm(form);
+			// Pass empty subTransResult so the parent can decide what to do.
+			// Without the second arg, _finishDetailRow runs and skips sub-forms.
+			onConfirm(form, { trigger: "", kode: "", statusP: "", statusL: "" } as ISubTransactionResult);
 		}
 	};
 
@@ -953,7 +1139,19 @@ export function DetailRowEditor({
 							onValueChange={handlePerkiranChange}
 							options={perkiraanOpts}
 							onSearchChange={setPerkiraanSearch}
-							placeholder="Pilih akun"
+							placeholder="Pilih akun Kas/Bank"
+						/>
+					</div>
+
+					{/* Lawan (contra-account — HutPiut/Aktiva/Giro etc.) */}
+					<div>
+						<Label htmlFor="detail-lawan">{t("fields.lawan")} *</Label>
+						<SearchableSelect
+							value={form.lawan}
+							onValueChange={handleLawanChange}
+							options={lawanOpts}
+							onSearchChange={setLawanSearch}
+							placeholder="Pilih akun lawan (Hutang/Piutang/Aktiva dll)"
 						/>
 					</div>
 
@@ -1010,7 +1208,7 @@ export function DetailRowEditor({
 					</div>
 
 					{/* Debit/Credit preview */}
-					<div className="flex gap-4 text-sm">
+					<div className="flex gap-4 text-sm hidden">
 						<span>
 							Debet:{" "}
 							<span className="font-mono font-semibold">
@@ -1080,7 +1278,14 @@ export function DetailRowEditor({
 					<Button
 						type="button"
 						onClick={handleConfirm}
-						disabled={!form.perkiraan}
+						disabled={
+							!form.perkiraan ||
+							// In BKK/BBK mode the sub-transaction trigger is looked up by
+							// Lawan (the expense/revenue side); require Lawan to be picked
+							// before we can resolve a trigger. In BKM/BBM mode Lawan is
+							// optional since the lookup falls back to Perkiraan.
+							((tipe === "BKK" || tipe === "BBM") && !form.lawan)
+						}
 					>
 						{t("actions.save")}
 					</Button>

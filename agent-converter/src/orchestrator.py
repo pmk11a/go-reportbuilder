@@ -67,10 +67,23 @@ class AgentOrchestrator:
                     frm_files.append(full_path)
         return sorted(frm_files)
 
-    def run_full_scan(self):
-        from .delphi_frm_scanner import DelphiFrmScanner
+    def run_full_scan(self, max_files: int | None = None):
+        # Import lazily so this module remains importable even if scanners
+        # are missing in the deployment (e.g. when used only for reporting).
+        try:
+            from scanners.delphi_frm_scanner import DelphiFrmScanner
+        except ImportError:
+            # Fallback: when running directly as a script, add src/ to path.
+            import sys
+            from pathlib import Path
+            _src = Path(__file__).resolve().parent
+            if str(_src) not in sys.path:
+                sys.path.insert(0, str(_src))
+            from scanners.delphi_frm_scanner import DelphiFrmScanner  # type: ignore
 
         frm_files = self.discover_delphi_forms()
+        if max_files is not None:
+            frm_files = frm_files[:max_files]
         scanner = DelphiFrmScanner()
 
         results = {
@@ -86,7 +99,7 @@ class AgentOrchestrator:
             },
         }
 
-        for filepath in frm_files[:50]:  # Scan first 50 for initial batch
+        for filepath in frm_files:
             try:
                 analysis = scanner.analyze_file(filepath)
                 summary = scanner.get_summary(analysis)

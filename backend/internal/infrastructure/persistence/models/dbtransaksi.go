@@ -35,6 +35,18 @@ type SDBTRANSAKSI struct {
 	Nobon string `gorm:"column:Nobon;size:20" json:"nobon"`
 	KodeBag string `gorm:"column:KodeBag;size:15" json:"kodebag"`
 	StatusGiro string `gorm:"column:StatusGiro;size:2" json:"statusgiro"`
+	// XSusut is the number of depreciation periods (months) for aktiva fixed-asset
+	// depreciation. Mirrors Delphi's QuAktiva.xsusut and the @Xsusut parameter
+	// of sp_TransaksiKasBank.
+	// Using ->;<-:false means GORM will read this column but never write it,
+	// which makes it safe to use on legacy DBs that may not have this column.
+	XSusut int `gorm:"column:XSusut;->;<-:false" json:"xsusut"`
+	// PerlakuanAktiva encodes what happens to the fixed asset:
+	//   0 = normal (retain in buku besar)
+	//   1 = Jual (sold/deactivated)
+	//   2 = Keluar Aktiva (removed from asset register)
+	// Mirrors Delphi's QuAktiva.PerlakuanAktiva and @PerlakuanAktiva param.
+	PerlakuanAktiva int `gorm:"column:PerlakuanAktiva;->;<-:false" json:"perlakuanaktiva"`
 	MyID *string `gorm:"column:MyID;->;<-:false" json:"-"`
 	FlagSimbol string `gorm:"column:FlagSimbol;primaryKey;size:2" json:"flagsimbol"`
 }

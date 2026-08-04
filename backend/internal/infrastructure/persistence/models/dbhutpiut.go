@@ -17,12 +17,12 @@ type SDBHUTPIUT struct {
 	JatuhTempo *time.Time `gorm:"column:JatuhTempo" json:"jatuhtempo"`
 	Debet float64 `gorm:"column:Debet" json:"debet"`
 	Kredit float64 `gorm:"column:Kredit" json:"kredit"`
-	Saldo *float64 `gorm:"column:Saldo" json:"saldo"`
+	Saldo *float64 `gorm:"column:Saldo;->" json:"saldo"`
 	Valas string `gorm:"column:Valas;size:15" json:"valas"`
 	Kurs float64 `gorm:"column:Kurs" json:"kurs"`
 	DebetD float64 `gorm:"column:DebetD" json:"debetd"`
 	KreditD float64 `gorm:"column:KreditD" json:"kreditd"`
-	SaldoD *float64 `gorm:"column:SaldoD" json:"saldod"`
+	SaldoD *float64 `gorm:"column:SaldoD;->" json:"saldod"`
 	KodeSales string `gorm:"column:KodeSales;size:15" json:"kodesales"`
 	Tipe string `gorm:"column:Tipe;primaryKey;size:4" json:"tipe"`
 	Perkiraan string `gorm:"column:Perkiraan;primaryKey;size:25" json:"perkiraan"`
@@ -57,8 +57,15 @@ type SDBHUTPIUT struct {
 	NoUrutJurnal *string `gorm:"column:NoUrutJurnal;size:5" json:"nourutjurnal"`
 	TglJurnal *time.Time `gorm:"column:TglJurnal" json:"tgljurnal"`
 	MaxOL *int `gorm:"column:MaxOL" json:"maxol"`
-	Nourut *string `gorm:"column:Nourut;size:10" json:"nourut"`
-	KBLB *string `gorm:"column:KBLB;size:3" json:"kblb"`
+	Nourut *string `gorm:"column:Nourut;size:10;->;<-:false" json:"nourut"` // Optional column for legacy tracking
+	KBLB *string `gorm:"column:KBLB;size:3;->;<-:false" json:"kblb"`      // Optional column for legacy tracking
+	// TipeDK mirrors Delphi: when inserting new DBHUTPIUT rows the TipeDK
+	// field ('D' or 'K') tells the buku-hutang/piutang ledger which side of
+	// the account the payment belongs to. It is derived from the sub-form
+	// (PT/HT/UPT/UHT) × DK pair in Delphi's IsiTempHutPiut / SimpanDataHutPiut.
+	// Mirrors Delphi parameter @TipeDK in sp_TempHutPiut (FrmKasBank.pas:277).
+	// Using ->;<-:false makes this column read-only by GORM, avoiding errors on DBs without it.
+	TipeDK string `gorm:"column:TipeDK;size:1;->;<-:false" json:"tipeDK"`
 }
 
 // TableName overrides the default table name for SDBHUTPIUT

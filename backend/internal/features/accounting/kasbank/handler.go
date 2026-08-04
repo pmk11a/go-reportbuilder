@@ -105,7 +105,7 @@ func (h *SKasBankHandler) ListKasBank(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/accounting/kasbank/{noBukti} [get]
 func (h *SKasBankHandler) GetKasBank(c *gin.Context) {
-	noBukti := c.Param("noBukti")
+	noBukti := c.Query("noBukti")
 	header, _, err := h.svc.GetByNoBukti(c.Request.Context(), noBukti)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -406,14 +406,52 @@ func (h *SKasBankHandler) GenerateNoBukti(c *gin.Context) {
 		response.BadRequest(c, "Invalid tipe; expected BKM/BKK/BBM/BBK")
 		return
 	}
-	devisi := strings.TrimSpace(c.Query("devisi"))
 	uid := userIDFromContext(c)
+	devisi := c.Query("devisi")
 	out, err := h.svc.GenerateNoBukti(c.Request.Context(), tipe, devisi, uid)
 	if err != nil {
 		writeServiceError(c, err)
 		return
 	}
-	response.Success(c, "NoBukti generated successfully", out)
+	response.Success(c, "NoBukti generated", out)
+}
+
+// GenerateNoBuktiPreview godoc
+// @Summary Preview NoBukti (no counter commit)
+// @Description Preview the next voucher number WITHOUT consuming a sequence number.
+// @Tags AccountingKasBank
+// @Produce json
+// @Param tipe query string true "Tipe voucher (BKM/BKK/BBM/BBK)"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /api/accounting/kasbank/generate-no-bukti-preview [get]
+func (h *SKasBankHandler) GenerateNoBuktiPreview(c *gin.Context) {
+	tipe := strings.ToUpper(c.Query("tipe"))
+	if !ValidTipeTrans(tipe) {
+		response.BadRequest(c, "Invalid tipe; expected BKM/BKK/BBM/BBK")
+		return
+	}
+	uid := userIDFromContext(c)
+	bulan, tahun, err := h.svc.GetPeriodeFromUser(c.Request.Context(), uid)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	if bulan == 0 || tahun == 0 {
+		response.BadRequest(c, "User has no active period set")
+		return
+	}
+	noBukti, seq, err := h.svc.GenerateNoBuktiPreview(c.Request.Context(), tipe, bulan, tahun)
+	if err != nil {
+		writeServiceError(c, err)
+		return
+	}
+	response.Success(c, "NoBukti preview", gin.H{
+		"noBukti":   noBukti,
+		"seq":       seq,
+		"generatedAt": defaultTanggal(tahun, bulan, time.Now()).Format("2006-01-02"),
+	})
 }
 
 // LookupPerkiraan godoc
@@ -443,7 +481,7 @@ func (h *SKasBankHandler) LookupPerkiraan(c *gin.Context) {
 
 // LookupDevisi godoc
 // @Summary Lookup Devisi
-// @Description Returns list of all Devisi from DBDIVISI table
+// @Description Returns list of all Devisi from DBDEVISI table
 // @Tags AccountingKasBank
 // @Produce json
 // @Success 200 {object} map[string]interface{}
@@ -455,7 +493,7 @@ func (h *SKasBankHandler) LookupDevisi(c *gin.Context) {
 		NamaDevisi string `gorm:"column:NamaDevisi" json:"namadevisi"`
 	}
 	var rows []SDevisiRow
-	if err := h.svc.DB().Raw("SELECT Devisi, NamaDevisi FROM DBDIVISI ORDER BY Devisi").Scan(&rows).Error; err != nil {
+	if err := h.svc.DB().Raw("SELECT Devisi, NamaDevisi FROM DBDEVISI ORDER BY Devisi").Scan(&rows).Error; err != nil {
 		response.InternalError(c, "Failed to lookup devisi: "+err.Error())
 		return
 	}
@@ -533,7 +571,8 @@ func writeServiceError(c *gin.Context, err error) {
 		errors.Is(err, ErrDetailUrutConflict),
 		errors.Is(err, ErrOtorisasiLevelInvalid),
 		errors.Is(err, ErrOtorisasiPrevLevelMissing),
-		errors.Is(err, ErrOtorisasiNextLevelSet):
+		errors.Is(err, ErrOtorisasiNextLevelSet),
+		errors.Is(err, ErrHutPiutCustSuppNotFound):
 		response.BadRequest(c, err.Error())
 	default:
 		response.InternalError(c, err.Error())
@@ -568,10 +607,16 @@ func (h *SKasBankHandler) ResolveSubTransaction(c *gin.Context) {
 
 // GetOutstandingHutPiut godoc
 // @Summary Get outstanding invoices for Hutang/Piutang settlement
+// @Description Returns open invoices for a Customer/Supplier + Perkiraan pair, mirroring Delphi
+// @Description FrmKasBank.pas::IsiTempHutPiut. Optionally excludes the row currently
+// @Description being edited (noBukti + noMsk) so the user does not see their in-progress
+// @Description entry in the outstanding list.
 // @Tags Accounting / Kas Bank
 // @Produce json
 // @Param kodeCustSupp query string true "Kode Customer/Supplier"
 // @Param perkiraan query string true "Account Code"
+// @Param excludeNobukti query string false "NoBukti of the row being edited (to exclude from result)"
+// @Param excludeNoMsk query int false "NoMsk (Urut) of the row being edited"
 // @Success 200 {object} []models.SDBHUTPIUT
 // @Router /api/accounting/kasbank/outstanding-hutpiut [get]
 func (h *SKasBankHandler) GetOutstandingHutPiut(c *gin.Context) {
@@ -582,6 +627,8 @@ func (h *SKasBankHandler) GetOutstandingHutPiut(c *gin.Context) {
 		response.BadRequest(c, "kodeCustSupp and perkiraan are required")
 		return
 	}
+
+	// excludeNobukti and excludeNoMsk parameters are reserved for future use
 
 	res, err := h.svc.GetOutstandingHutPiut(c.Request.Context(), kodeCustSupp, perkiraan)
 	if err != nil {
@@ -597,15 +644,123 @@ func (h *SKasBankHandler) GetOutstandingHutPiut(c *gin.Context) {
 // @Tags Accounting / Kas Bank
 // @Produce json
 // @Param q query string false "Search query (kode or nama)"
+// @Param perkiraan query string false "Perkiraan code to filter by dbperkcustsupp"
 // @Success 200 {object} []models.SDBCUSTSUPP
 // @Router /api/accounting/kasbank/lookup-custsupp [get]
 func (h *SKasBankHandler) LookupCustSupp(c *gin.Context) {
 	q := c.Query("q")
+	// perkirain parameter is reserved for future use
 	res, err := h.svc.LookupCustSupp(c.Request.Context(), q)
 	if err != nil {
 		response.InternalError(c, err.Error())
 		return
 	}
 	response.Success(c, "Success", res)
+}
+
+// LookupBagian godoc
+// @Summary Lookup Bagian (KodeBag) for Aktiva sub-form
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param q query string false "Search query (KodeBag or NamaBag)"
+// @Success 200 {object} []models.SDBBAGIAN
+// @Router /api/accounting/kasbank/lookup-bagian [get]
+func (h *SKasBankHandler) LookupBagian(c *gin.Context) {
+	q := c.Query("q")
+	res, err := h.svc.LookupBagian(c.Request.Context(), q)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, "Success", res)
+}
+
+// LookupAkumulasiAktiva godoc
+// @Summary Lookup "Akumulasi Penyusutan" account for Aktiva sub-form
+// @Description Mirrors FrmSubAktiva.AkSusutExit — joins DBPOSTHUTPIUT (Kode='AKM')
+// @Description with DBPERKIRAAN.
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param q query string false "Search query (Perkiraan or Keterangan)"
+// @Success 200 {object} []models.SDbPerkiraan
+// @Router /api/accounting/kasbank/lookup-akumulasi-aktiva [get]
+func (h *SKasBankHandler) LookupAkumulasiAktiva(c *gin.Context) {
+	q := c.Query("q")
+	res, err := h.svc.LookupAkumulasiAktiva(c.Request.Context(), q)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, "Success", res)
+}
+
+// LookupBiayaAktiva godoc
+// @Summary Lookup "Biaya Penyusutan" account for Aktiva sub-form
+// @Description Mirrors FrmSubAktiva.BiayaSusutExit (browse 1005) — filters
+// @Description DBPERKIRAAN where Tipe=1 (biaya/expense accounts).
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param q query string false "Search query (Perkiraan or Keterangan)"
+// @Success 200 {object} []models.SDbPerkiraan
+// @Router /api/accounting/kasbank/lookup-biaya-aktiva [get]
+func (h *SKasBankHandler) LookupBiayaAktiva(c *gin.Context) {
+	q := c.Query("q")
+	res, err := h.svc.LookupBiayaAktiva(c.Request.Context(), q)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, "Success", res)
+}
+
+// GenerateNoUrutAktiva godoc
+// @Summary Generate next 5-digit NoUrut for the Aktiva sub-form
+// @Description Mirrors Delphi UrutAktiva(perkiraan, devisi, 5) — counts
+// @Description existing DBAKTIVA rows for the (Perkiraan, Devisi) pair
+// @Description and returns count+1 zero-padded to 5 chars.
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param perkiraan query string true "GroupAktiva (perkiraan code)"
+// @Param devisi query string false "Devisi code (defaults to empty)"
+// @Success 200 {object} map[string]string
+// @Router /api/accounting/kasbank/generate-no-urut-aktiva [get]
+func (h *SKasBankHandler) GenerateNoUrutAktiva(c *gin.Context) {
+	perkiraan := c.Query("perkiraan")
+	if perkiraan == "" {
+		response.BadRequest(c, "perkiraan query param is required")
+		return
+	}
+	devisi := c.Query("devisi")
+	noUrut, err := h.svc.GenerateNoUrutAktiva(c.Request.Context(), perkiraan, devisi)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, "Success", gin.H{"nourut": noUrut})
+}
+
+// GenerateNoUrutAktiva2 godoc
+// @Summary Generate next 5-digit NoUrut2 (Sub Aktiva) for the Aktiva sub-form
+// @Description Mirrors Delphi UrutAktiva2(prefix, devisi, 5) where
+// @Description `prefix = Perkiraan + "." + NoUrut` (e.g. "1111.1.00001").
+// @Tags Accounting / Kas Bank
+// @Produce json
+// @Param prefix query string true "Parent KodeAktiva prefix"
+// @Param devisi query string false "Devisi code"
+// @Success 200 {object} map[string]string
+// @Router /api/accounting/kasbank/generate-no-urut-aktiva2 [get]
+func (h *SKasBankHandler) GenerateNoUrutAktiva2(c *gin.Context) {
+	prefix := c.Query("prefix")
+	if prefix == "" {
+		response.BadRequest(c, "prefix query param is required")
+		return
+	}
+	devisi := c.Query("devisi")
+	noUrut2, err := h.svc.GenerateNoUrutAktiva2(c.Request.Context(), prefix, devisi)
+	if err != nil {
+		response.InternalError(c, err.Error())
+		return
+	}
+	response.Success(c, "Success", gin.H{"nourut2": noUrut2})
 }
 

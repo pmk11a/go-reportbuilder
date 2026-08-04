@@ -98,7 +98,6 @@ export function DepositoSubForm({
 			tgljatuhtempo: values.tgljatuhtempo ? new Date(values.tgljatuhtempo).toISOString() : null,
 			statusdeposito: values.statusdeposito,
 			keterangan: values.keterangan,
-			nobukti: "", // to be filled by parent
 		});
 	};
 

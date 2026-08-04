@@ -46,6 +46,12 @@ type SKasBankHeader struct {
 	NoJurnal string `json:"nojurnal"`
 	// NoBuktiSem is the reference/invoice number / "No. Invoice" (from DBTRANS.NoBuktiSem).
 	NoBuktiSem string `json:"nobuktisem"`
+	// TPHC is the payment method source (C/T/H/P) from DBTRANS.
+	TPHC string `json:"tphc"`
+	// NoBon is the external reference number from DBTRANS.
+	NoBon string `json:"nobon"`
+	// Devisi is the business unit from DBTRANS.
+	Devisi string `json:"devisi"`
 	// TipeTransHd is the discriminator: BKM, BKK, BBM, BBK.
 	TipeTransHd *string `json:"tipetranshd"`
 	// PerkiraanHd is the header-level account code (cash/bank account).
