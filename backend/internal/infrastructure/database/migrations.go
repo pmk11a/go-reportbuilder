@@ -50,6 +50,10 @@ func RunMigrations(database *gorm.DB) {
 	database.Exec(`
 		IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_activity_log_config_fields')
 		BEGIN
+			ALTER TABLE activity_log_fields DROP CONSTRAINT fk_activity_log_config_fields;
+		END
+		IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_activity_log_fields_config_id_fk')
+		BEGIN
 			ALTER TABLE activity_log_fields DROP CONSTRAINT fk_activity_log_fields_config_id_fk;
 		END
 	`)

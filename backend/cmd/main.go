@@ -11,6 +11,8 @@ import (
 	"github.com/masza1/dapen-backend/internal/app"
 
 	_ "github.com/masza1/dapen-backend/docs"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 // @title DAPEN System API
@@ -34,6 +36,11 @@ func main() {
 	// 1. Load SConfig
 	cfg := config.LoadConfig()
 
+	log.Printf("--- Configuration Loaded ---")
+	log.Printf("Host : %s", cfg.DBHost)
+	log.Printf("DB   : %s", cfg.DBDatabase)
+	log.Printf("----------------------------")
+
 	// 2. Initialize Database Connection
 	dbConn := database.InitDB(cfg)
 
@@ -42,11 +49,15 @@ func main() {
 
 	// 4. Conditional DB Operations
 	if *runMigrate {
-		database.RunMigrations(dbConn)
+		// Use an error logger for migrations to avoid noisy output, but still show errors
+		silentDB := dbConn.Session(&gorm.Session{Logger: dbConn.Logger.LogMode(gormlogger.Error)})
+		database.RunMigrations(silentDB)
 	}
 
 	if *runSeed {
-		seeders.SeedDatabase(dbConn)
+		// Use an error logger for seeds to avoid noisy output, but still show errors
+		silentDB := dbConn.Session(&gorm.Session{Logger: dbConn.Logger.LogMode(gormlogger.Error)})
+		seeders.SeedDatabase(silentDB)
 	}
 
 	// 5. Initialize Server (DI & Routing)

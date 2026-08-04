@@ -19,10 +19,10 @@ type SConfig struct {
 	DBEncrypt    string
 	DBTrustCert  string
 
-	JWTSecret           string
-	JWTExpiration       string
-	RefreshTokenSecret  string
-	RefreshTokenExpiry  string
+	JWTSecret          string
+	JWTExpiration      string
+	RefreshTokenSecret string
+	RefreshTokenExpiry string
 
 	RedisURL string
 
@@ -38,7 +38,10 @@ func LoadConfig() *SConfig {
 	envPath := filepath.Join(configDir, "..", "..", "..", ".env")
 
 	if info, err := os.Stat(envPath); err == nil && !info.IsDir() {
-		_ = godotenv.Load(envPath)
+		// _ = godotenv.Load(envPath)
+		// Use Overload instead of Load so that values in .env will overwrite
+		// any existing environment variables in the current terminal session.
+		_ = godotenv.Overload(envPath)
 	} else {
 		log.Println("Warning: .env file not found at expected path, using system environment variables")
 	}

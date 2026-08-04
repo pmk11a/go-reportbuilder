@@ -135,8 +135,8 @@ func seedDBMenu(database *gorm.DB) {
 				log.Printf("Failed to create menu %s: %v", r.kodeMenu, err)
 				continue
 			}
-			log.Printf("Created menu %s [%s]: routename=%q, icon=%s",
-				r.kodeMenu, r.keterangan, r.routeName, r.icon)
+			// log.Printf("Created menu %s [%s]: routename=%q, icon=%s",
+			// 	r.kodeMenu, r.keterangan, r.routeName, r.icon)
 			created++
 			continue
 		}
