@@ -273,7 +273,8 @@ export interface IHutPiut {
   saldo?: number;
   saldod?: number;
   tipetrans?: string;
-  tipe?: string;        // PT/HT/UPT/UHT
+  tipe?: string;        // PT/HT/UPT/UHT (no +/− suffix — the suffix is captured in tipeDK)
+  tipeDK?: string;      // 'D' or 'K' — mirrors DBHUTPIUT.TipeDK (posting side)
   perkiraan?: string;
   catatan?: string;
   noinvoice?: string;

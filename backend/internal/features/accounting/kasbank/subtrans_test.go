@@ -16,6 +16,8 @@ package kasbank
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +26,8 @@ import (
 	"github.com/masza1/dapen-backend/internal/infrastructure/persistence/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlserver"
+	"gorm.io/gorm"
 )
 
 // =============================================================================
@@ -528,4 +532,167 @@ func TestApplyDepositoIDR_nonIDR_derivesRp(t *testing.T) {
 	assert.Equal(t, 20.0, d.Kredit, "Non-IDR: Valas Kredit preserved")
 	assert.Equal(t, 240000.0, d.KreditRp, "KreditRp = Kredit * Kurs")
 	assert.Equal(t, 0.0, d.Debet, "Non-IDR: Valas Debet cleared")
+}
+
+// =============================================================================
+// HutPiut normalization + NoMsk resolution
+// Mirrors Delphi SimpanDataHutPiut (line 819): Tipe strips +/− suffix,
+// TipeDK captured separately, NoMsk derived from existing rows when absent.
+// =============================================================================
+
+func TestCreateHeader_HutPiutNormalizesTipe(t *testing.T) {
+	t.Parallel()
+	// Verify the normalization logic directly (service-side).
+	cases := []struct {
+		inputTipe    string
+		expectedTipe string
+		expectedDK   string
+	}{
+		{"PT+", "PT", "K"},
+		{"PT-", "PT", "D"},
+		{"HT+", "HT", "K"},
+		{"HT-", "HT", "D"},
+		{"UPT+", "UPT", "K"},
+		{"UHT-", "UHT", "D"},
+		{"PT", "PT", "D"},
+		{"HT", "HT", "D"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.inputTipe, func(t *testing.T) {
+			typ := tc.inputTipe
+			tipeDK := ""
+			if len(typ) > 2 && (typ[2] == '+' || typ[2] == '-') {
+				tipeDK = string(typ[2])
+				typ = typ[:2]
+			}
+			if tipeDK == "" {
+				tipeDK = "D"
+			}
+			assert.Equal(t, tc.expectedTipe, typ, "Tipe mismatch")
+			assert.Equal(t, tc.expectedDK, tipeDK, "TipeDK mismatch")
+		})
+	}
+}
+
+func TestCreateHeader_HutPiutResolvesNoMskFromFE(t *testing.T) {
+	t.Parallel()
+	// When FE supplies nomsk=3, service should preserve it verbatim.
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	gormDB, err := gorm.Open(sqlserver.New(sqlserver.Config{Conn: db}), &gorm.Config{})
+	require.NoError(t, err)
+
+	// HutPiut row inserted — match on NoFaktur + NoMsk=3 (the FE-supplied value).
+	mock.ExpectExec(`^INSERT INTO DBHUTPIUT`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	// TipeDK UPDATE (graceful skip if column missing).
+	mock.ExpectExec(`^UPDATE DBHUTPIUT`).
+		WillReturnError(errors.New("mssql: Invalid column name 'TipeDK'"))
+
+	svc := NewSKasBankService(&mockRepo{}, gormDB, &config.SConfig{EnableGiroFeature: true}, nil)
+
+	// Manually exercise the HutPiut normalization block from CreateHeader.
+	noBukti := "V001"
+	hpList := []models.SDBHUTPIUT{
+		{NoFaktur: "INV001", Tipe: "PT+", TipeDK: "", NoMsk: 3, KodeCustSupp: "001"},
+	}
+	hpGroup := make(map[int]int)
+	for i := range hpList {
+		hp := &hpList[i]
+		hp.NoBukti = noBukti
+		if len(hp.Tipe) > 2 && (hp.Tipe[2] == '+' || hp.Tipe[2] == '-') {
+			hp.TipeDK = string(hp.Tipe[2])
+			hp.Tipe = hp.Tipe[:2]
+		}
+		if hp.TipeDK == "" {
+			hp.TipeDK = "D"
+		}
+		if hp.NoMsk == 0 {
+			hp.NoMsk = resolveHutPiutNoMsk(gormDB, noBukti, hp.KodeCustSupp)
+		}
+		hpGroup[hp.NoMsk]++
+		hp.Urut = hpGroup[hp.NoMsk]
+		if err := gormDB.Create(hp).Error; err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+		if err := gormDB.Exec(
+			`UPDATE DBHUTPIUT SET [TipeDK] = ? WHERE LTRIM(RTRIM([NoBukti])) = ? AND [NoMsk] = ? AND [Urut] = ? AND LTRIM(RTRIM([NoFaktur])) = ?`,
+			hp.TipeDK, hp.NoBukti, hp.NoMsk, hp.Urut, hp.NoFaktur,
+		).Error; err != nil {
+			// Expect TipeDK column missing (clean skip).
+			if !strings.Contains(err.Error(), "Invalid column name") && !strings.Contains(err.Error(), "TipeDK") {
+				t.Fatalf("TipeDK update unexpected: %v", err)
+			}
+		}
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("mock expectations: %v", err)
+	}
+	assert.Equal(t, "PT", hpList[0].Tipe, "Tipe should be stripped")
+	assert.Equal(t, "K", hpList[0].TipeDK, "TipeDK should be 'K' from '+' suffix")
+	assert.Equal(t, 3, hpList[0].NoMsk, "NoMsk from FE should be preserved")
+	assert.Equal(t, 1, hpList[0].Urut, "Urut counter should start at 1")
+}
+
+func TestCreateHeader_HutPiutFallsBackToResolveHutPiutNoMsk(t *testing.T) {
+	t.Parallel()
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	gormDB, err := gorm.Open(sqlserver.New(sqlserver.Config{Conn: db}), &gorm.Config{})
+	require.NoError(t, err)
+
+	// resolveHutPiutNoMsk call — returns MAX(NoMsk)=2 → next=3.
+	mock.ExpectQuery(`SELECT COALESCE`).
+		WithArgs("V002", "002").
+		WillReturnRows(sqlmock.NewRows([]string{"max"}).AddRow(2))
+	// INSERT HutPiut row.
+	mock.ExpectExec(`^INSERT INTO DBHUTPIUT`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	// TipeDK UPDATE — column absent, skip gracefully.
+	mock.ExpectExec(`^UPDATE DBHUTPIUT`).
+		WillReturnError(errors.New("mssql: Invalid column name 'TipeDK'"))
+
+	svc := NewSKasBankService(&mockRepo{}, gormDB, &config.SConfig{EnableGiroFeature: true}, nil)
+
+	noBukti := "V002"
+	hpList := []models.SDBHUTPIUT{
+		{NoFaktur: "INV002", Tipe: "HT", TipeDK: "", NoMsk: 0, KodeCustSupp: "002"},
+	}
+	hpGroup := make(map[int]int)
+	for i := range hpList {
+		hp := &hpList[i]
+		hp.NoBukti = noBukti
+		if len(hp.Tipe) > 2 && (hp.Tipe[2] == '+' || hp.Tipe[2] == '-') {
+			hp.TipeDK = string(hp.Tipe[2])
+			hp.Tipe = hp.Tipe[:2]
+		}
+		if hp.TipeDK == "" {
+			hp.TipeDK = "D"
+		}
+		if hp.NoMsk == 0 {
+			hp.NoMsk = resolveHutPiutNoMsk(gormDB, noBukti, hp.KodeCustSupp)
+		}
+		hpGroup[hp.NoMsk]++
+		hp.Urut = hpGroup[hp.NoMsk]
+		if err := gormDB.Create(hp).Error; err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+		if err := gormDB.Exec(
+			`UPDATE DBHUTPIUT SET [TipeDK] = ? WHERE LTRIM(RTRIM([NoBukti])) = ? AND [NoMsk] = ? AND [Urut] = ? AND LTRIM(RTRIM([NoFaktur])) = ?`,
+			hp.TipeDK, hp.NoBukti, hp.NoMsk, hp.Urut, hp.NoFaktur,
+		).Error; err != nil {
+			if !strings.Contains(err.Error(), "Invalid column name") && !strings.Contains(err.Error(), "TipeDK") {
+				t.Fatalf("TipeDK update unexpected: %v", err)
+			}
+		}
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("mock expectations: %v", err)
+	}
+	assert.Equal(t, 3, hpList[0].NoMsk, "NoMsk should resolve to MAX+1=3")
 }

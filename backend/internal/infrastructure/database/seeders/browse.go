@@ -516,9 +516,7 @@ func seedDbBrowseConfigs(db *gorm.DB) {
 			KeyField: strPtr("Perkiraan"),
 			LabelField: strPtr("Keterangan"),
 			Query: strPtr("Select Perkiraan, Keterangan, Simbol from dbPerkiraan where Tipe=1 and Perkiraan in (select Perkiraan from dbPostHutPiut where Kode=''<P:NoKira1>'') and (Perkiraan like ''%''+EditFilter.Text+''%'' or Keterangan like ''%''+EditFilter.Text+''%'') order by Perkiraan"),
-			ParentFilters: models.JSONStringSlice{
-				{SourceColumn: "NoKira1"},
-			},
+			ParentFilters: []models.ParentFilter{{SourceColumn: "NoKira1"}},
 			IsActive: 1,
 		},
 
@@ -1250,6 +1248,7 @@ func seedDbBrowseConfigs(db *gorm.DB) {
 			Query: strPtr("Select Isnull(NFix,0)Nfix,A.Isi2,A.KodeBrg,A.Sat1,A.Sat2, A.NamaBrg, Isnull(b.Qnt,0) QntSaldo, Isnull(b.Qnt2,0) Qnt2Saldo from dbBarang A left Outer Join (select Kodebrg,Sum(SaldoQnt)Qnt,Sum(Saldo2Qnt)Qnt2 from DBStockBrg a Left Outer Join dbGudang b On a.KodeGdg=b.KodeGdg where Bulan= and Tahun= group by kodebrg)b On b.kodebrg=a.KodeBrg where a.isAktif=1 and A.KodeGrp<>''BJP'' and (a.KodeBrg like ''%0%'' or a.NamaBrg like ''%0%'') order by A.KodeBrg"),
 			IsActive: 1,
 		},
+
 	}
 
 	for _, cfg := range browseConfigs {

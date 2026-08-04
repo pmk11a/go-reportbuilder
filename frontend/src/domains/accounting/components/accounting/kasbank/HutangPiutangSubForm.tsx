@@ -131,27 +131,32 @@ export function HutangPiutangSubForm({
 
   const handleSave = () => {
     const selected = invoices.filter(i => (i.jmlbayar || 0) > 0).map(i => {
-      // Create DBHUTPIUT payload for Pelunasan.
-      // Tipe field mirrors Delphi's StatusHutPiut (PT+/PT-/HT+/HT-/UPT+/UPT-/UHT+/UHT-).
-      // The +/- suffix indicates the side (D or K) that the hutpiut row is on:
-      //   PT+ = Pelunasan piutang on Kredit side (K side of DBTRANSAKSI)
-      //   PT- = Pelunasan piutang on Debet side (D side of DBTRANSAKSI)
-      //   HT+ = Penambahan hutang on Kredit side
-      //   HT- = Pelunasan hutang on Debet side
-      // UPT/UHT are Uang Muka (down payment) variants.
-      // For a normal Pelunasan Hutang/Piutang flow, we use:
-      //   Piutang (isPiutang) -> Debet=0, Kredit=jmlbayar -> Tipe = PT+
-      //   Hutang (not isPiutang) -> Debet=jmlbayar, Kredit=0 -> Tipe = HT-
-      const tipe = isPiutang ? "PT+" : "HT-";
+      // Build the DBHUTPIUT payload mirroring Delphi sp_TempHutPiut semantics:
+      //   - `Tipe` is the base type ONLY ("PT"/"HT"/"UPT"/"UHT") without the
+      //     +/- suffix. The suffix is stored separately as `TipeDK`.
+      //   - `TipeDK` = 'K' when the payment sits on the Kredit side (Pelunasan
+      //     Piutang = PT+, Delphi derives this from StatusHutPiut='PT+').
+      //   - `TipeDK` = 'D' when the payment sits on the Debet side (Pelunasan
+      //     Hutang = HT-).
+      const tipeBase = isPiutang ? "PT" : "HT";
+      const tipeDK = isPiutang ? "K" : "D";
+      // Inherit the parent detail's customer/supplier code when the per-invoice
+      // row was returned with an empty KodeCustSupp (older BE responses omit
+      // it; the FK_DBHUTPIUT_DBCUSTSUPP FK requires a non-empty value).
+      const custSupp =
+        (i.kodecustsupp && i.kodecustsupp.trim()) ||
+        (initialKodeCustSupp && initialKodeCustSupp.trim()) ||
+        "";
       const payload: any = {
         nofaktur: i.nofaktur,
-        kodecustsupp: kodeCustSupp,
+        kodecustsupp: custSupp,
         perkiraan: perkiraan,
         debet: isPiutang ? 0 : i.jmlbayar,
         kredit: isPiutang ? i.jmlbayar : 0,
-        tipe: tipe,
+        tipe: tipeBase,
+        tipedk: tipeDK,
         tipetrans: "L",
-        nomsk: nomsk, // NoMsk: Urut of DBTRANSAKSI detail row that triggered this sub-form
+        nomsk: nomsk,
       };
       // Preserve saldo for frontend display/editing purposes
       payload.saldo = i.saldo;

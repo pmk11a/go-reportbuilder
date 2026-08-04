@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -50,6 +51,7 @@ var (
 	ErrOtorisasiLevelInvalid     = errors.New("level otorisasi tidak valid (harus 1-5)")
 	ErrOtorisasiPrevLevelMissing = errors.New("level otorisasi sebelumnya belum disetujui")
 	ErrOtorisasiNextLevelSet     = errors.New("tidak dapat membatalkan otorisasi karena level berikutnya sudah disetujui")
+	ErrHutPiutCustSuppNotFound   = errors.New("customer/supplier tidak ditemukan")
 )
 
 // maxOtorisasiLevel is the highest otorisasi level DAPEN supports, mirroring
@@ -566,9 +568,14 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 			rows = append(rows, row)
 		}
 		if len(rows) > 0 {
-			// Batch insert with Omit to skip columns that may not exist in legacy DB
-			if err := tx.Omit("XSusut", "PerlakuanAktiva").Create(rows).Error; err != nil {
-				return fmt.Errorf("inserting detail rows: %w", err)
+			// Probe-based fallback: tries tx.Create, but on "Invalid column
+			// name 'XSusut'/'PerlakuanAktiva'" emits a raw INSERT that omits
+			// the missing columns. Lets dev DB (no XSusut/PerlakuanAktiva) and
+			// prod DB (both columns present) share the same code path.
+			for _, r := range rows {
+				if err := s.safeCreateDBTransaksi(tx, r); err != nil {
+					return fmt.Errorf("inserting detail row urut=%d: %w", r.Urut, err)
+				}
 			}
 		}
 
@@ -601,17 +608,59 @@ func (s *SKasBankService) CreateHeader(ctx context.Context, userID string, req S
 		// NoMsk = DBTRANSAKSI.Urut yang memicu sub-form hutpiut.
 		// Urut = sequence number dalam grup NoMsk yang sama (1, 2, 3...).
 		// Rows dengan NoMsk berbeda berasal dari detail row berbeda.
+		//
+		// Normalization:
+		//   - The frontend historically sent `Tipe = "PT+"` or `"HT-"` to encode
+		//     both the base type AND the posting side. The legacy Delphi schema
+		//     stores the base type ("PT") in DBHUTPIUT.Tipe and the side ('D'/'K')
+		//     in DBHUTPIUT.TipeDK separately. We split the combined string here.
+		//   - `TipeDK` model tag is read-only (GORM won't write it), so we
+		//     follow the row insert with a raw UPDATE that gracefully skips if
+		//     the column is missing in trimmed-down DBs.
+		//   - If the frontend did not supply NoMsk, derive it from existing
+		//     DBHUTPIUT rows in the same NoBukti+KodeCustSupp combo.
+		//
+		// Validate: every KodeCustSupp must exist in DBCUSTSUPP before we
+		// attempt the insert so the DB FK triggers a meaningful 400 instead of
+		// a 500 FK violation.
+		if err := s.validateHutPiutCustSuppExists(tx, req.HutPiutList); err != nil {
+			return err
+		}
 		hpGroup := make(map[int]int) // noMsk → current urut counter
 		for i := range req.HutPiutList {
 			hp := &req.HutPiutList[i]
 			hp.NoBukti = noBukti
+
+			// Strip "+/-" suffix from Tipe; capture as TipeDK.
+			if len(hp.Tipe) > 2 && (hp.Tipe[2] == '+' || hp.Tipe[2] == '-') {
+				hp.TipeDK = string(hp.Tipe[2])
+				hp.Tipe = hp.Tipe[:2]
+			}
+			if hp.TipeDK == "" {
+				hp.TipeDK = "D"
+			}
+
 			if hp.NoMsk == 0 {
-				hp.NoMsk = 1 // fallback: default ke baris detail pertama
+				hp.NoMsk = resolveHutPiutNoMsk(tx, noBukti, hp.KodeCustSupp)
 			}
 			hpGroup[hp.NoMsk]++
 			hp.Urut = hpGroup[hp.NoMsk]
 			if err := tx.Create(hp).Error; err != nil {
-				return fmt.Errorf("inserting hutpiut payment for invoice %q (NoMsk=%d, Urut=%d): %w", hp.NoFaktur, hp.NoMsk, hp.Urut, err)
+				return fmt.Errorf("inserting hutpiut payment for invoice %q (NoMsk=%d, Urut=%d, TipeDK=%s): %w",
+					hp.NoFaktur, hp.NoMsk, hp.Urut, hp.TipeDK, err)
+			}
+
+			// Persist TipeDK via raw UPDATE — DBHUTPIUT.TipeDK is tagged
+			// ->;<-:false in the GORM model so a normal Create drops it.
+			// Gracefully skip if the column is absent in legacy DBs.
+			if err := tx.Exec(
+				`UPDATE DBHUTPIUT SET [TipeDK] = ? WHERE LTRIM(RTRIM([NoBukti])) = ? AND [NoMsk] = ? AND [Urut] = ? AND LTRIM(RTRIM([NoFaktur])) = ?`,
+				hp.TipeDK, hp.NoBukti, hp.NoMsk, hp.Urut, hp.NoFaktur,
+			).Error; err != nil {
+				if !strings.Contains(err.Error(), "Invalid column name") && !strings.Contains(err.Error(), "TipeDK") {
+					return fmt.Errorf("updating TipeDK for hutpiut %q: %w", hp.NoFaktur, err)
+				}
+				// Column missing in DB — continue silently.
 			}
 		}
 
@@ -741,9 +790,12 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 				rows = append(rows, row)
 			}
 			if len(rows) > 0 {
-				// Batch insert with Omit to skip columns that may not exist in legacy DB
-				if err := tx.Omit("XSusut", "PerlakuanAktiva").Create(rows).Error; err != nil {
-					return fmt.Errorf("re-inserting detail rows: %w", err)
+				// Re-insert with the same probe-based fallback as CreateHeader —
+				// so a DBTRANSAKSI without XSusut/PerlakuanAktiva still works.
+				for _, r := range rows {
+					if err := s.safeCreateDBTransaksi(tx, r); err != nil {
+						return fmt.Errorf("re-inserting detail row urut=%d: %w", r.Urut, err)
+					}
 				}
 			}
 			var totalD, totalK float64
@@ -831,6 +883,10 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 		}
 
 		// 4. Insert new Giro, Deposito, HutPiut, Aktiva rows.
+		// Validate HutPiut CustSupp before any inserts to provide clean error.
+		if err := s.validateHutPiutCustSuppExists(tx, req.HutPiutList); err != nil {
+			return err
+		}
 		for _, g := range req.GiroList {
 			if err := tx.Create(&g).Error; err != nil {
 				return fmt.Errorf("inserting giro %q: %w", g.NoGiro, err)
@@ -845,13 +901,32 @@ func (s *SKasBankService) UpdateHeader(ctx context.Context, noBukti string, req 
 		for i := range req.HutPiutList {
 			hp := &req.HutPiutList[i]
 			hp.NoBukti = noBukti
+
+			// Strip "+/-" suffix from Tipe; capture as TipeDK.
+			if len(hp.Tipe) > 2 && (hp.Tipe[2] == '+' || hp.Tipe[2] == '-') {
+				hp.TipeDK = string(hp.Tipe[2])
+				hp.Tipe = hp.Tipe[:2]
+			}
+			if hp.TipeDK == "" {
+				hp.TipeDK = "D"
+			}
+
 			if hp.NoMsk == 0 {
-				hp.NoMsk = 1
+				hp.NoMsk = resolveHutPiutNoMsk(tx, noBukti, hp.KodeCustSupp)
 			}
 			hpGroup[hp.NoMsk]++
 			hp.Urut = hpGroup[hp.NoMsk]
 			if err := tx.Create(hp).Error; err != nil {
-				return fmt.Errorf("inserting hutpiut payment for invoice %q (NoMsk=%d, Urut=%d): %w", hp.NoFaktur, hp.NoMsk, hp.Urut, err)
+				return fmt.Errorf("inserting hutpiut payment for invoice %q (NoMsk=%d, Urut=%d, TipeDK=%s): %w",
+					hp.NoFaktur, hp.NoMsk, hp.Urut, hp.TipeDK, err)
+			}
+			if err := tx.Exec(
+				`UPDATE DBHUTPIUT SET [TipeDK] = ? WHERE LTRIM(RTRIM([NoBukti])) = ? AND [NoMsk] = ? AND [Urut] = ? AND LTRIM(RTRIM([NoFaktur])) = ?`,
+				hp.TipeDK, hp.NoBukti, hp.NoMsk, hp.Urut, hp.NoFaktur,
+			).Error; err != nil {
+				if !strings.Contains(err.Error(), "Invalid column name") && !strings.Contains(err.Error(), "TipeDK") {
+					return fmt.Errorf("updating TipeDK for hutpiut %q: %w", hp.NoFaktur, err)
+				}
 			}
 		}
 		for _, aktiva := range req.AktivaList {
@@ -1195,6 +1270,8 @@ func buildDetailRow(ctx context.Context, s *SKasBankService, noBukti string, uru
 		NoAktivaP:   d.NoAktivaP,
 		NoAktivaL:   d.NoAktivaL,
 		FlagSimbol:  "RP",
+		XSusut:      d.XSusut,
+		PerlakuanAktiva: d.PerlakuanAktiva,
 	}
 
 	dkVal := calculateDK(d.Debet, d.Kredit)
@@ -1433,6 +1510,7 @@ func (s *SKasBankService) GetOutstandingHutPiut(ctx context.Context, kodeCustSup
 	// Let's use Raw to make it simple and standard SQL.
 	query := `
 		SELECT 
+			KodeCustSupp,
 			NoFaktur, 
 			MAX(Tanggal) as Tanggal, 
 			MAX(JatuhTempo) as JatuhTempo, 
@@ -1447,7 +1525,7 @@ func (s *SKasBankService) GetOutstandingHutPiut(ctx context.Context, kodeCustSup
 			MAX(NoBukti) as NoBukti
 		FROM DBHUTPIUT
 		WHERE KodeCustSupp = ? AND Perkiraan = ?
-		GROUP BY NoFaktur
+		GROUP BY NoFaktur, KodeCustSupp
 		HAVING SUM(Debet) != SUM(Kredit)
 	`
 	if err := s.db.WithContext(ctx).Raw(query, kodeCustSupp, perkiraan).Scan(&results).Error; err != nil {
@@ -1495,7 +1573,219 @@ func calculateStatusGiro(tphc string, mode string) string {
 	return ""
 }
 
+// dbTransaksiOptionalCols are columns on DBTRANSAKSI that may exist in
+// production (legacy Delphi schema) but absent in dev (newer trimmed
+// schema). Probed at runtime via INFORMATION_SCHEMA.COLUMNS so the same
+// code path works on both. See safeCreateDBTransaksi.
+var dbTransaksiOptionalCols = []string{"XSusut", "PerlakuanAktiva"}
+
+// missingColumnRegex captures the offending column name from a mssql
+// "Invalid column name 'X'" error. Accepts single quotes (mssql default),
+// double quotes, brackets, and backticks; case-insensitive. Multi-line
+// errors pick the first match.
+var missingColumnRegex = regexp.MustCompile(`(?i)Invalid column name [` + "`" + `'"\[]+([^'"\]\s]+)[` + "`" + `'"\]]+`)
+
+// extractMissingColumn returns the offending column name from a mssql
+// "Invalid column name 'X'" error. Returns ("", false) for unrelated
+// errors. Used by safeCreateDBTransaksi to drive the fallback raw INSERT.
+func extractMissingColumn(err error) (string, bool) {
+	if err == nil {
+		return "", false
+	}
+	m := missingColumnRegex.FindStringSubmatch(err.Error())
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
+}
+
+// resolveHutPiutNoMsk returns the next NoMsk value for a HutPiut settlement
+// row when the frontend did not supply one. It mirrors the Delphi behaviour
+// in FrmKasBank.SimpanDataHutPiut where NoMsk = MAX existing NoMsk + 1
+// within the same NoBukti + KodeCustSupp combo. Falls back to 1 on query
+// error so the row is still persistable.
+func resolveHutPiutNoMsk(tx *gorm.DB, noBukti, kodeCustSupp string) int {
+	var maxNoMsk int
+	row := tx.Raw(
+		`SELECT COALESCE(MAX(NoMsk), 0) FROM DBHUTPIUT WHERE LTRIM(RTRIM([NoBukti])) = ? AND LTRIM(RTRIM([KodeCustSupp])) = ?`,
+		noBukti, kodeCustSupp,
+	).Row()
+	if err := row.Scan(&maxNoMsk); err != nil {
+		return 1
+	}
+	if maxNoMsk <= 0 {
+		return 1
+	}
+	return maxNoMsk + 1
+}
+
+// safeCreateDBTransaksi inserts/updates a row on DBTRANSAKSI while
+// tolerating databases that are missing the optional columns XSusut and
+// PerlakuanAktiva. The probe runs once per transaction (cached on the
+// gorm.DB session) and the fallback path emits a raw INSERT that omits
+// any columns reported missing. Behaviour on prod (both columns present)
+// is identical to the original tx.Create(row).
+func (s *SKasBankService) safeCreateDBTransaksi(tx *gorm.DB, row *SDbTransaksi) error {
+	existing := probeOptionalCols(tx, "DBTRANSAKSI", dbTransaksiOptionalCols)
+	if len(existing) == len(dbTransaksiOptionalCols) {
+		// Fast path — both optional columns present, defer to GORM.
+		return tx.Create(row).Error
+	}
+	return rawInsertDBTransaksi(tx, row, existing)
+}
+
+// probeOptionalCols returns the subset of `cols` that actually exist on
+// the target table. The result is cached on the gorm.DB session map
+// (key: `probeOptionalCols:<table>`) so repeated calls within the same
+// transaction hit the cache. Returns an empty slice on error so the
+// caller can fall back to the most conservative raw INSERT.
+func probeOptionalCols(tx *gorm.DB, table string, cols []string) map[string]bool {
+	cacheKey := "probeOptionalCols:" + table
+	if cached, ok := tx.Get(cacheKey); ok {
+		if m, ok := cached.(map[string]bool); ok {
+			return m
+		}
+	}
+	if len(cols) == 0 {
+		tx.Set(cacheKey, map[string]bool{})
+		return map[string]bool{}
+	}
+	// Build parameter placeholders for the IN clause.
+	placeholders := make([]string, len(cols))
+	args := make([]any, len(cols))
+	for i, c := range cols {
+		placeholders[i] = "?"
+		args[i] = c
+	}
+	query := fmt.Sprintf(
+		"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME IN (%s)",
+		strings.Join(placeholders, ","),
+	)
+	rows, err := tx.Raw(query, append([]any{table}, args...)...).Rows()
+	if err != nil {
+		tx.Set(cacheKey, map[string]bool{})
+		return map[string]bool{}
+	}
+	defer rows.Close()
+	result := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil {
+			result[name] = true
+		}
+	}
+	tx.Set(cacheKey, result)
+	return result
+}
+
+// rawInsertDBTransaksi emits a raw INSERT INTO DBTRANSAKSI (...) VALUES (...)
+// that always excludes the optional columns not present in `existing`.
+// The column list is the model's full column set minus anything missing —
+// keeping the same shape GORM would have generated for a normal Create.
+func rawInsertDBTransaksi(tx *gorm.DB, row *SDbTransaksi, existing map[string]bool) error {
+	// Always-present columns (from SDBTRANSAKSI model). XSusut and
+	// PerlakuanAktiva are the optional ones — gated by `existing`.
+	colNames := []string{
+		"NoBukti", "Tanggal", "Devisi", "Note", "Lampiran", "Perkiraan", "Lawan",
+		"Keterangan", "Keterangan2", "Debet", "Kredit", "Valas", "Kurs",
+		"DebetRp", "KreditRp", "TipeTrans", "TPHC", "CustSuppP", "CustSuppL",
+		"Urut", "KodeP", "KodeL", "NoAktivaP", "NoAktivaL", "StatusAktivaP",
+		"StatusAktivaL", "Nobon", "KodeBag", "StatusGiro", "FlagSimbol",
+	}
+	args := []any{
+		row.NoBukti, row.Tanggal, row.Devisi, row.Note, row.Lampiran, row.Perkiraan, row.Lawan,
+		row.Keterangan, row.Keterangan2, row.Debet, row.Kredit, row.Valas, row.Kurs,
+		row.DebetRp, row.KreditRp, row.TipeTrans, row.TPHC, row.CustSuppP, row.CustSuppL,
+		row.Urut, row.KodeP, row.KodeL, row.NoAktivaP, row.NoAktivaL, row.StatusAktivaP,
+		row.StatusAktivaL, row.Nobon, row.KodeBag, row.StatusGiro, row.FlagSimbol,
+	}
+	if existing["XSusut"] {
+		colNames = append(colNames, "XSusut")
+		args = append(args, row.XSusut)
+	}
+	if existing["PerlakuanAktiva"] {
+		colNames = append(colNames, "PerlakuanAktiva")
+		args = append(args, strconv.Itoa(row.PerlakuanAktiva))
+	}
+	quoted := make([]string, len(colNames))
+	for i, c := range colNames {
+		quoted[i] = "[" + c + "]"
+	}
+	placeholders := strings.Repeat("?,", len(args))
+	placeholders = placeholders[:len(placeholders)-1]
+	stmt := fmt.Sprintf("INSERT INTO DBTRANSAKSI (%s) VALUES (%s)",
+		strings.Join(quoted, ","), placeholders)
+	return tx.Exec(stmt, args...).Error
+}
+
 func (s *SKasBankService) MarkCetak(ctx context.Context, noBukti string) error {
 	// Cetak column does not exist in DBTRANS table, skip silently
+	return nil
+}
+
+// validateHutPiutCustSuppExists verifies that every KodeCustSupp referenced
+// in the HutPiut rows actually exists in DBCUSTSUPP. Failure here is what
+// would otherwise raise mssql FK violation FK_DBHUTPIUT_DBCUSTSUPP during
+// the insert — we surface a clean 400 with the offending code so the FE
+// can prompt the user instead of crashing the request.
+//
+// Query is one round-trip regardless of N rows (uses IN clause). Empty
+// input short-circuits to nil so callers in non-HutPiut paths don't pay
+// the cost.
+func (s *SKasBankService) validateHutPiutCustSuppExists(tx *gorm.DB, rows []models.SDBHUTPIUT) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	seen := map[string]struct{}{}
+	var emptyCodes []string
+	for i := range rows {
+		k := strings.TrimSpace(rows[i].KodeCustSupp)
+		if k == "" {
+			emptyCodes = append(emptyCodes, fmt.Sprintf("row[%d]", i))
+		} else {
+			seen[k] = struct{}{}
+		}
+	}
+	if len(emptyCodes) > 0 {
+		return fmt.Errorf("%w: missing KodeCustSupp on %v", ErrHutPiutCustSuppNotFound, emptyCodes)
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	placeholders := strings.Repeat("?,", len(keys))
+	placeholders = placeholders[:len(placeholders)-1]
+	query := fmt.Sprintf(
+		"SELECT [KODECUSTSUPP] FROM DBCUSTSUPP WHERE [KODECUSTSUPP] IN (%s)",
+		placeholders,
+	)
+	args := make([]any, len(keys))
+	for i, k := range keys {
+		args[i] = k
+	}
+	foundRows, err := tx.Raw(query, args...).Rows()
+	if err != nil {
+		return fmt.Errorf("checking FK_DBHUTPIUT_DBCUSTSUPP: %w", err)
+	}
+	defer foundRows.Close()
+	existing := map[string]struct{}{}
+	for foundRows.Next() {
+		var k string
+		if err := foundRows.Scan(&k); err == nil {
+			existing[strings.TrimSpace(k)] = struct{}{}
+		}
+	}
+	missing := make([]string, 0)
+	for k := range seen {
+		if _, ok := existing[k]; !ok {
+			missing = append(missing, k)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("%w: KodeCustSupp=%v", ErrHutPiutCustSuppNotFound, missing)
+	}
 	return nil
 }

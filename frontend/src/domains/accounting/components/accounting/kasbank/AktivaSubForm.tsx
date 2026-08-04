@@ -69,7 +69,9 @@ function BrowsePickerModal({
 }
 
 export function AktivaSubForm({ open, onClose, onConfirm, devisi: parentDevisi, initialData }: AktivaSubFormProps) {
-  const isEditMode = !!initialData;
+  // isEditMode is TRUE only when editing an EXISTING aktiva record (has nobelakang).
+  // When creating a NEW aktiva, initialData has empty nobelakang — don't treat as edit mode.
+  const isEditMode = !!(initialData?.nobelakang && initialData.nobelakang.length > 0);
   const [formData, setFormData] = useState<Partial<IAktiva>>({});
   const [autoNoUrutTriggered, setAutoNoUrutTriggered] = useState(false);
   const [perkiraanDesc, setPerkiraanDesc] = useState("");
@@ -322,12 +324,12 @@ export function AktivaSubForm({ open, onClose, onConfirm, devisi: parentDevisi, 
         }
       } else {
         setFormData({
-          perkiraan: '', kelompok: 0, nobelakang: '', nobelakang2: '',
+          perkiraan: initialData?.perkiraan || '', kelompok: 0, nobelakang: '', nobelakang2: '',
           tglpengakuan: new Date().toISOString().split('T')[0], tipeaktiva: 0,
           keterangan: '', kuantum: 1, persen: 0, metode: 'L', akumulasi: '',
           biaya: '', persenbiaya1: 0, biaya2: '', persenbiaya2: 0, biaya3: '',
           persenbiaya3: 0, persenpajak: 0, xsusut: 1, perlakuanaktiva: 0,
-          kodebag: '', devisi: parentDevisi || '', noAktivahd: '',
+          kodebag: '', devisi: initialData?.devisi || parentDevisi || '', noAktivahd: '',
         });
         setAutoNoUrutTriggered(false);
       }

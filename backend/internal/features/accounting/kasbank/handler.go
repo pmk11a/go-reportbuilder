@@ -571,7 +571,8 @@ func writeServiceError(c *gin.Context, err error) {
 		errors.Is(err, ErrDetailUrutConflict),
 		errors.Is(err, ErrOtorisasiLevelInvalid),
 		errors.Is(err, ErrOtorisasiPrevLevelMissing),
-		errors.Is(err, ErrOtorisasiNextLevelSet):
+		errors.Is(err, ErrOtorisasiNextLevelSet),
+		errors.Is(err, ErrHutPiutCustSuppNotFound):
 		response.BadRequest(c, err.Error())
 	default:
 		response.InternalError(c, err.Error())
