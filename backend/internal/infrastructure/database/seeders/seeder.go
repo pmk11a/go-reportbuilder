@@ -12,7 +12,7 @@ func SeedDatabase(database *gorm.DB) {
 	log.Println("Checking for seeds...")
 	seedSuperAdmin(database)
 	seedDBMenu(database)
-	// seedReports(database)
+	seedReports(database)
 	seedDbBrowseConfigs(database)
 }
 
