@@ -88,6 +88,12 @@ export interface IFilterKonfigurasi {
   parent_filter?: string
   /** Multiple parent filter dependencies */
   parent_filters?: IParentFilter[]
+  /** Dropdown/checkbox options for tipe_input: dropdown or checkbox */
+  options?: string[]
+  /** Human-readable label map for option values (e.g. { T: "Terbit", F: "Tidak Terbit" }) */
+  label_map?: Record<string, string>
+  /** Whether the combobox allows multi-select */
+  multi?: boolean
 }
 
 /**

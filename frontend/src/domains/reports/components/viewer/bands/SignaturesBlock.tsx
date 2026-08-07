@@ -1,6 +1,19 @@
-interface SignatureDef {
+/**
+ * SignaturesBlock — TASK-027b AC3.2.
+ *
+ * Renders signature blocks for the report footer.
+ * Shows the title (if configured) and the label below the signature line.
+ *
+ * Position: left / center / right (default center)
+ * Title: shows at the top, above the line
+ * Label: shows below the line
+ */
+import { Show } from '@/shared/ui/layout'
+
+export interface SignatureDef {
   label: string
   position?: 'left' | 'center' | 'right'
+  title?: string
 }
 
 interface SignaturesBlockProps {
@@ -21,8 +34,15 @@ export function SignaturesBlock({ signatures }: SignaturesBlockProps) {
             'items-center'
           }`}
         >
+          <Show when={!!sig.title}>
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">
+              {sig.title}
+            </p>
+          </Show>
           <div className="flex flex-col items-center">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-16">{sig.label}</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-16">
+              {sig.label}
+            </p>
             <p className="text-xs text-slate-700 dark:text-slate-400 font-medium">( ........................................ )</p>
           </div>
         </div>

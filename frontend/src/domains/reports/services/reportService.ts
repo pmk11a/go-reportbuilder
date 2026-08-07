@@ -2,6 +2,7 @@
 
 import * as adminReportsFn from '@/server/functions/admin/reports'
 import * as userReportsFn from '@/server/functions/reports'
+import type { ExportReportParams } from '@/server/functions/reports'
 import type {
   IReport,
   IReportConfig,
@@ -194,5 +195,30 @@ export const reportViewerService = {
   async executeReport(kodeMenu: string, filters: IReportFilterValues): Promise<IReportExecutionResult | null> {
     const result = await userReportsFn.executeReportFn({ data: { kodeMenu, filters } })
     return result.data || null
+  },
+
+  async exportReport(params: ExportReportParams): Promise<{ filename: string; blob: Blob } | null> {
+    const result = await userReportsFn.exportReportFn({ data: params })
+    if (!result.success || !result.data?.base64) return null
+
+    const binary = atob(result.data.base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    const blob = new Blob([bytes], { type: result.data.contentType })
+    return { filename: result.data.filename, blob }
+  },
+
+  async downloadReport(params: ExportReportParams): Promise<void> {
+    const file = await this.exportReport(params)
+    if (!file) return
+
+    const url = URL.createObjectURL(file.blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = file.filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   },
 }

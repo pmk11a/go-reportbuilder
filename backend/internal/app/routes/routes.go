@@ -46,6 +46,7 @@ type SRouterConfig struct {
 	SBrowseHandler       *browse.Handler
 	SReportsHandler      *reports.SReportsHandler
 	SReportExecHandler   *execution.SReportExecutionHandler
+	SReportExportHandler *reports.SReportExportHandler
 	SConfig              *config.SConfig
 }
 
@@ -137,7 +138,7 @@ func SetupRoutes(rc SRouterConfig) {
 				reports.RegisterRoutes(admin, rc.SReportsHandler)
 			}
 			if rc.SReportExecHandler != nil {
-				execution.RegisterExecutionRoutes(protected, rc.SReportExecHandler)
+				execution.RegisterExecutionRoutes(protected, rc.SReportExecHandler, rc.SReportExportHandler)
 			}
 		}
 	}

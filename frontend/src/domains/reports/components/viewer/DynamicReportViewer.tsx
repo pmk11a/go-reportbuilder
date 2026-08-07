@@ -1,16 +1,29 @@
-import { FileText, FileSpreadsheet } from 'lucide-react'
+import { FileText, FileSpreadsheet, Printer } from 'lucide-react'
 import { useReportConfig, useExecuteReport } from '../../hooks/useReport'
 import { Show } from '@/shared/ui/layout'
-import * as XLSX from 'xlsx'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import { DynamicFilterPanel } from './DynamicFilterPanel'
 import { SummaryLayout } from './layouts/SummaryLayout'
 import { DetailLayout } from './layouts/DetailLayout'
-import { computeT1SummaryData } from '../../utils/FormulaEvaluator'
+import { computeT1SummaryData, computePerRowComputed, applyRunningBalance } from '../../utils/FormulaEvaluator'
+import {
+  formatCell,
+  substituteFooterText,
+  buildFooterContext,
+  openPrintView,
+} from '../../utils/exportHelpers'
+import { reportViewerService } from '../../services/reportService'
 import { ReportTitleBand } from './bands/ReportTitleBand'
 import { ReportFooterBands } from './bands/ReportFooterBands'
+import { PageFooterBand } from './bands/PageFooterBand'
+import { useReportStore } from '../../stores/reportStore'
 import { useMemo } from 'react'
+
+// Lightweight JSON-safe parse helper
+function safeParse(val: string | any): any {
+  if (typeof val === 'object') return val
+  if (typeof val !== 'string') return {}
+  try { return JSON.parse(val) } catch { return {} }
+}
 
 interface DynamicReportViewerProps {
   kodeMenu: string
@@ -19,6 +32,7 @@ interface DynamicReportViewerProps {
 export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
   const { data: config, isLoading, isError, error } = useReportConfig(kodeMenu)
   const executeReport = useExecuteReport(kodeMenu)
+  const filterValues = useReportStore((s) => s.filterValues)
 
 
 
@@ -53,68 +67,107 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
     return allData.length > 0 ? allData : null
   }
 
-  const handleExportExcel = () => {
-    const allTableData = getColumnsAndData()
-    if (!allTableData) {
+  // Server-side export — TASK-027b AC6: backend produces formatted XLSX
+  const handleExportExcel = async () => {
+    if (!hasAnyData) {
       alert('Tidak ada data untuk diekspor')
       return
     }
-
-    const workbook = XLSX.utils.book_new()
-    
-    allTableData.forEach(({ sheetName, columns, data }) => {
-      const headers = columns.map((col: any) => col.label_tampil || col.nama_kolom)
-      const rows = data.map((row: any) => {
-        const rowData: any = {}
-        columns.forEach((col: any) => {
-          rowData[col.label_tampil || col.nama_kolom] = row[col.nama_kolom]
-        })
-        return rowData
+    try {
+      await reportViewerService.downloadReport({
+        kodeMenu,
+        format: 'xlsx',
+        filters: filterValues || {},
       })
-      const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers })
-      // Ensure sheet name is unique and < 31 chars
-      const safeSheetName = sheetName.substring(0, 30)
-      XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName)
-    })
-    
-    XLSX.writeFile(workbook, `${config?.nama_laporan || 'Laporan'}.xlsx`)
+    } catch (e) {
+      console.error('Export XLSX failed:', e)
+      alert('Gagal mengekspor: ' + (e instanceof Error ? e.message : String(e)))
+    }
   }
 
-  const handleExportPDF = () => {
-    const allTableData = getColumnsAndData()
-    if (!allTableData) {
+  // Server-side export — TASK-027b AC6: backend produces formatted PDF
+  const handleExportPDF = async () => {
+    if (!hasAnyData) {
       alert('Tidak ada data untuk diekspor')
       return
     }
-
-    const doc = new jsPDF('landscape')
-    doc.text(config?.nama_laporan || 'Laporan', 14, 15)
-    
-    let currentY = 25
-    
-    allTableData.forEach(({ sheetName, columns, data }, index) => {
-      if (index > 0) {
-        doc.addPage()
-        currentY = 15
-      }
-      
-      doc.setFontSize(10)
-      doc.text(sheetName, 14, currentY)
-      currentY += 5
-      
-      const headers = columns.map((col: any) => col.label_tampil || col.nama_kolom)
-      const rows = data.map((row: any) => columns.map((col: any) => row[col.nama_kolom] || ''))
-
-      autoTable(doc, {
-        head: [headers],
-        body: rows,
-        startY: currentY,
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] },
+    try {
+      await reportViewerService.downloadReport({
+        kodeMenu,
+        format: 'pdf',
+        filters: filterValues || {},
+        paperSize: 'a4',
+        orientation: 'landscape',
       })
+    } catch (e) {
+      console.error('Export PDF failed:', e)
+      alert('Gagal mengekspor: ' + (e instanceof Error ? e.message : String(e)))
+    }
+  }
+
+  // Print view — opens print dialog with report content — TASK-027b AC3.9
+  const handlePrint = () => {
+    const printHtml = generatePrintHTML()
+    if (!printHtml) return
+    openPrintView(printHtml, config?.nama_laporan || 'Laporan')
+  }
+
+  // Build HTML for print view — TASK-027b AC3.10
+  const generatePrintHTML = (): string | null => {
+    const allTableData = getColumnsAndData()
+    if (!allTableData) return null
+
+    const fv = filterValues || {}
+    const footerCtx = buildFooterContext(1, 1, config?.nama_laporan || '', fv)
+
+    let html = `<div style="max-width:800px;margin:0 auto;padding:20px;font-family:sans-serif;color:#1e293b;">
+      <h1 style="text-align:center;margin-bottom:4px;">${config?.nama_laporan || 'Laporan'}</h1>
+      ${config?.deskripsi ? `<p style="text-align:center;color:#64748b;margin-top:0;">${config.deskripsi}</p>` : ''}
+    `
+
+    allTableData.forEach(({ sheetName, columns, data }) => {
+      html += `<h2 style="margin-top:24px;font-size:14px;color:#475569;">${sheetName}</h2>`
+      html += `<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;">
+        <thead><tr style="background:#f1f5f9;">`
+      columns.forEach(col => {
+        html += `<th style="padding:6px 10px;border:1px solid #e2e8f0;text-align:${col.alignment || 'left'};font-weight:600;">${col.label_tampil || col.nama_kolom}</th>`
+      })
+      html += `</tr></thead><tbody>`
+      data.forEach((row: any) => {
+        html += `<tr>`
+        columns.forEach(col => {
+          const val = formatCell(row[col.nama_kolom], col.format_type)
+          html += `<td style="padding:5px 10px;border:1px solid #e2e8f0;text-align:${col.alignment || 'left'};">${val}</td>`
+        })
+        html += `</tr>`
+      })
+      html += `</tbody></table>`
     })
 
-    doc.save(`${config?.nama_laporan || 'Laporan'}.pdf`)
+    // Footer band
+    const footerText = substituteFooterText(
+      footerBandsJson?.bands?.footer?.content || '',
+      footerCtx
+    )
+    if (footerText) {
+      html += `<p style="text-align:center;color:#94a3b8;font-size:9px;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:8px;">${footerText}</p>`
+    }
+
+    // Signatures
+    const signatures = footerBandsJson?.bands?.summary?.signatures || []
+    if (signatures.length > 0) {
+      html += `<div style="display:flex;justify-content:space-around;margin-top:40px;padding:20px 0;border-top:1px solid #e2e8f0;">
+        ${signatures.map((sig: any) => `
+          <div style="text-align:center;flex:1;">
+            <p style="font-size:10px;color:#475569;margin-bottom:40px;">${sig.label}</p>
+            <div style="border-top:1px solid #333;margin:0 20px;"></div>
+          </div>
+        `).join('')}
+      </div>`
+    }
+
+    html += '</div>'
+    return html
   }
 
   // To determine if Export buttons should be disabled
@@ -123,13 +176,6 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
   // Split datasets into summary and detail
   const summaryDatasets = config?.datasets?.filter(d => d.config_json?.display_role === 'summary' && d.visible) || []
   const detailDatasetsList = config?.datasets?.filter(d => d.config_json?.display_role !== 'summary' && d.visible) || []
-  
-  // Format details for DetailLayout
-  const formattedDetailDatasets = detailDatasetsList.map(ds => ({
-    dataset: ds,
-    columns: config?.columns?.[ds.nama_dataset] || [],
-    data: reportDatasets[ds.nama_dataset] || (!executeReport.data ? [] : [])
-  }))
 
   const footerBandsJson = useMemo(() => {
     try {
@@ -143,9 +189,9 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
   const t1SummaryDataset = summaryDatasets[0]
   const summaryData = useMemo(() => {
     if (!t1SummaryDataset || !t1SummaryDataset.config_json) return {}
-    
-    const summaryConfigJson = typeof t1SummaryDataset.config_json === 'string' 
-      ? JSON.parse(t1SummaryDataset.config_json) 
+
+    const summaryConfigJson = typeof t1SummaryDataset.config_json === 'string'
+      ? JSON.parse(t1SummaryDataset.config_json)
       : t1SummaryDataset.config_json
 
     return computeT1SummaryData(
@@ -155,6 +201,46 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
       detailDatasetsList.map(d => d.nama_dataset)
     ) || {}
   }, [t1SummaryDataset, reportDatasets, detailDatasetsList])
+
+  // Apply per-row computed + running balance to detail datasets — TASK-027b AC4
+  const enrichedReportDatasets = useMemo(() => {
+    if (!config?.datasets) return reportDatasets
+    const out: Record<string, any[]> = {}
+    for (const ds of config.datasets) {
+      const rows = reportDatasets[ds.nama_dataset]
+      if (!rows) continue
+      const dsCfg = typeof ds.config_json === 'string'
+        ? safeParse(ds.config_json)
+        : ds.config_json
+
+      let enriched = rows
+      // 1. Per-row computed rules
+      const rules = dsCfg?.computed
+      if (rules && Object.keys(rules).length > 0) {
+        enriched = computePerRowComputed(enriched, rules, summaryData || {})
+      }
+
+      // 2. Running balance (per group level)
+      const groups = config?.groups || []
+      const rbGroups = groups.filter(g => g.special_handling === 'running-balance')
+      for (const g of rbGroups) {
+        const ruleCfg = g.config_json as any
+        if (ruleCfg) {
+          enriched = applyRunningBalance(enriched, { [g.label || g.field_value || 'Saldo']: ruleCfg }, 'Saldo')
+        }
+      }
+
+      out[ds.nama_dataset] = enriched
+    }
+    return out
+  }, [config, reportDatasets, summaryData])
+
+  // Format details for DetailLayout
+  const formattedDetailDatasets = detailDatasetsList.map(ds => ({
+    dataset: ds,
+    columns: config?.columns?.[ds.nama_dataset] || [],
+    data: enrichedReportDatasets[ds.nama_dataset] || (!executeReport.data ? [] : [])
+  }))
 
   if (isLoading) {
     return (
@@ -193,19 +279,29 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
           </div>
           
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={handleExportExcel}
               disabled={!hasAnyData}
+              data-testid="export-excel"
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
             >
               <FileSpreadsheet className="w-4 h-4 text-green-600" /> Excel
             </button>
-            <button 
+            <button
               onClick={handleExportPDF}
               disabled={!hasAnyData}
+              data-testid="export-pdf"
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
             >
               <FileText className="w-4 h-4 text-red-500" /> PDF
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={!hasAnyData}
+              data-testid="export-print"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"
+            >
+              <Printer className="w-4 h-4 text-blue-600" /> Print
             </button>
           </div>
         </div>
@@ -233,10 +329,11 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
             }
           >
             <Show when={!!executeReport.data}>
-              <ReportTitleBand 
+              <ReportTitleBand
                 footerBandsJson={footerBandsJson}
                 fallbackTitle={config.nama_laporan || kodeMenu}
-                fallbackSubtitle={config.deskripsi}
+                fallbackSubtitle={config.deskripsi ?? undefined}
+                filterValues={filterValues as Record<string, string | string[] | null>}
               />
             </Show>
 
@@ -276,6 +373,12 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
                 summaryData={summaryData}
                 detailDatasets={reportDatasets}
               />
+              {footerBandsJson?.bands?.footer?.enabled && (
+                <PageFooterBand
+                  footerBandConfig={footerBandsJson.bands.footer}
+                  reportName={config?.nama_laporan}
+                />
+              )}
             </Show>
           </Show>
         </div>
