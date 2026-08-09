@@ -90,7 +90,7 @@ export function FooterSummaryTable({ config, summaryData, detailDatasets, format
       }
 
       // Fallback: if no field mapping, sum by col key
-      const field = colDef.field || ck
+      const field = colDef.field || colDef.col_key
       if (!field) return 0
       const fieldLower = field.toLowerCase()
       const targetDs = Object.values(detailDatasets).flat()

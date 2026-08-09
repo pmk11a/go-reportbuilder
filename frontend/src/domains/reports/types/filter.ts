@@ -22,6 +22,7 @@ export type IFilterInputType =
   | 'select'
   | 'select-db'
   | 'checkbox'
+  | 'perkiraan'
 
 export interface IFilterKonfigurasi {
   colspan?: number
@@ -39,6 +40,9 @@ export interface IFilterKonfigurasi {
   label_field?: string;
   options_statis?: { value: string; label: string }[];
   jenis_sistem?: string;
+  options?: string[];
+  label_map?: Record<string, string>;
+  multi?: boolean;
 }
 
 export interface IParentFilter {
