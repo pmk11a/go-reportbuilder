@@ -20,6 +20,7 @@ type IReportExecutionRepository interface {
 	GetAllColumns(ctx context.Context, idLaporan int) (map[string][]reports.SDBKolomLaporan, error)
 	GetGroups(ctx context.Context, idLaporan int) ([]reports.SDBGroupLaporan, error)
 	ExecuteQuery(ctx context.Context, sql string, filters map[string]interface{}, userId string) ([]map[string]interface{}, error)
+	ExecuteQueryMulti(ctx context.Context, sql string) ([][]map[string]interface{}, error)
 	GetLabelMapping(ctx context.Context, field string) (map[string]string, error)
 }
 
@@ -79,21 +80,66 @@ func (s *SReportExecutionService) GenerateReport(ctx context.Context, params Exe
 	results := make(map[string][]map[string]interface{})
 	var errors []string
 
-	for _, dataset := range datasets {
-		if !dataset.Visible {
+	// Detect shared EXEC SPs (same QuerySumberData) and use multi-result-set execution
+	sortedDatasets := make([]reports.SDBQueryLaporan, 0)
+	for _, d := range datasets {
+		if d.Visible {
+			sortedDatasets = append(sortedDatasets, d)
+		}
+	}
+
+	spGroups := make(map[string][]reports.SDBQueryLaporan) // normalized SQL -> datasets using it
+	for _, d := range sortedDatasets {
+		normSql := strings.TrimSpace(d.QuerySumberData)
+		if strings.HasPrefix(strings.ToUpper(normSql), "EXEC ") {
+			spGroups[normSql] = append(spGroups[normSql], d)
+		}
+	}
+
+	usedDatasets := make(map[string]bool)
+	for _, d := range sortedDatasets {
+		if usedDatasets[d.NamaDataset] {
 			continue
 		}
+		normSql := strings.TrimSpace(d.QuerySumberData)
+		if strings.HasPrefix(strings.ToUpper(normSql), "EXEC ") {
+			shared := spGroups[normSql]
+			if len(shared) > 1 {
+				// Shared SP: execute once, split result sets by dataset order
+				resultSets, err := s.ExecuteDatasetQueryMulti(ctx, &d, params.Filters, params.UserID)
+				if err != nil {
+					errors = append(errors, fmt.Sprintf("Dataset %s: %s", d.NamaDataset, err.Error()))
+					for _, sd := range shared {
+						results[sd.NamaDataset] = []map[string]interface{}{}
+						usedDatasets[sd.NamaDataset] = true
+					}
+					continue
+				}
+				// Assign each result set to its corresponding dataset
+				for i, sd := range shared {
+					if i < len(resultSets) {
+						data := resultSets[i]
+						data = s.computeRunningBalance(data, sd.NamaDataset)
+						results[sd.NamaDataset] = data
+					} else {
+						results[sd.NamaDataset] = []map[string]interface{}{}
+					}
+					usedDatasets[sd.NamaDataset] = true
+				}
+				continue
+			}
+		}
 
-		data, err := s.ExecuteDatasetQuery(ctx, &dataset, params.Filters, params.UserID)
+		// Not a shared SP: execute normally
+		data, err := s.ExecuteDatasetQuery(ctx, &d, params.Filters, params.UserID)
 		if err != nil {
-			errors = append(errors, fmt.Sprintf("Dataset %s: %s", dataset.NamaDataset, err.Error()))
-			results[dataset.NamaDataset] = []map[string]interface{}{}
+			errors = append(errors, fmt.Sprintf("Dataset %s: %s", d.NamaDataset, err.Error()))
+			results[d.NamaDataset] = []map[string]interface{}{}
 			continue
 		}
-
-		// Compute running balance if applicable
-		data = s.computeRunningBalance(data, dataset.NamaDataset)
-		results[dataset.NamaDataset] = data
+		data = s.computeRunningBalance(data, d.NamaDataset)
+		results[d.NamaDataset] = data
+		usedDatasets[d.NamaDataset] = true
 	}
 
 	// Apply label mapping for grouping fields
@@ -169,6 +215,57 @@ func (s *SReportExecutionService) ExecuteDatasetQuery(ctx context.Context, datas
 	log.Printf("DEBUG EXECUTE DATASET %s: %s", dataset.NamaDataset, sql)
 
 	return s.repo.ExecuteQuery(ctx, sql, nil, userId)
+}
+
+// ExecuteDatasetQueryMulti executes a SP that returns multiple result sets (e.g. sp_LapBankHarian).
+// It returns a slice where index i corresponds to the i-th result set.
+func (s *SReportExecutionService) ExecuteDatasetQueryMulti(ctx context.Context, dataset *reports.SDBQueryLaporan, filters map[string]interface{}, userId string) ([][]map[string]interface{}, error) {
+	sql := dataset.QuerySumberData
+
+	// Parse config_json for static params
+	staticParams := s.parseStaticParams(dataset.ConfigJSON)
+	for key, value := range staticParams {
+		sql = s.replacePlaceholder(sql, "@"+key, fmt.Sprintf("'%s'", s.escapeSQLString(fmt.Sprintf("%v", value))))
+	}
+
+	// Replace filter parameters
+	for key, value := range filters {
+		placeholder := "@" + key
+		if !s.hasPlaceholder(sql, placeholder) {
+			continue
+		}
+		sql = s.replaceFilterValue(sql, placeholder, value)
+	}
+
+	// Handle @IDUser and @UserID
+	if userId != "" {
+		sql = s.replacePlaceholder(sql, "@IDUser", fmt.Sprintf("'%s'", s.escapeSQLString(userId)))
+		sql = s.replacePlaceholder(sql, "@UserID", fmt.Sprintf("'%s'", s.escapeSQLString(userId)))
+	} else {
+		sql = s.replacePlaceholder(sql, "@IDUser", "''")
+		sql = s.replacePlaceholder(sql, "@UserID", "''")
+	}
+
+	// For EXEC SP queries, replace remaining placeholders with NULL
+	if matched, _ := regexp.MatchString(`^\s*EXEC\s+`, sql); matched {
+		sql = s.replaceRemainingPlaceholders(sql)
+	}
+
+	log.Printf("DEBUG EXECUTE DATASET MULTI %s: %s", dataset.NamaDataset, sql)
+
+	resultSets, err := s.repo.ExecuteQueryMulti(ctx, sql)
+	if err != nil {
+		log.Printf("DEBUG EXECUTE MULTI ERROR %s: %v", dataset.NamaDataset, err)
+		return nil, err
+	}
+	log.Printf("DEBUG EXECUTE MULTI RESULT %s: %d result sets", dataset.NamaDataset, len(resultSets))
+	for i, rs := range resultSets {
+		log.Printf("DEBUG RESULT SET %d: %d rows", i, len(rs))
+		if len(rs) > 0 {
+			log.Printf("DEBUG RESULT SET %d ROW 0 keys: %v", i, func() []string { keys := make([]string, 0, len(rs[0])); for k := range rs[0] { keys = append(keys, k) }; return keys }())
+		}
+	}
+	return resultSets, nil
 }
 
 // parseStaticParams extracts static parameters from config_json

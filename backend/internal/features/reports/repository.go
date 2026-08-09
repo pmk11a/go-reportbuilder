@@ -675,44 +675,45 @@ func parseJSON(data *string) map[string]interface{} {
 
 func (r *reportsRepository) GetMenuTreeForUser(ctx context.Context, userId string, search string) ([]SMenuReportItem, error) {
 	var items []SMenuReportItem
-	
+
 	searchCondition := ""
 	var args []interface{}
-	
+
 	if search != "" {
-		searchCondition = " AND (m.KODEMENU LIKE ? OR m.nama_laporan LIKE ?) "
+		searchCondition = " AND (menu.Keterangan LIKE ? OR m.KODEMENU LIKE ?) "
 		likeQuery := "%" + search + "%"
 		args = append(args, likeQuery, likeQuery)
 	}
 
-	query := `
-		SELECT 
-			m.KODEMENU as KODEMENU, 
-			m.nama_laporan as Keterangan, 
-			0 as L0,
-			'1' as ACCESS
-		FROM dbmasterlaporan m
-		INNER JOIN DBFLMENUREPORT f ON m.KODEMENU = f.KODEMENU
-		WHERE f.USERID = ? AND m.status_aktif = 1 AND f.Access = 1 ` + searchCondition + `
-		ORDER BY m.KODEMENU
-	`
-	
+	// Admin bypass: SA, admin, masza — show ALL active reports from DBMENUREPORT
 	if userId == "SA" || userId == "admin" || userId == "masza" {
-		query = `
+		query := `
 			SELECT 
-				KODEMENU, 
-				nama_laporan as Keterangan, 
-				0 as L0,
+				menu.KODEMENU as KODEMENU,
+				menu.Keterangan as NmReport,
+				menu.L0 as L0,
 				'1' as ACCESS
-			FROM dbmasterlaporan m
-			WHERE m.status_aktif = 1 ` + searchCondition + `
-			ORDER BY m.KODEMENU
+			FROM DBMENUREPORT menu
+			WHERE menu.L0 >= 0 ` + searchCondition + `
+			ORDER BY menu.KODEMENU
 		`
 		err := r.db.WithContext(ctx).Raw(query, args...).Scan(&items).Error
 		return items, err
 	}
 
-	// For normal users, we need to prepend the userId to the arguments array
+	// Normal users: join with DBFLMENUREPORT for access control
+	query := `
+		SELECT 
+			menu.KODEMENU as KODEMENU,
+			menu.Keterangan as NmReport,
+			menu.L0 as L0,
+			'1' as ACCESS
+		FROM DBMENUREPORT menu
+		INNER JOIN DBFLMENUREPORT f ON menu.KODEMENU = f.KODEMENU
+		WHERE f.USERID = ? AND menu.L0 >= 0 ` + searchCondition + `
+		ORDER BY menu.KODEMENU
+	`
+
 	finalArgs := append([]interface{}{userId}, args...)
 	err := r.db.WithContext(ctx).Raw(query, finalArgs...).Scan(&items).Error
 	return items, err

@@ -13,6 +13,12 @@ type SDBMasterLaporan struct {
 	CreatedAt   *time.Time `gorm:"column:created_at;type:datetime" json:"created_at"`
 	UpdatedAt   *time.Time `gorm:"column:updated_at;type:datetime" json:"updated_at"`
 
+	// Joined columns from DBMENUREPORT (LEFT JOIN in ListReports / GetReportByID).
+	// Pointer types because the JOIN may return NULL when KODEMENU has no menu row.
+	Keterangan *string `gorm:"column:Keterangan;->" json:"Keterangan,omitempty"`
+	L0         *int    `gorm:"column:L0;->" json:"L0,omitempty"`
+	Icon       *string `gorm:"column:Icon;->" json:"Icon,omitempty"`
+
 	// Relations (loaded manually to avoid GORM offset/fetch on SQL Server 2008)
 	Filters  []SDBParameterLaporan `gorm:"-" json:"filters,omitempty"`
 	Datasets []SDBQueryLaporan      `gorm:"-" json:"datasets,omitempty"`

@@ -1,6 +1,8 @@
 // Report Store - Zustand state management for reports
 
 import { create } from 'zustand'
+// @ts-ignore — zustand/middleware exports persist and createJSONStorage; keep as-is
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
   IReport,
   IReportConfig,
@@ -20,7 +22,13 @@ interface ReportState {
 
   // User viewer state
   currentReport: IReportConfig | null
-  filterValues: IReportFilterValues
+  /**
+   * Filter values for the currently-active report, scoped by kodeMenu.
+   * Shape: { _kodeMenu: string, ...filterValues: Record<name, value> }
+   * The _kodeMenu marker is used to detect when the user switches reports
+   * and to avoid leaking values between reports.
+   */
+  filterValues: IReportFilterValues & { _kodeMenu?: string }
   isExecuting: boolean
   executionError: string | null
 
@@ -46,6 +54,12 @@ interface ReportState {
   setCurrentReport: (config: IReportConfig | null) => void
   setFilterValue: (name: string, value: string | string[] | null) => void
   setFilterValues: (values: IReportFilterValues) => void
+  /**
+   * Populate filter values for a specific kodeMenu, preserving existing user
+   * edits while filling in any missing nilai_default values.
+   * Called by DynamicFilterPanel on hydration.
+   */
+  hydrateFilters: (kodeMenu: string, values: Record<string, string | string[] | null>) => void
   resetFilters: () => void
   setIsExecuting: (executing: boolean) => void
   setExecutionError: (error: string | null) => void
@@ -59,7 +73,18 @@ interface ReportState {
   clearSelection: () => void
 }
 
-export const useReportStore = create<ReportState>((set) => ({
+// Persisted-shape subset: only the scoped filter values are persisted
+// (admin state and current report config are NOT persisted).
+interface PersistedShape {
+  filterValues: IReportFilterValues & { _kodeMenu?: string }
+}
+
+const PERSIST_VERSION = 1
+const PERSIST_KEY = 'dapendev-reports-store'
+
+export const useReportStore = create<ReportState>()(
+  persist(
+    (set) => ({
   // Initial state - Admin
   reports: [],
   selectedReport: null,
@@ -129,6 +154,26 @@ export const useReportStore = create<ReportState>((set) => ({
 
   setFilterValues: (values) => set({ filterValues: values }),
 
+  hydrateFilters: (kodeMenu, values) => set((state) => {
+    // If the persisted filterValues are for a different report, replace.
+    // Otherwise merge: keep user edits, fill in missing values.
+    const currentScope = state.filterValues._kodeMenu
+    if (currentScope !== kodeMenu) {
+      return { filterValues: { _kodeMenu: kodeMenu, ...values } }
+    }
+    const merged: Record<string, any> = { _kodeMenu: kodeMenu }
+    for (const k of Object.keys(values)) {
+      const existing = (state.filterValues as any)[k]
+      // Only fill in if the existing value is missing/empty
+      if (existing === undefined || existing === null || existing === '') {
+        merged[k] = values[k]
+      } else {
+        merged[k] = existing
+      }
+    }
+    return { filterValues: merged }
+  }),
+
   resetFilters: () => set({ filterValues: {} }),
 
   setIsExecuting: (executing) => set({ isExecuting: executing }),
@@ -152,7 +197,18 @@ export const useReportStore = create<ReportState>((set) => ({
     executionError: null,
     error: null
   })
-}))
+    }),
+    {
+      name: PERSIST_KEY,
+      version: PERSIST_VERSION,
+      storage: createJSONStorage(() => (typeof window !== 'undefined' ? localStorage : (undefined as unknown as Storage))),
+      // Only persist filterValues (scoped per kodeMenu). Admin state stays in-memory.
+      partialize: (state) => ({ filterValues: state.filterValues }) as PersistedShape as any,
+      // Skip hydration on server (SSR-safe); UI rehydrates on mount via DynamicFilterPanel effect.
+      skipHydration: true,
+    }
+  )
+)
 
 // Selector helpers
 export const selectFilters = (state: ReportState) =>
