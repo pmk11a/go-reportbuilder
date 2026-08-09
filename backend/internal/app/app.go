@@ -103,6 +103,7 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 	reportExecRepo := execution.NewReportExecutionRepository(dbConn)
 	reportExecService := execution.NewReportExecutionService(reportExecRepo)
 	reportExecHandler := execution.NewReportExecutionHandler(reportExecService, reportsService)
+	reportExportHandler := reports.NewReportExportHandler(reportExecRepo)
 
 	// 6. Initialize the Gin engine and global middlewares.
 	engine := gin.Default()
@@ -138,6 +139,7 @@ func NewApp(dbConn *gorm.DB, cfg *config.SConfig) *gin.Engine {
 		SBrowseHandler:      browseHandler,
 		SReportsHandler:     reportsHandler,
 		SReportExecHandler:  reportExecHandler,
+		SReportExportHandler: reportExportHandler,
 		SConfig:             cfg,
 	})
 

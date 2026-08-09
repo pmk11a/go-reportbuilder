@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	"log"
 
 	"github.com/masza1/dapen-backend/internal/features/reports"
 	"gorm.io/gorm"
@@ -84,7 +85,7 @@ func (r *ReportExecutionRepository) GetGroups(ctx context.Context, idLaporan int
 func (r *ReportExecutionRepository) ExecuteQuery(ctx context.Context, sql string, filters map[string]interface{}, userId string) ([]map[string]interface{}, error) {
 	results := make([]map[string]interface{}, 0)
 	err := r.db.WithContext(ctx).Raw(sql).Scan(&results).Error
-	
+
 	if err == nil {
 		for i := range results {
 			for key, value := range results[i] {
@@ -94,8 +95,71 @@ func (r *ReportExecutionRepository) ExecuteQuery(ctx context.Context, sql string
 			}
 		}
 	}
-	
+
 	return results, err
+}
+
+// ExecuteQueryMulti executes a stored procedure and returns ALL result sets
+// as a slice of per-result-set arrays. Used for SPs that return multiple result sets (e.g. sp_LapBankHarian).
+func (r *ReportExecutionRepository) ExecuteQueryMulti(ctx context.Context, sql string) ([][]map[string]interface{}, error) {
+	rows, err := r.db.WithContext(ctx).Raw(sql).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	allSets := make([][]map[string]interface{}, 0)
+	setIndex := 0
+
+	for {
+		columns, err := rows.Columns()
+		if err != nil {
+			break // no more result sets
+		}
+
+		log.Printf("DEBUG MULTI RESULT SET %d: columns=%v", setIndex, columns)
+
+		// Read all rows in this result set
+		set := make([]map[string]interface{}, 0)
+		rowIndex := 0
+		for rows.Next() {
+			vals := make([]interface{}, len(columns))
+			valPtrs := make([]interface{}, len(columns))
+			for i := range vals {
+				valPtrs[i] = &vals[i]
+			}
+			if err := rows.Scan(valPtrs...); err != nil {
+				log.Printf("DEBUG MULTI SCAN ERROR: %v", err)
+				continue
+			}
+
+			row := make(map[string]interface{})
+			for i, col := range columns {
+				if vals[i] == nil {
+					row[col] = nil
+				} else if bVal, ok := vals[i].([]byte); ok {
+					row[col] = string(bVal)
+				} else {
+					row[col] = vals[i]
+				}
+			}
+			set = append(set, row)
+			if rowIndex < 2 {
+				log.Printf("DEBUG MULTI ROW %d: %v", rowIndex, row)
+			}
+			rowIndex++
+		}
+		log.Printf("DEBUG MULTI RESULT SET %d: %d rows", setIndex, len(set))
+		allSets = append(allSets, set)
+		setIndex++
+
+		// Try to move to the next result set
+		if !rows.NextResultSet() {
+			break
+		}
+	}
+
+	return allSets, nil
 }
 
 func (r *ReportExecutionRepository) GetLabelMapping(ctx context.Context, field string) (map[string]string, error) {

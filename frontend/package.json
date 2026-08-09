@@ -116,7 +116,8 @@
     "generate-routes": "tsr generate",
     "lint": "biome lint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
   },
   "type": "module"
 }
