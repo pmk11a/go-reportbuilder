@@ -2,12 +2,11 @@
 // CRUD for report definitions
 
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useRef, useCallback } from 'react'
-import { Search, Loader2, Plus, FileText, Settings } from 'lucide-react'
-import { Input } from '@/shared/ui/form/input'
+import { useState } from 'react'
+import { Plus, FileText, Settings } from 'lucide-react'
 import { Badge } from '@/shared/ui/overlay/badge'
 import { Button } from '@/shared/ui'
-import { Each, Show, CollapsibleSidebarLayout } from '@/shared/ui/layout'
+import { Show, CollapsibleSidebarLayout } from '@/shared/ui/layout'
 import { useThemeStore } from '@/shared/stores/themeStore'
 import { useReport, useReportsInfinite } from '@/domains/reports/hooks/useReport'
 import type { IReport, IReportConfig } from '@/domains/reports/types'
@@ -43,20 +42,7 @@ function AdminReportsPage() {
     fetchNextPage 
   } = useReportsInfinite(debouncedSearch)
 
-  // Intersection Observer for infinite scrolling
-  const observer = useRef<IntersectionObserver | null>(null)
-  const lastReportElementRef = useCallback((node: HTMLDivElement | null) => {
-    if (isLoading || isFetchingNextPage) return
-    if (observer.current) observer.current.disconnect()
-    
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasNextPage) {
-        fetchNextPage()
-      }
-    })
-    
-    if (node) observer.current.observe(node)
-  }, [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage])
+
 
   // Fetch report config when report is selected
   const { data: reportConfig } = useReport(selectedId)
@@ -108,7 +94,7 @@ function AdminReportsPage() {
         isFetchingNextPage={isFetchingNextPage}
         fetchNextPage={fetchNextPage}
         emptyMessage={searchTerm ? 'Tidak ada laporan yang cocok' : 'Belum ada laporan'}
-        renderItem={(report: IReport, index: number, isLast: boolean) => (
+        renderItem={(report: IReport) => (
           <ReportListItem
             report={report}
             isActive={report.id_laporan === selectedId}

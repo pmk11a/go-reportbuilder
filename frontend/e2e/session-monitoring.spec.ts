@@ -379,7 +379,7 @@ test.describe('Session Monitoring (TASK-012)', () => {
         const badge = statusBadges.nth(i)
         const text = await badge.textContent()
         if (text?.includes('Expiring') || text?.includes('Soon') || text?.includes('Kadaluarsa')) {
-          foundWarning = true
+
           // Verify warning styling (bg-yellow or variant-warning)
           const classList = await badge.getAttribute('class')
           expect(classList).toBeTruthy()

@@ -28,7 +28,7 @@ interface AccessFormModalProps {
 
 export function AccessFormModal({ isOpen, onClose, reportId }: AccessFormModalProps) {
   const { grantAccess } = useReportMutations(reportId)
-  const { data: allUsers, isLoading: isLoadingUsers } = useAllUsers()
+  const { data: allUsers } = useAllUsers()
   const { toast } = useToast()
 
   const form = useForm<FormValues>({

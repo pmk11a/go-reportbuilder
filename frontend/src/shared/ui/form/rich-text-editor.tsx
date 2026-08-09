@@ -31,6 +31,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '../overlay/button';
 import { Input } from './input';
 import { Label } from './label';
+
+import { cn } from '@/shared/utils/cn';
 import {
   Select,
   SelectTrigger,
@@ -39,40 +41,19 @@ import {
   SelectItem,
 } from './select';
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from '../navigation/dropdown-menu';
-import { cn } from '@/shared/utils/cn';
-import {
   Bold,
   Italic,
   Underline as UnderlineIcon,
   Strikethrough,
-  Code as CodeIcon,
   List,
   ListOrdered,
-  Quote,
   AlignLeft,
   AlignCenter,
   AlignRight,
-  AlignJustify,
   Link as LinkIcon,
   Image as ImageIcon,
-  Minus,
   Undo,
   Redo,
-  FileText,
-  Video,
-  Eraser,
-  TableIcon,
-  Plus,
-  Trash2,
-  Subscript as SubscriptIcon,
-  Superscript as SuperscriptIcon,
-  ListTodo,
 } from 'lucide-react';
 
 export interface RichTextEditorProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
@@ -160,9 +141,8 @@ export const RichTextEditor = React.memo(forwardRef<HTMLDivElement, RichTextEdit
     const [videoWidth, setVideoWidth] = useState<string>('640');
     const [pdfUrl, setPdfUrl] = useState('');
     const [textColor, setTextColor] = useState<string>('#000000');
-    const [highlightColor, setHighlightColor] = useState<string>('#fef08a');
-    const [rows, setRows] = useState<string>('3');
-    const [cols, setCols] = useState<string>('3');
+
+
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const debounceTimerRef = useRef<any>(null);
@@ -368,11 +348,6 @@ export const RichTextEditor = React.memo(forwardRef<HTMLDivElement, RichTextEdit
       setShowImageModal(false);
     }
 
-    function openVideoModal() {
-      setVideoUrl('');
-      setVideoWidth('640');
-      setShowVideoModal(true);
-    }
 
     function submitVideo() {
       if (!videoUrl) return setShowVideoModal(false);
@@ -400,10 +375,6 @@ export const RichTextEditor = React.memo(forwardRef<HTMLDivElement, RichTextEdit
       setVideoUrl('');
     }
 
-    function openPdfModal() {
-      setPdfUrl('');
-      setShowPdfModal(true);
-    }
 
     function submitPdf() {
       if (!pdfUrl) return setShowPdfModal(false);
@@ -415,14 +386,7 @@ export const RichTextEditor = React.memo(forwardRef<HTMLDivElement, RichTextEdit
       setPdfUrl('');
     }
 
-    function insertTable() {
-      const numRows = parseInt(rows) || 3;
-      const numCols = parseInt(cols) || 3;
-      if (!editor) return;
-      editor.commands.insertTable({ rows: numRows, cols: numCols, withHeaderRow: true });
-      setRows('3');
-      setCols('3');
-    }
+
 
     if (!editor) {
       return null;

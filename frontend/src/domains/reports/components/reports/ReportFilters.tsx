@@ -2,7 +2,7 @@
 
 import type React from 'react'
 import { useState, useCallback, useEffect } from 'react'
-import { Calendar, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import type { IReportFilter, IReportFilterValues } from '../../types'
 
 interface ReportFiltersProps {
@@ -38,7 +38,7 @@ export function ReportFilters({
     return Object.keys(newErrors).length === 0
   }, [filters, values])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault()
     if (validate()) {
       onSubmit()
@@ -193,17 +193,7 @@ function FilterField({ filter, value, onChange, error }: FilterFieldProps) {
         />
       )
 
-    case 'perkiraan':
-      return (
-        <PerkiraanInput
-          id={id}
-          value={(value as string) || ''}
-          onChange={onChange}
-          label={filter.label}
-          wajib={filter.wajib_isi}
-          error={error}
-        />
-      )
+
 
     case 'text':
     default:
@@ -333,109 +323,3 @@ function BrowseInput({ id, value, onChange, label, wajib, error }: BrowseInputPr
   )
 }
 
-interface PerkiraanInputProps {
-  id: string
-  value: string
-  onChange: (value: string | null) => void
-  label: string
-  wajib: boolean
-  error?: string
-}
-
-function PerkiraanInput({ id, value, onChange, label, wajib, error }: PerkiraanInputProps) {
-  const [search, setSearch] = useState('')
-  const [results, setResults] = useState<Array<{ perkiraan: string; keterangan: string }>>([])
-  const [isOpen, setIsOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleSearch = useCallback(async (q: string) => {
-    if (q.length < 2) {
-      setResults([])
-      return
-    }
-
-    setIsLoading(true)
-    try {
-      // TODO: Call perkiraan search API
-      void q
-    } catch {
-      setResults([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const timer = setTimeout(() => handleSearch(search), 300)
-    return () => clearTimeout(timer)
-  }, [search, handleSearch])
-
-  return (
-    <div className="space-y-1">
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-        {wajib && <span className="text-destructive ml-1">*</span>}
-      </label>
-      <div className="relative">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            id={id}
-            value={value}
-            onChange={(e) => onChange(e.target.value || null)}
-            className="flex-1 px-3 py-2 border rounded-md bg-background"
-            placeholder="Kode perkiraan..."
-          />
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            className="px-3 py-2 border rounded-md hover:bg-muted"
-            title="Browse Perkiraan"
-          >
-            <Calendar className="h-4 w-4" />
-          </button>
-        </div>
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari perkiraan..."
-              className="w-full px-3 py-2 border-b"
-              autoFocus
-            />
-            <div className="max-h-48 overflow-y-auto">
-              {isLoading && (
-                <div className="p-2 text-sm text-muted-foreground">Memuat...</div>
-              )}
-              {!isLoading && results.length === 0 && search.length >= 2 && (
-                <div className="p-2 text-sm text-muted-foreground">
-                  Tidak ada hasil
-                </div>
-              )}
-              {results.map((item) => (
-                <button
-                  key={item.perkiraan}
-                  type="button"
-                  onClick={() => {
-                    onChange(item.perkiraan)
-                    setSearch('')
-                    setIsOpen(false)
-                  }}
-                  className="w-full px-3 py-2 text-left hover:bg-muted text-sm"
-                >
-                  <span className="font-mono text-xs text-muted-foreground mr-2">
-                    {item.perkiraan}
-                  </span>
-                  {item.keterangan}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
-  )
-}

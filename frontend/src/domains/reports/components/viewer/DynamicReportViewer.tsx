@@ -236,7 +236,7 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
               <ReportTitleBand 
                 footerBandsJson={footerBandsJson}
                 fallbackTitle={config.nama_laporan || kodeMenu}
-                fallbackSubtitle={config.deskripsi}
+                fallbackSubtitle={config.deskripsi || undefined}
               />
             </Show>
 

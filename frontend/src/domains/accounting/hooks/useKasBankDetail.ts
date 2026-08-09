@@ -9,7 +9,7 @@ export function useKasBankDetailList(noBukti: string) {
     queryFn: async () => {
       const res = await kasbankService.getDetailList(noBukti);
       // getDetailList already returns the unwrapped { header, details } from makeBackendRequest
-      return res as { header: any; details: any[] };
+      return res as unknown as { header: any; details: any[] };
     },
     enabled: !!noBukti,
   });

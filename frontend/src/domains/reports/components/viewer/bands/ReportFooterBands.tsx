@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { SideInfoPanel } from './SideInfoPanel'
 import { FooterSummaryTable } from './FooterSummaryTable'
 import { SignaturesBlock } from './SignaturesBlock'

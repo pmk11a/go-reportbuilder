@@ -26,12 +26,12 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   className?: string;
+  contentClassName?: string;
 }
 
 const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
-// // @ts-expect-error - unused variable
 // @ts-expect-error - unused variable
-  ({ tabs, defaultValue = tabs[0]?.value, onValueChange, className, ...props }, ref) => {
+  ({ tabs, defaultValue = tabs[0]?.value, onValueChange, className, contentClassName, ...props }, ref) => {
     const [activeTab, setActiveTab] = React.useState(defaultValue);
 
     const handleTabChange = (value: string) => {
@@ -40,10 +40,10 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
     };
 
     return (
-      <div className="w-full">
-        <div className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden">
+      <div className={cn("w-full flex flex-col", className)}>
+        <div className="bg-white dark:bg-[#0f172a] lg:rounded-3xl border border-slate-100 dark:border-white/5 shadow-xl shadow-blue-500/5 dark:shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0">
           {/* Tab List */}
-          <div className={cn(tabListVariants(), 'px-4 bg-white dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800')}>
+          <div className={cn(tabListVariants(), 'px-4 bg-white dark:bg-[#0f172a] border-b border-slate-200 dark:border-slate-800 shrink-0')}>
             {tabs.map((tab) => (
               <button
                 type="button"
@@ -60,7 +60,7 @@ const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
             ))}
           </div>
           {/* Tab Content */}
-          <div>
+          <div className={cn("overflow-y-auto flex-1 min-h-0", contentClassName)}>
             {tabs.find((tab) => tab.value === activeTab)?.content}
           </div>
         </div>

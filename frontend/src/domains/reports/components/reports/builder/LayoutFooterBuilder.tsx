@@ -62,8 +62,7 @@ export function LayoutFooterBuilder({ value, onChange }: Props) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-// @ts-ignore - unused variable
-//         {value.signatures.map((sig, idx) => (
+        {value.signatures.map((sig, _idx) => (
           <div key={sig.id} className="p-4 border rounded-lg bg-card shadow-sm relative group">
             <button 
               onClick={() => removeSignature(sig.id)} 

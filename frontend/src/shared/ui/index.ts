@@ -43,6 +43,7 @@ export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
 export { Divider, type DividerProps } from './layout/divider';
 export { ScrollArea, ScrollBar } from './layout/scroll-area';
 export { Separator, type SeparatorProps } from './layout/separator';
+export { Each, Show } from './layout/Render';
 
 // Navigation Components
 export { Breadcrumb, type BreadcrumbProps } from './navigation/breadcrumb';

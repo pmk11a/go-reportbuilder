@@ -12,7 +12,7 @@ import { HutangPiutangSubForm } from "./HutangPiutangSubForm";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Calculator, PenLine, Plus, Trash2 } from "lucide-react";
+import { PenLine, Plus, Trash2 } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -370,7 +370,7 @@ export function KasBankFormDialog({
 		() => detailRows.reduce((sum, r) => sum + (r.kredit ?? 0), 0),
 		[detailRows],
 	);
-	const isBalanced = totalDebet === totalKredit && totalDebet > 0;
+
 
 	// --- Detail row lifecycle ---
 	const currentPerkiraanHd = watch("perkiraanHd");
@@ -984,7 +984,7 @@ export function DetailRowEditor({
 	const { t } = useTranslation(["accounting", "common"]);
 	const [perkiraanSearch, setPerkiraanSearch] = useState("");
 	const [lawanSearch, setLawanSearch] = useState("");
-	const isMasuk = tipe === "BKM" || tipe === "BBM";
+
 
 	// Form state must be declared BEFORE the useLookupPerkiraanShared calls
 	// because the Lawan dropdown passes `form.perkiraan` as the `without`

@@ -90,7 +90,7 @@ export function useSetOtorisasi(noBukti: string, onSuccess?: () => void, onError
 export function useBatalOtorisasi(noBukti: string, onSuccess?: () => void, onError?: (msg: string) => void) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: IOtorisasiRequest) => kasbankService.batalOtorisasi(noBukti, data.level),
+    mutationFn: (data: IOtorisasiRequest) => kasbankService.batalOtorisasi(noBukti, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: kasbankKeys.all });
       qc.invalidateQueries({ queryKey: kasbankKeys.detail(noBukti) });

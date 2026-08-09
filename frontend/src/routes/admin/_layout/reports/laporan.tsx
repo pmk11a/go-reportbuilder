@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
-import { Search, FileText, Folder, Menu } from 'lucide-react'
+import { FileText, Folder } from 'lucide-react'
 import { useState } from 'react'
-import { Input } from '@/shared/ui'
 import { useReportsMenu } from '@/domains/reports/hooks/useReport'
 import type { IReportMenuItem } from '@/domains/reports/types'
 import { useThemeStore } from '@/shared/stores/themeStore'

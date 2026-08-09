@@ -16,7 +16,7 @@ import { SearchableSelect } from '@/shared/ui/form/searchable-select'
 const filterSchema = z.object({
   nama_filter: z.string().min(1, 'Nama filter harus diisi'),
   label: z.string().min(1, 'Label harus diisi'),
-  tipe_input: z.enum(['date', 'text', 'number', 'combobox', 'browse', 'perkiraan', 'dropdown', 'checkbox']),
+  tipe_input: z.enum(['date', 'month', 'year', 'text', 'number', 'combobox', 'browse', 'dropdown', 'select', 'select-db', 'checkbox']),
   posisi: z.number().min(1),
   wajib_isi: z.boolean(),
   nilai_default: z.string().optional(),
@@ -128,7 +128,7 @@ export function FilterFormModal({ isOpen, onClose, reportId, filter }: FilterFor
     }
   }
 
-  const tipeInput = form.watch('tipe_input')
+
   const { data: browseTypes = [] } = useBrowseTypes()
   
   const { fields: konfigFields, append: konfigAppend, remove: konfigRemove } = useFieldArray({
@@ -191,7 +191,7 @@ export function FilterFormModal({ isOpen, onClose, reportId, filter }: FilterFor
                       <option value="dropdown">Dropdown</option>
                       <option value="checkbox">Checkbox</option>
                       <option value="browse">Browse</option>
-                      <option value="perkiraan">Perkiraan</option>
+
                     </select>
                   </FormControl>
                   <FormMessage />

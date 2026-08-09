@@ -32,6 +32,7 @@ import { Route as AdminLayoutDashboardIndexRouteImport } from './routes/admin/_l
 import { Route as publicauthRegisterIndexRouteImport } from './routes/(public)/(auth)/register/index'
 import { Route as publicauthLoginIndexRouteImport } from './routes/(public)/(auth)/login/index'
 import { Route as AdminLayoutReportsLaporanRouteImport } from './routes/admin/_layout/reports/laporan'
+import { Route as AdminLayoutReportsBuilderRouteImport } from './routes/admin/_layout/reports/builder'
 import { Route as AdminLayoutBerkasPerusahaanRouteImport } from './routes/admin/_layout/berkas/perusahaan'
 import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layout/berkas/menu'
 import { Route as KaryawanLayoutBerkasLaporanDinamisIndexRouteImport } from './routes/karyawan/_layout/berkas/laporan-dinamis/index'
@@ -169,6 +170,12 @@ const AdminLayoutReportsLaporanRoute =
     path: '/reports/laporan',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
+const AdminLayoutReportsBuilderRoute =
+  AdminLayoutReportsBuilderRouteImport.update({
+    id: '/reports/builder',
+    path: '/reports/builder',
+    getParentRoute: () => AdminLayoutRoute,
+  } as any)
 const AdminLayoutBerkasPerusahaanRoute =
   AdminLayoutBerkasPerusahaanRouteImport.update({
     id: '/berkas/perusahaan',
@@ -290,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
+  '/admin/reports/builder': typeof AdminLayoutReportsBuilderRoute
   '/admin/reports/laporan': typeof AdminLayoutReportsLaporanRouteWithChildren
   '/login/': typeof publicauthLoginIndexRoute
   '/register/': typeof publicauthRegisterIndexRoute
@@ -331,6 +339,7 @@ export interface FileRoutesByTo {
   '/docs': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
+  '/admin/reports/builder': typeof AdminLayoutReportsBuilderRoute
   '/login': typeof publicauthLoginIndexRoute
   '/register': typeof publicauthRegisterIndexRoute
   '/admin/dashboard': typeof AdminLayoutDashboardIndexRoute
@@ -373,6 +382,7 @@ export interface FileRoutesById {
   '/(public)/docs/': typeof publicDocsIndexRoute
   '/admin/_layout/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/_layout/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
+  '/admin/_layout/reports/builder': typeof AdminLayoutReportsBuilderRoute
   '/admin/_layout/reports/laporan': typeof AdminLayoutReportsLaporanRouteWithChildren
   '/(public)/(auth)/login/': typeof publicauthLoginIndexRoute
   '/(public)/(auth)/register/': typeof publicauthRegisterIndexRoute
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/docs/'
     | '/admin/berkas/menu'
     | '/admin/berkas/perusahaan'
+    | '/admin/reports/builder'
     | '/admin/reports/laporan'
     | '/login/'
     | '/register/'
@@ -458,6 +469,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/admin/berkas/menu'
     | '/admin/berkas/perusahaan'
+    | '/admin/reports/builder'
     | '/login'
     | '/register'
     | '/admin/dashboard'
@@ -499,6 +511,7 @@ export interface FileRouteTypes {
     | '/(public)/docs/'
     | '/admin/_layout/berkas/menu'
     | '/admin/_layout/berkas/perusahaan'
+    | '/admin/_layout/reports/builder'
     | '/admin/_layout/reports/laporan'
     | '/(public)/(auth)/login/'
     | '/(public)/(auth)/register/'
@@ -699,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutReportsLaporanRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/reports/builder': {
+      id: '/admin/_layout/reports/builder'
+      path: '/reports/builder'
+      fullPath: '/admin/reports/builder'
+      preLoaderRoute: typeof AdminLayoutReportsBuilderRouteImport
+      parentRoute: typeof AdminLayoutRoute
+    }
     '/admin/_layout/berkas/perusahaan': {
       id: '/admin/_layout/berkas/perusahaan'
       path: '/berkas/perusahaan'
@@ -867,6 +887,7 @@ const AdminLayoutReportsLaporanRouteWithChildren =
 interface AdminLayoutRouteChildren {
   AdminLayoutBerkasMenuRoute: typeof AdminLayoutBerkasMenuRoute
   AdminLayoutBerkasPerusahaanRoute: typeof AdminLayoutBerkasPerusahaanRoute
+  AdminLayoutReportsBuilderRoute: typeof AdminLayoutReportsBuilderRoute
   AdminLayoutReportsLaporanRoute: typeof AdminLayoutReportsLaporanRouteWithChildren
   AdminLayoutDashboardIndexRoute: typeof AdminLayoutDashboardIndexRoute
   AdminLayoutDocumentsIndexRoute: typeof AdminLayoutDocumentsIndexRoute
@@ -887,6 +908,7 @@ interface AdminLayoutRouteChildren {
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutBerkasMenuRoute: AdminLayoutBerkasMenuRoute,
   AdminLayoutBerkasPerusahaanRoute: AdminLayoutBerkasPerusahaanRoute,
+  AdminLayoutReportsBuilderRoute: AdminLayoutReportsBuilderRoute,
   AdminLayoutReportsLaporanRoute: AdminLayoutReportsLaporanRouteWithChildren,
   AdminLayoutDashboardIndexRoute: AdminLayoutDashboardIndexRoute,
   AdminLayoutDocumentsIndexRoute: AdminLayoutDocumentsIndexRoute,

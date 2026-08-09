@@ -142,16 +142,6 @@ export function GenericBrowsePicker(props: GenericBrowsePickerProps) {
     [types, kodeBrowse]
   )
 
-  // For Perkiraan picker (1001), map special parentFilter keys to browse params.
-  // The backend expects these as direct query params (`parent_posthutpiut`, `parent_without`)
-  // rather than the generic `parent_<col>` pattern.
-  const browseParams = useMemo(() => {
-    if (!parentFilters || Object.keys(parentFilters).length === 0) return undefined
-    const filtered = { ...parentFilters }
-    delete filtered.posthutpiut
-    delete filtered.without
-    return Object.keys(filtered).length > 0 ? filtered : undefined
-  }, [parentFilters])
 
   // Resolve effective keyField/labelField (props override metadata)
   const effKeyField = keyField ?? typeMeta?.keyField ?? 'Kode'

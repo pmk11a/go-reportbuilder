@@ -1,0 +1,70 @@
+export interface ILayoutColumn {
+  text?: string
+  sourceType?: 'static' | 'system' | 'database'
+  dataset?: string // Untuk sourceType = 'database'
+  field?: string   // Untuk sourceType = 'database'
+  title?: string 
+  name?: string  
+  role?: string  
+  align?: 'left' | 'center' | 'right'
+  width?: string
+  colSpan?: number
+  rowSpan?: number
+  style?: string
+}
+
+export interface ILayoutRow {
+  justifyContent?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around'
+  columns: ILayoutColumn[]
+}
+
+export interface ILayoutHeader {
+  type: 'header'
+  rows: ILayoutRow[]
+}
+
+export interface ILayoutFooter {
+  type: 'footer'
+  rows: ILayoutRow[]
+}
+
+export interface ILayoutDataColumn {
+  field: string
+  align?: 'left' | 'center' | 'right'
+  format?: string
+}
+
+export interface ILayoutTable {
+  dataset: string
+  style?: string
+  headerRows: ILayoutColumn[][]
+  dataColumns: ILayoutDataColumn[]
+  grouping?: {
+    groupBy: string
+    showSubtotal: boolean
+    subtotalLabel?: string
+  }
+}
+
+export interface ILayoutBodyRow {
+  columns: {
+    width?: string; 
+    table: ILayoutTable;
+  }[];
+}
+
+export interface ILayoutBody {
+  type: 'body'
+  rows: ILayoutBodyRow[]
+}
+
+export type ILayoutConfig = ILayoutHeader | ILayoutBody | ILayoutFooter
+
+export interface IReportComponent {
+  id_komponen: number
+  id_laporan?: number
+  nama_komponen: string
+  konfigurasi_layout: Record<string, any>
+  urutan: number
+  is_active?: boolean
+}

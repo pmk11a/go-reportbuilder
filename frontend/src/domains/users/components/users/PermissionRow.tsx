@@ -1,4 +1,4 @@
-
+import React from 'react'
 import { TableRow, TableCell, Checkbox } from '@/shared/ui'
 import { cn } from '@/shared/utils/cn'
 import type { IUserPermission } from '@/domains/users/types/user'

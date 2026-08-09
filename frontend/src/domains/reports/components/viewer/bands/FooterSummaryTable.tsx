@@ -103,7 +103,7 @@ export function FooterSummaryTable({ config, summaryData, detailDatasets, format
             // Handle data_source: "cells" override
             let cellsVals: number[] = []
             if (rowDef.data_source === 'cells') {
-               cellsVals = normCols.map((colDef: any, colIdx: number) => {
+               cellsVals = normCols.map((_colDef: any, colIdx: number) => {
                  const cellDef = rowDef.cells?.find((c: any) => (c.col === undefined ? colIdx : c.col) === colIdx)
                  if (!cellDef) return 0
                  if (cellDef.field) return parseFloat(summaryData[cellDef.field] || 0)

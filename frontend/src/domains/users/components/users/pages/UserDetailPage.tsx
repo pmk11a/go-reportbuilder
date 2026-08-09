@@ -44,7 +44,7 @@ export function UserDetailPage({ userId }: IUserDetailPageProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('overview')
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-//   const { data: user, isLoading, isError, error, refetch } = useUserById(userId)
+  const { data: user, isLoading, isError, error } = useUserById(userId)
   const deleteMutation = useDeleteUser()
 
   const handleEdit = () => {
