@@ -89,22 +89,22 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 <Each of={row.columns}>
                   {(col, cIdx) => (
-                    <div key={cIdx} className={`border rounded-xl p-4 relative flex-1 min-w-0 ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+                    <div key={cIdx} className={`border rounded-xl p-5 relative ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
                       <Button variant="ghost" size="sm" onClick={() => {
                         const newRows = [...rows];
                         newRows[rIdx].columns.splice(cIdx, 1);
                         onChange({ ...config, rows: newRows });
-                      }} className="absolute top-2 right-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 h-7 w-7 p-0 rounded-full">
-                        <Trash2 className="w-3.5 h-3.5" />
+                      }} className="absolute top-3 right-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 h-8 w-8 p-0 rounded-full">
+                        <Trash2 className="w-4 h-4" />
                       </Button>
-                      <h4 className={`text-xs font-bold uppercase mb-3 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Tabel {cIdx + 1}</h4>
+                      <h4 className={`text-xs font-bold uppercase mb-4 tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Tabel {cIdx + 1}</h4>
                       
-                      <div className="space-y-4 mb-4">
+                      <div className={`grid grid-cols-1 md:grid-cols-2 ${col.width !== '100%' ? 'lg:grid-cols-3' : ''} gap-6 mb-5`}>
 
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Lebar (Width)</label>
                           <Select 
                             value={col.width || '100%'}
@@ -114,7 +114,7 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                               onChange({ ...config, rows: newRows });
                             }}
                           >
-                            <SelectTrigger className={`h-9 w-full rounded-xl text-xs ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
+                            <SelectTrigger className={`h-10 w-full rounded-xl text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
                               <SelectValue placeholder="Width" />
                             </SelectTrigger>
                             <SelectContent>
@@ -125,17 +125,17 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                           </Select>
                         </div>
 
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Pilih Data Source (Tabel)</label>
                           <Select 
-                            value={col.table.dataset || ''}
+                            value={col.table.dataset || undefined}
                             onValueChange={(val) => {
                               const newRows = [...rows];
                               newRows[rIdx].columns[cIdx].table.dataset = val;
                               onChange({ ...config, rows: newRows });
                             }}
                           >
-                            <SelectTrigger className={`h-9 w-full rounded-xl text-xs ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
+                            <SelectTrigger className={`h-10 w-full rounded-xl text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
                               <SelectValue placeholder="Pilih Dataset untuk Tabel ini" />
                             </SelectTrigger>
                             <SelectContent>
@@ -148,15 +148,41 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                             </SelectContent>
                           </Select>
                         </div>
+                        
+                        <Show when={col.width !== '100%'}>
+                          <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
+                            <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Posisi Horizontal</label>
+                            <Select 
+                              value={col.align || 'left'}
+                              onValueChange={(val) => {
+                                const newRows = [...rows];
+                                newRows[rIdx].columns[cIdx].align = val as any;
+                                onChange({ ...config, rows: newRows });
+                              }}
+                            >
+                              <SelectTrigger className={`h-10 w-full rounded-xl text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
+                                <SelectValue placeholder="Posisi" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="left">Kiri (Left)</SelectItem>
+                                <SelectItem value="center">Tengah (Center)</SelectItem>
+                                <SelectItem value="right">Kanan (Right)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </Show>
                       </div>
 
-                      <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-800 p-2 rounded">
-                        <span className="text-xs font-medium">Table Configuration</span>
+                      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800/60' : 'bg-slate-50 border-slate-100'} gap-4 sm:gap-0`}>
+                        <div>
+                          <h5 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Konfigurasi Kolom & Struktur</h5>
+                          <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Atur urutan kolom, grouping, styling, dan kalkulasi sub-total.</p>
+                        </div>
                         <Button 
-                          variant="secondary" size="sm" className="h-7 text-xs"
+                          variant="default" className="h-9 px-4 shrink-0 shadow-sm rounded-xl text-xs font-medium"
                           onClick={() => onOpenHeaderModal(rIdx, cIdx, col.table)}
                         >
-                          <Edit2 className="w-3 h-3 mr-1" /> Edit Headers & Columns
+                          <Edit2 className="w-3.5 h-3.5 mr-2" /> Edit Tabel
                         </Button>
                       </div>
                     </div>

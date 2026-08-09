@@ -4,10 +4,10 @@ import { cn } from '@/shared/utils/cn';
 
 const tabsVariants = cva('w-full');
 
-const tabListVariants = cva('flex gap-1 border-b border-border');
+const tabListVariants = cva('flex gap-1 border-b border-border overflow-x-auto');
 
 const tabTriggerVariants = cva(
-  'px-4 py-2 font-medium transition-colors border-b-2 cursor-pointer',
+  'px-4 py-2 font-medium transition-colors border-b-2 cursor-pointer whitespace-nowrap shrink-0',
   {
     variants: {
       active: {
@@ -27,15 +27,27 @@ export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onValueChange?: (value: string) => void;
   className?: string;
   contentClassName?: string;
+  storageKey?: string;
 }
 
 const Tabs = React.forwardRef<HTMLDivElement, TabsProps>(
 // @ts-expect-error - unused variable
-  ({ tabs, defaultValue = tabs[0]?.value, onValueChange, className, contentClassName, ...props }, ref) => {
-    const [activeTab, setActiveTab] = React.useState(defaultValue);
+  ({ tabs, defaultValue = tabs[0]?.value, onValueChange, className, contentClassName, storageKey, ...props }, ref) => {
+    const [activeTab, setActiveTab] = React.useState(() => {
+      if (typeof window !== 'undefined' && storageKey) {
+        const saved = localStorage.getItem(storageKey);
+        if (saved && tabs.some(t => t.value === saved)) {
+          return saved;
+        }
+      }
+      return defaultValue;
+    });
 
     const handleTabChange = (value: string) => {
       setActiveTab(value);
+      if (typeof window !== 'undefined' && storageKey) {
+        localStorage.setItem(storageKey, value);
+      }
       onValueChange?.(value);
     };
 

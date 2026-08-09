@@ -4,8 +4,10 @@ export interface ILayoutColumn {
   dataset?: string // Untuk sourceType = 'database'
   field?: string   // Untuk sourceType = 'database'
   title?: string 
+  title2?: string
   name?: string  
   role?: string  
+  role2?: string
   align?: 'left' | 'center' | 'right'
   width?: string
   colSpan?: number
@@ -43,12 +45,14 @@ export interface ILayoutTable {
     groupBy: string
     showSubtotal: boolean
     subtotalLabel?: string
+    subtotalColumns?: string[]
   }
 }
 
 export interface ILayoutBodyRow {
   columns: {
     width?: string; 
+    align?: 'left' | 'center' | 'right';
     table: ILayoutTable;
   }[];
 }

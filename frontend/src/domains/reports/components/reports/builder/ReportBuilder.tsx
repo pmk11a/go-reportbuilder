@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ReportEditor } from './ReportEditor';
 import { ReportPreview } from './ReportPreview';
 import type { ILayoutConfig, IReportConfig } from '@/domains/reports/types';
-import { Save, ArrowLeft } from 'lucide-react';
+import { Save, ArrowLeft, Monitor, Smartphone } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { Button, Tabs } from '@/shared/ui';
@@ -12,6 +12,7 @@ export function ReportBuilder() {
   const isDark = useThemeStore((s) => s.isDark);
   
   const [zoom, setZoom] = useState(0.8);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
   // Full report configuration state
   const [reportConfig, setReportConfig] = useState<Partial<IReportConfig>>({
@@ -162,7 +163,11 @@ export function ReportBuilder() {
           
           {/* Right Side: Preview */}
           <div className={`flex-1 h-full rounded-3xl relative overflow-hidden border ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-100 border-slate-200'}`}>
-            <div className="absolute top-4 right-4 bg-white dark:bg-slate-800 shadow-lg rounded-full p-1.5 flex gap-1 z-50 border border-slate-200 dark:border-slate-700">
+            <div className="absolute top-4 right-4 bg-white dark:bg-slate-800 shadow-lg rounded-full p-1.5 flex gap-1 z-40 border border-slate-200 dark:border-slate-700">
+              <Button variant="ghost" size="icon" onClick={() => setOrientation(o => o === 'portrait' ? 'landscape' : 'portrait')} className="h-8 w-8 rounded-full text-slate-500" title="Ubah Orientasi">
+                {orientation === 'portrait' ? <Smartphone className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+              </Button>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 my-auto mx-1" />
               <Button variant="ghost" size="icon" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="h-8 w-8 rounded-full">
                 <span className="text-lg font-bold leading-none">-</span>
               </Button>
@@ -175,7 +180,7 @@ export function ReportBuilder() {
             </div>
 
             <div className="absolute inset-0 overflow-x-hidden overflow-y-auto flex justify-center items-start pt-16 sm:pt-20 pb-8">
-              <ReportPreview config={layoutConfig} zoom={zoom} />
+              <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} />
             </div>
           </div>
         </div>
@@ -183,6 +188,7 @@ export function ReportBuilder() {
         {/* Mobile Tabs */}
         <div className="lg:hidden">
           <Tabs 
+            storageKey="report-builder-mobile-tab"
             tabs={[
               {
                 label: 'Editor Konfigurasi',
@@ -203,7 +209,11 @@ export function ReportBuilder() {
                 value: 'preview',
                 content: (
                   <div className={`w-full min-h-125 rounded-3xl relative overflow-hidden border ${isDark ? 'bg-slate-950 border-white/5' : 'bg-slate-100 border-slate-200'}`}>
-                    <div className="absolute top-4 right-4 bg-white dark:bg-slate-800 shadow-lg rounded-full p-1.5 flex gap-1 z-50 border border-slate-200 dark:border-slate-700">
+                    <div className="absolute top-4 right-4 bg-white dark:bg-slate-800 shadow-lg rounded-full p-1.5 flex gap-1 z-40 border border-slate-200 dark:border-slate-700">
+                      <Button variant="ghost" size="icon" onClick={() => setOrientation(o => o === 'portrait' ? 'landscape' : 'portrait')} className="h-8 w-8 rounded-full text-slate-500" title="Ubah Orientasi">
+                        {orientation === 'portrait' ? <Smartphone className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                      </Button>
+                      <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 my-auto mx-1" />
                       <Button variant="ghost" size="icon" onClick={() => setZoom(z => Math.max(0.3, z - 0.1))} className="h-8 w-8 rounded-full">
                         <span className="text-lg font-bold leading-none">-</span>
                       </Button>
@@ -216,7 +226,7 @@ export function ReportBuilder() {
                     </div>
 
                     <div className="absolute inset-0 overflow-x-hidden overflow-y-auto flex justify-center items-start pt-16 sm:pt-20 pb-8">
-                      <ReportPreview config={layoutConfig} zoom={zoom} />
+                      <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} />
                     </div>
                   </div>
                 )

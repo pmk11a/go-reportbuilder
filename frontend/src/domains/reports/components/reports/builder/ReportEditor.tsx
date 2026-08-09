@@ -74,14 +74,14 @@ export function ReportEditor({ reportConfig, setReportConfig, layoutConfig, setL
     { 
       label: 'Footer Layout', 
       value: 'footer', 
-      content: <div className="p-4"><FooterEditor config={getLayout('footer') as ILayoutFooter} onChange={(d: any) => updateLayout('footer', d)} isDark={isDark} /></div> 
+      content: <div className="p-4"><FooterEditor config={getLayout('footer') as ILayoutFooter} onChange={(d: any) => updateLayout('footer', d)} reportConfig={reportConfig} setReportConfig={setReportConfig} isDark={isDark} /></div> 
     }
   ];
 
   return (
     <div className="flex flex-col h-full bg-transparent">
       {/* Tabs Component */}
-      <Tabs tabs={tabItems} defaultValue="general" className="h-full" />
+      <Tabs tabs={tabItems} defaultValue="general" className="h-full" storageKey="report-editor-tab" />
 
       {/* Table Header Modal */}
       <Show when={headerModal.isOpen && headerModal.table !== null}>
