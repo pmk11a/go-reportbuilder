@@ -156,56 +156,92 @@ export function TableHeaderModal({ table, isDark, onClose, onSave }: { table: IL
                       setLocalTable({...localTable, dataColumns: newCols});
                     }} className="absolute top-2 right-2 text-red-500 h-6 w-6"><Trash2 className="w-3.5 h-3.5"/></Button>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 pr-6">
-                      <div className="md:col-span-5 space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-500">Field Database</label>
-                        <Input 
-                          placeholder="Contoh: no_rekening" className="font-mono text-sm h-9"
-                          value={dCol.field}
-                          onChange={e => {
-                            const newCols = [...localTable.dataColumns];
-                            newCols[cIdx].field = e.target.value;
-                            setLocalTable({...localTable, dataColumns: newCols});
-                          }}
-                        />
+                    <div className="space-y-4 pr-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3">
+                        <div className="md:col-span-3 space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">Tipe Kolom</label>
+                          <Select 
+                            value={dCol.type || 'field'}
+                            onValueChange={(val) => {
+                              const newCols = [...localTable.dataColumns];
+                              newCols[cIdx].type = val as any;
+                              setLocalTable({...localTable, dataColumns: newCols});
+                            }}
+                          >
+                            <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Tipe" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="field">Field DB</SelectItem>
+                              <SelectItem value="formula">Formula / Math</SelectItem>
+                              <SelectItem value="row_number">No. Baris</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-4 space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">ID / Field</label>
+                          <Input 
+                            placeholder={dCol.type === 'formula' ? 'Alias (tanpa spasi)' : 'Contoh: no_rekening'} className="font-mono text-sm h-9"
+                            value={dCol.field}
+                            onChange={e => {
+                              const newCols = [...localTable.dataColumns];
+                              newCols[cIdx].field = e.target.value;
+                              setLocalTable({...localTable, dataColumns: newCols});
+                            }}
+                          />
+                        </div>
+                        <div className="md:col-span-3 space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">Format</label>
+                          <Select 
+                            value={dCol.format || 'text'}
+                            onValueChange={(val) => {
+                              const newCols = [...localTable.dataColumns];
+                              newCols[cIdx].format = val;
+                              setLocalTable({...localTable, dataColumns: newCols});
+                            }}
+                          >
+                            <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Format" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">Teks (Default)</SelectItem>
+                              <SelectItem value="number">Angka (Number)</SelectItem>
+                              <SelectItem value="currency">Mata Uang</SelectItem>
+                              <SelectItem value="date">Tanggal (Date)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-2 space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-slate-500">Align</label>
+                          <Select 
+                            value={dCol.align || 'left'}
+                            onValueChange={(val) => {
+                              const newCols = [...localTable.dataColumns];
+                              newCols[cIdx].align = val as any;
+                              setLocalTable({...localTable, dataColumns: newCols});
+                            }}
+                          >
+                            <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Align" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="left">Kiri</SelectItem>
+                              <SelectItem value="center">Tengah</SelectItem>
+                              <SelectItem value="right">Kanan</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                      <div className="md:col-span-3 space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-500">Perataan (Align)</label>
-                        <Select 
-                          value={dCol.align || 'left'}
-                          onValueChange={(val) => {
-                            const newCols = [...localTable.dataColumns];
-                            newCols[cIdx].align = val as any;
-                            setLocalTable({...localTable, dataColumns: newCols});
-                          }}
-                        >
-                          <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Align" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="left">Kiri (Left)</SelectItem>
-                            <SelectItem value="center">Tengah (Center)</SelectItem>
-                            <SelectItem value="right">Kanan (Right)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="md:col-span-4 space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-slate-500">Format Data</label>
-                        <Select 
-                          value={dCol.format || 'text'}
-                          onValueChange={(val) => {
-                            const newCols = [...localTable.dataColumns];
-                            newCols[cIdx].format = val;
-                            setLocalTable({...localTable, dataColumns: newCols});
-                          }}
-                        >
-                          <SelectTrigger className="h-9 w-full text-sm"><SelectValue placeholder="Format" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="text">Teks (Default)</SelectItem>
-                            <SelectItem value="number">Angka (Number)</SelectItem>
-                            <SelectItem value="currency">Mata Uang (Currency)</SelectItem>
-                            <SelectItem value="date">Tanggal (Date)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      
+                      {dCol.type === 'formula' && (
+                        <div className={`space-y-1.5 p-3 mt-1 rounded-lg border ${isDark ? 'bg-slate-900/50 border-slate-700/50' : 'bg-slate-50/50 border-slate-200/50'}`}>
+                          <label className={`text-[10px] font-bold uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Rumus Formula</label>
+                          <Input 
+                            placeholder="Contoh: ({riil_rp} + {chgb}) * 2" className={`font-mono text-sm h-9 ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}
+                            value={dCol.formula || ''}
+                            onChange={e => {
+                              const newCols = [...localTable.dataColumns];
+                              newCols[cIdx].formula = e.target.value;
+                              setLocalTable({...localTable, dataColumns: newCols});
+                            }}
+                          />
+                          <p className={`text-[10px] leading-tight ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Gunakan kurung kurawal <code>{`{field}`}</code> untuk merujuk ke field lain. Operator: <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>( )</code>.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

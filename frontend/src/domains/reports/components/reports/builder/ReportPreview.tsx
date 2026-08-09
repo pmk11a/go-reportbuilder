@@ -212,8 +212,14 @@ export function ReportPreview({ config, zoom, orientation = 'portrait' }: Report
                                           className="border border-gray-300 p-2"
                                           style={{ textAlign: dCol.align || 'left' }}
                                         >
-                                          <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4 mx-auto" 
-                                              style={{ marginLeft: dCol.align === 'left' ? '0' : dCol.align === 'right' ? 'auto' : 'auto', marginRight: dCol.align === 'right' ? '0' : 'auto' }} />
+                                          {dCol.type === 'formula' ? (
+                                            <span className="text-[10px] font-mono text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">
+                                              [Formula]
+                                            </span>
+                                          ) : (
+                                            <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4 mx-auto" 
+                                                style={{ marginLeft: dCol.align === 'left' ? '0' : dCol.align === 'right' ? 'auto' : 'auto', marginRight: dCol.align === 'right' ? '0' : 'auto' }} />
+                                          )}
                                         </td>
                                       )}
                                     </Each>

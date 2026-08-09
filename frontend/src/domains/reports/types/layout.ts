@@ -32,6 +32,8 @@ export interface ILayoutFooter {
 
 export interface ILayoutDataColumn {
   field: string
+  type?: 'field' | 'formula' | 'row_number'
+  formula?: string
   align?: 'left' | 'center' | 'right'
   format?: string
 }
