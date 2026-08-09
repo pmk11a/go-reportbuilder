@@ -1,5 +1,5 @@
 /**
- * PageFooterBand — TASK-027b AC3.3.
+ * PageFooterBand — TASK-030 Step 3.
  *
  * Renders the footer band from footer_bands config.
  *
@@ -16,8 +16,7 @@
  *   - {{total}}   → total page count
  *   - {{date}}    → formatted current date (ID locale, DD/MM/YYYY)
  *   - {{report}}  → report name
- *
- * Static text is rendered as-is.
+ *   - {{user}}    → user display name (e.g. "John Doe" or username)
  */
 import { useMemo } from 'react'
 
@@ -26,6 +25,7 @@ interface PageFooterBandProps {
   currentPage?: number
   totalPages?: number
   reportName?: string
+  userName?: string
 }
 
 const PLACEHOLDER_REGEX = /\{\{(\w+)\}\}/g
@@ -35,6 +35,7 @@ export function PageFooterBand({
   currentPage = 1,
   totalPages = 1,
   reportName = 'Laporan',
+  userName,
 }: PageFooterBandProps) {
   const content = footerBandConfig?.content || ''
   const align = footerBandConfig?.align || 'center'
@@ -49,14 +50,22 @@ export function PageFooterBand({
       month: '2-digit',
       year: 'numeric',
     })
+    const timeStr = now.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
     const context: Record<string, string> = {
       page: String(currentPage),
       total: String(totalPages),
       date: dateStr,
+      time: timeStr,
+      datetime: `${dateStr} ${timeStr}`,
       report: reportName,
+      user: userName || '',
     }
     return content.replace(PLACEHOLDER_REGEX, (_match: string, key: string) => context[key] ?? _match)
-  }, [content, currentPage, totalPages, reportName])
+  }, [content, currentPage, totalPages, reportName, userName])
 
   if (!text) return null
 

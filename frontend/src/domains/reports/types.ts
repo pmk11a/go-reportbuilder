@@ -282,9 +282,9 @@ export interface IGroupingConfig {
 export interface IReportMenuItem {
   /** Menu code from dbmenureport */
   KODEMENU: string
-  /** Report display name */
+  /** Report display name from DBMENUREPORT.Keterangan */
   NmReport: string
-  /** Hierarchy level */
+  /** Hierarchy level from DBMENUREPORT.L0 */
   L0: number
   /** Access level */
   ACCESS: string

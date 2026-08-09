@@ -5,7 +5,7 @@ interface FooterSummaryTableProps {
     columns: any[]
     rows: any[]
   }
-  summaryData: Record<string, any> // Includes t1, sumT2, computed
+  summaryData: Record<string, any> // Includes t1, sumT2, computed fields like SaldoAwalD, TotalD, etc.
   detailDatasets: Record<string, any[]>
   formatCurrency: (val: number) => string
 }
@@ -13,67 +13,91 @@ interface FooterSummaryTableProps {
 export function FooterSummaryTable({ config, summaryData, detailDatasets, formatCurrency }: FooterSummaryTableProps) {
   if (!config?.rows?.length || !config?.columns?.length) return null
 
-  // Normalize columns
-  const normCols = config.columns.map((col: any) => {
-    if (typeof col === 'object') {
-      return { ...col, col_key: col.col_key || col.field || col.label }
+  // Normalize columns — each col has: label, dataset, field
+  // The col_key is derived from the column's `field` value (Debet/kredit),
+  // which is what the `fields` mapping in rows uses (D=first field, K=second field).
+  const normCols = config.columns.map((col: any, idx: number) => {
+    const field = col.field || col.col_key || col.label
+    return {
+      ...col,
+      field,            // e.g. "Debet" or "kredit"
+      col_key: field,  // used for fields.{key} lookup
+      pos_key: idx === 0 ? 'D' : idx === 1 ? 'K' : String(idx), // D/K for 2-col reports
     }
-    return { label: col, col_key: col }
   })
 
-  // Prepare Eval Context for `cells` expressions
-  const ctxT1 = summaryData || {}
-  
-  // T2 aggregates context (from all detail datasets)
+  // Build T2 sums from all detail datasets (case-insensitive key lookup)
   const ctxT2Sums: Record<string, number> = {}
   Object.keys(detailDatasets).forEach(dsName => {
     const ds = detailDatasets[dsName] || []
     if (ds.length > 0) {
-       Object.keys(ds[0]).forEach(key => {
-          ctxT2Sums[key] = (ctxT2Sums[key] || 0) + ds.reduce((acc, row) => acc + (parseFloat(row[key]) || 0), 0)
-       })
+      Object.keys(ds[0] || {}).forEach(key => {
+        ctxT2Sums[key] = (ctxT2Sums[key] || 0) + ds.reduce((acc, row) => acc + (parseFloat(String(row[key] || '').replace(/,/g, '')) || 0), 0)
+      })
     }
   })
 
-  const evalCtx = { t1: ctxT1, t1Sums: {}, t2Sums: ctxT2Sums } // Simplification
+  const evalCtx = { t1: summaryData, t1Sums: {}, t2Sums: ctxT2Sums }
 
+  // Resolve the value for a given row + column.
+  // For "sum" rows: compute SUM of the column field across detail rows.
+  // For "computed" rows: the value was pre-computed by computeT1SummaryData() and lives in summaryData
+  //   under the key named in fields.{D} or fields.{K}. The D/K key matches the column position
+  //   (D=first column=Penerimaan=Debet, K=second column=Pengeluaran=kredit).
   const resolveCellValue = (rowDef: any, colDef: any): number => {
-    const ck = colDef.col_key
-    const explicit = rowDef.fields?.[ck]
+    const fieldMapping = rowDef.fields || {}
+    // Try: 1) fields[col_key] (field name), 2) fields[pos_key] (D/K), 3) fields[col_key lowercase]
+    const rawField =
+      fieldMapping[colDef.col_key] ??
+      fieldMapping[colDef.pos_key] ??
+      fieldMapping[String(colDef.col_key).toLowerCase()] ??
+      undefined
 
-    if (explicit !== undefined) {
-      if (rowDef.data_source === 'sum') {
-        if (typeof explicit === 'string' && /[+\-*/()]|\b(?:sum|SaldoAwal)\b/.test(explicit)) {
+    // ----- data_source: "computed" -----
+    if (rowDef.data_source === 'computed') {
+      if (rawField !== undefined) {
+        // e.g. fields = { "Penerimaan": "SaldoAwalD", "Pengeluaran": "SaldoAwalK" }
+        // summaryData already contains the pre-computed result (SaldoAwalD, SaldoAkhirD, TotalD, etc.)
+        const val = summaryData[rawField]
+        if (val !== undefined && val !== null) {
+          return parseFloat(String(val).replace(/,/g, '')) || 0
+        }
+      }
+      return 0
+    }
+
+    // ----- data_source: "sum" -----
+    if (rowDef.data_source === 'sum') {
+      if (rawField !== undefined) {
+        // rawField can be an expression string like "sum(Debet)"
+        if (typeof rawField === 'string' && /\b(?:sum|SaldoAwal|add)\b/i.test(rawField)) {
           try {
-            return evalT1Expression(explicit, {}, evalCtx)
+            return evalT1Expression(rawField, {}, evalCtx)
           } catch (e: any) {
-            console.warn(`[FooterSummaryTable] expression failed:`, e?.message)
+            console.warn(`[FooterSummaryTable] expression failed for "${rawField}":`, e?.message)
             return 0
           }
         }
-        // explicit is a field name
-        const targetDataset = detailDatasets[rowDef.dataset] || Object.values(detailDatasets)[0] || []
-        return targetDataset.reduce((sum, row) => {
-           const k = Object.keys(row).find(key => key.toLowerCase() === explicit.toLowerCase())
-           const val = k ? row[k] : 0
-           return sum + (parseFloat(val) || 0)
+        // rawField is a plain field name — sum across detail rows
+        const targetDsName = rowDef.dataset || colDef.dataset
+        const targetDs = targetDsName ? (detailDatasets[targetDsName] || []) : Object.values(detailDatasets).flat()
+        const fieldLower = rawField.toLowerCase()
+        return targetDs.reduce((sum, row) => {
+          const k = Object.keys(row).find(key => key.toLowerCase() === fieldLower)
+          const val = k ? row[k] : undefined
+          return sum + (val !== undefined ? (parseFloat(String(val).replace(/,/g, '')) || 0) : 0)
         }, 0)
       }
 
-      if (rowDef.data_source === 't1' || rowDef.data_source === 'computed') {
-        return parseFloat(summaryData[explicit] || 0)
-      }
-    }
-
-    // Default legacy logic if `fields` mapping is missing
-    if (rowDef.data_source === 'sum') {
-      const field = colDef.field || colDef.col_key
-      const targetDataset = detailDatasets[rowDef.dataset || colDef.dataset] || Object.values(detailDatasets)[0] || []
-      return targetDataset.reduce((sum, row) => {
-        // case-insensitive lookup
-        const k = Object.keys(row).find(key => key.toLowerCase() === field.toLowerCase())
-        const val = k ? row[k] : 0
-        return sum + (parseFloat(val) || 0)
+      // Fallback: if no field mapping, sum by col key
+      const field = colDef.field || ck
+      if (!field) return 0
+      const fieldLower = field.toLowerCase()
+      const targetDs = Object.values(detailDatasets).flat()
+      return targetDs.reduce((sum, row) => {
+        const k = Object.keys(row).find(key => key.toLowerCase() === fieldLower)
+        const val = k ? row[k] : undefined
+        return sum + (val !== undefined ? (parseFloat(String(val).replace(/,/g, '')) || 0) : 0)
       }, 0)
     }
 
@@ -99,24 +123,7 @@ export function FooterSummaryTable({ config, summaryData, detailDatasets, format
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
           {config.rows.map((rowDef: any, idx) => {
             const rowLabel = typeof rowDef === 'string' ? rowDef : rowDef.label
-
-            // Handle data_source: "cells" override
-            let cellsVals: number[] = []
-            if (rowDef.data_source === 'cells') {
-               cellsVals = normCols.map((colDef: any, colIdx: number) => {
-                 const cellDef = rowDef.cells?.find((c: any) => (c.col === undefined ? colIdx : c.col) === colIdx)
-                 if (!cellDef) return 0
-                 if (cellDef.field) return parseFloat(summaryData[cellDef.field] || 0)
-                 if (cellDef.expression) {
-                   try {
-                     return evalT1Expression(cellDef.expression, {}, evalCtx)
-                   } catch { return 0 }
-                 }
-                 return 0
-               })
-            } else {
-               cellsVals = normCols.map((colDef: any) => resolveCellValue(rowDef, colDef))
-            }
+            const cellsVals: number[] = normCols.map((colDef: any) => resolveCellValue(rowDef, colDef))
 
             return (
               <tr key={idx}>

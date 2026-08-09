@@ -16,6 +16,7 @@ import { ReportTitleBand } from './bands/ReportTitleBand'
 import { ReportFooterBands } from './bands/ReportFooterBands'
 import { PageFooterBand } from './bands/PageFooterBand'
 import { useReportStore } from '../../stores/reportStore'
+import { useAuthStore } from '@/shared/stores/authStore'
 import { useMemo } from 'react'
 
 // Lightweight JSON-safe parse helper
@@ -33,8 +34,10 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
   const { data: config, isLoading, isError, error } = useReportConfig(kodeMenu)
   const executeReport = useExecuteReport(kodeMenu)
   const filterValues = useReportStore((s) => s.filterValues)
+  const currentUser = useAuthStore((s) => s.user)
 
-
+  // Current user display name for PageFooter [IDUSER] substitution
+  const userDisplayName = currentUser?.username || currentUser?.full_name || currentUser?.name || ''
 
   let reportDatasets: Record<string, any[]> = {}
   if (executeReport.data) {
@@ -52,7 +55,7 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
     // Collect all datasets into a single array for Export
     const allData: { sheetName: string; columns: any[]; data: any[] }[] = []
     const columnsRecord = config?.columns || {}
-    
+
     Object.entries(columnsRecord).forEach(([datasetName, columns]) => {
       const data = reportDatasets[datasetName] || []
       if (data.length > 0 && columns.length > 0) {
@@ -63,7 +66,7 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
         })
       }
     })
-    
+
     return allData.length > 0 ? allData : null
   }
 
@@ -177,6 +180,18 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
   const summaryDatasets = config?.datasets?.filter(d => d.config_json?.display_role === 'summary' && d.visible) || []
   const detailDatasetsList = config?.datasets?.filter(d => d.config_json?.display_role !== 'summary' && d.visible) || []
 
+  // Subreport datasets: datasets that should render inline in the footer block (left side)
+  // T3 Bank/Kurs/CHGB breakdown is marked with page_index=2
+  const subreportDatasets = detailDatasetsList.filter(d => {
+    const cfg = typeof d.config_json === 'string' ? safeParse(d.config_json) : (d.config_json || {})
+    return cfg.page_index === 2 || cfg.is_subreport === true
+  })
+  // Main detail datasets (Page 1) — exclude subreports
+  const mainDetailDatasets = detailDatasetsList.filter(d => {
+    const cfg = typeof d.config_json === 'string' ? safeParse(d.config_json) : (d.config_json || {})
+    return cfg.page_index !== 2 && cfg.is_subreport !== true
+  })
+
   const footerBandsJson = useMemo(() => {
     try {
       if (!config?.footer_bands) return null
@@ -185,6 +200,20 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
       return null
     }
   }, [config?.footer_bands])
+
+  // Resolve pageFooter content — fall back to Delphi-style default if not configured
+  const resolvedPageFooter = useMemo(() => {
+    const raw = footerBandsJson?.bands?.pageFooter
+    if (raw?.content) return raw
+    // Delphi-style default: "Tanggal Cetak [Date] [Time] Dicetak oleh : [IDUSER]" on left,
+    // "Halaman [Page] dari [TotalPages#]" on right
+    return {
+      enabled: true,
+      content: 'Tanggal Cetak {{date}} {{time}} Dicetak oleh: {{user}}',
+      align: 'left',
+      style: { fontSize: 'small', color: 'slate-500' },
+    }
+  }, [footerBandsJson])
 
   const t1SummaryDataset = summaryDatasets[0]
   const summaryData = useMemo(() => {
@@ -235,11 +264,18 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
     return out
   }, [config, reportDatasets, summaryData])
 
-  // Format details for DetailLayout
-  const formattedDetailDatasets = detailDatasetsList.map(ds => ({
+  // Format main detail datasets for DetailLayout
+  const formattedMainDetailDatasets = mainDetailDatasets.map(ds => ({
     dataset: ds,
     columns: config?.columns?.[ds.nama_dataset] || [],
-    data: enrichedReportDatasets[ds.nama_dataset] || (!executeReport.data ? [] : [])
+    data: enrichedReportDatasets[ds.nama_dataset] || []
+  }))
+
+  // Format subreport datasets for inline rendering in ReportFooterBands
+  const formattedSubreportDatasets = subreportDatasets.map(ds => ({
+    dataset: ds,
+    columns: config?.columns?.[ds.nama_dataset] || [],
+    data: enrichedReportDatasets[ds.nama_dataset] || []
   }))
 
   if (isLoading) {
@@ -277,7 +313,7 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
               <p className="text-sm text-slate-500 pl-7">{config.deskripsi}</p>
             )}
           </div>
-          
+
           <div className="flex gap-2">
             <button
               onClick={handleExportExcel}
@@ -309,12 +345,12 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
 
       <div className="flex-1 p-6 overflow-y-auto flex flex-col">
         <div className="w-full mx-auto space-y-6 flex flex-col flex-1">
-          <DynamicFilterPanel 
-            kodeMenu={kodeMenu} 
-            executeReport={executeReport} 
+          <DynamicFilterPanel
+            kodeMenu={kodeMenu}
+            executeReport={executeReport}
           />
-          
-          <Show 
+
+          <Show
             when={!!executeReport.data || executeReport.isPending}
             fallback={
               <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-400 bg-slate-50/50 dark:bg-slate-800/20 rounded-3xl border border-slate-100 dark:border-white/5 border-dashed min-h-[300px]">
@@ -337,6 +373,7 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
               />
             </Show>
 
+            {/* Summary header (T1 data) */}
             {summaryDatasets.map(ds => (
               <SummaryLayout
                 key={`header-${ds.nama_dataset}`}
@@ -349,12 +386,14 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
               />
             ))}
 
+            {/* Main detail (Page 1) */}
             <DetailLayout
               kodeMenu={kodeMenu}
               isLoading={executeReport.isPending}
-              detailDatasets={formattedDetailDatasets}
+              detailDatasets={formattedMainDetailDatasets}
             />
 
+            {/* Summary footer (T1 data) */}
             {summaryDatasets.map(ds => (
               <SummaryLayout
                 key={`footer-${ds.nama_dataset}`}
@@ -367,18 +406,23 @@ export function DynamicReportViewer({ kodeMenu }: DynamicReportViewerProps) {
               />
             ))}
 
+            {/* Report footer bands: summary table + signatures */}
             <Show when={!!executeReport.data}>
               <ReportFooterBands
                 footerBandsJson={footerBandsJson}
                 summaryData={summaryData}
                 detailDatasets={reportDatasets}
+                subreportDatasets={formattedSubreportDatasets}
               />
-              {footerBandsJson?.bands?.footer?.enabled && (
-                <PageFooterBand
-                  footerBandConfig={footerBandsJson.bands.footer}
-                  reportName={config?.nama_laporan}
-                />
-              )}
+            </Show>
+
+            {/* Page footer — print date + user + page number */}
+            <Show when={!!executeReport.data}>
+              <PageFooterBand
+                footerBandConfig={resolvedPageFooter}
+                reportName={config?.nama_laporan}
+                userName={userDisplayName}
+              />
             </Show>
           </Show>
         </div>

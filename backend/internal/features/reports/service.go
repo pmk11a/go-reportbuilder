@@ -713,6 +713,9 @@ func mapReportToResponse(r *SDBMasterLaporan) SReportResponse {
 		Deskripsi:   r.Deskripsi,
 		StatusAktif: r.StatusAktif,
 		FooterBands: footerBands,
+		Keterangan:  r.Keterangan,
+		L0:          r.L0,
+		Icon:        r.Icon,
 	}
 }
 
