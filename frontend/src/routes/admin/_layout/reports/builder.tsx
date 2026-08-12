@@ -1,11 +1,13 @@
 import { createFileRoute, Outlet, Link, useLocation } from '@tanstack/react-router'
-import { Plus, Play, LayoutDashboard } from 'lucide-react'
+import { Plus, Play, LayoutDashboard, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useReports } from '@/domains/reports/hooks/useReport'
 import { useThemeStore } from '@/shared/stores/themeStore'
 import { Each, Show, CollapsibleSidebarLayout } from '@/shared/ui/layout'
 import { useDebounce } from '@/shared/hooks'
 import { Button } from '@/shared/ui'
+import { reportService } from '@/domains/reports/services/reportService'
+import { useQueryClient } from '@tanstack/react-query'
 
 export const Route = createFileRoute('/admin/_layout/reports/builder')({
   component: ReportBuilderLayout,
@@ -17,6 +19,19 @@ function ReportBuilderLayout() {
   const { data: reports, isLoading } = useReports()
   const theme = useThemeStore((s) => s.theme)
   const isDark = theme === 'dark'
+  const queryClient = useQueryClient()
+
+  const handleDelete = async (id: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (window.confirm('Yakin ingin menghapus laporan ini? Seluruh data tab akan hilang.')) {
+      const success = await reportService.deleteReport(id);
+      if (success) {
+        queryClient.invalidateQueries({ queryKey: ['reports'] });
+      } else {
+        alert('Gagal menghapus laporan');
+      }
+    }
+  }
 
   const location = useLocation()
   const pathParts = location.pathname.split('/')
@@ -31,9 +46,11 @@ function ReportBuilderLayout() {
   const sidebarCustomContent = (
     <div className="flex flex-col h-full">
       <div className="px-4 py-2 border-b dark:border-slate-800">
-        <Button variant="default" className="w-full flex items-center justify-center">
-          <Plus className="w-4 h-4 mr-2" /> Buat Laporan Baru
-        </Button>
+        <Link to="/admin/reports/builder/$kodemenu/edit" params={{ kodemenu: 'new' }} className="block w-full">
+          <Button variant="default" className="w-full flex items-center justify-center">
+            <Plus className="w-4 h-4 mr-2" /> Buat Laporan Baru
+          </Button>
+        </Link>
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         <Show when={!isLoading} fallback={
@@ -69,6 +86,9 @@ function ReportBuilderLayout() {
                         <Play className="w-3.5 h-3.5" />
                       </Button>
                     </Link>
+                    <Button variant="ghost" size="sm" onClick={(e) => handleDelete(report.id_laporan, e)} className="h-7 w-7 p-0 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
                   </div>
                 </div>
               )}

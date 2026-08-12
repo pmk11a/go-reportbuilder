@@ -4,12 +4,15 @@ import { Button, Input, Textarea, Select, SelectTrigger, SelectValue, SelectCont
 import { SearchableSelect } from '@/shared/ui/form/searchable-select';
 import { useBrowseTypes } from '@/domains/browse/hooks/useBrowse';
 import type { IReportConfig } from '@/domains/reports/types';
+import { DataSourceManager } from './DataSourceManager';
 
 export function FiltersEditor({ config, onChange, isDark }: { config: Partial<IReportConfig>, onChange: any, isDark: boolean }) {
   const { data: browseTypes, isLoading: isLoadingBrowse } = useBrowseTypes();
   const filters = config.filters || [];
-  const preFetches = config.preFetchQueries || [];
-  const cardClass = isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200';
+  const datasets = config.datasets || [];
+  const availableDataSources = datasets
+    .filter(d => d.config_json?.scope === 'global' || d.config_json?.scope === 'filter')
+    .map(d => ({ id: d.id_query.toString(), name: `${d.nama_dataset} (${d.config_json?.scope === 'global' ? 'Global' : 'Filter'})` }));
   const headingClass = isDark ? 'text-slate-200' : 'text-slate-800';
   
   const browseOptions = useMemo(() => {
@@ -23,7 +26,7 @@ export function FiltersEditor({ config, onChange, isDark }: { config: Partial<IR
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
 
   const addFilter = () => {
-    onChange({ ...config, filters: [...filters, { id_parameter: Date.now(), nama_filter: 'new_filter', label: 'New Filter', tipe_input: 'text' }] });
+    onChange({ ...config, filters: [...filters, { nama_filter: 'new_filter', label: 'New Filter', tipe_input: 'text' }] });
   };
 
   const updateFilter = (index: number, key: string, value: any) => {
@@ -76,60 +79,21 @@ export function FiltersEditor({ config, onChange, isDark }: { config: Partial<IR
     <div className="space-y-8">
       {/* 1. Pre-Fetch Queries Section */}
       <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className={`font-medium ${headingClass}`}>Pre-Fetch Data Sources</h3>
-            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ambil data awal dari DB untuk dijadikan nilai default dinamis pada filter.</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => {
-            const baru = { id: `ds_${Date.now()}`, name: 'New Source', query: 'EXEC Sp_...' };
-            onChange({ ...config, preFetchQueries: [...preFetches, baru] });
-          }}>
-            <Plus className="w-4 h-4 mr-1" /> Add Source
-          </Button>
-        </div>
-        
-        <Show when={preFetches.length > 0}>
-          <div className="space-y-3">
-            <Each of={preFetches}>
-              {(ds, i) => (
-                <div key={ds.id} className={`p-4 border rounded-xl relative ${cardClass}`}>
-                  <Button variant="ghost" size="icon" onClick={() => {
-                      onChange({...config, preFetchQueries: preFetches.filter((_, idx) => idx !== i)});
-                    }} className="absolute top-2 right-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 pr-0 sm:pr-8">
-                    <div className="space-y-1">
-                      <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>ID Source (Unik)</label>
-                      <Input value={ds.id} readOnly className={`h-9 rounded-xl text-xs ${isDark ? 'bg-slate-900 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Nama</label>
-                      <Input value={ds.name} onChange={e => {
-                        const nf = [...preFetches]; nf[i].name = e.target.value; onChange({...config, preFetchQueries: nf});
-                      }} placeholder="Misal: Periode Aktif" className={`h-9 rounded-xl text-xs ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Query (SP / SELECT)</label>
-                    <Textarea value={ds.query} onChange={e => {
-                      const nf = [...preFetches]; nf[i].query = e.target.value; onChange({...config, preFetchQueries: nf});
-                    }} rows={3} placeholder="EXEC Sp_Periode" className={`rounded-xl font-mono text-xs ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`} />
-                  </div>
-                </div>
-              )}
-            </Each>
-          </div>
-        </Show>
+      <DataSourceManager
+        config={config}
+        onChange={onChange}
+        isDark={isDark}
+        scope="filter"
+        title="Filter Data Sources (Local)"
+        description="Ambil data awal dari DB untuk dijadikan nilai default dinamis khusus pada filter di laporan ini."
+      />
       </div>
 
       <div className={`h-px w-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
 
       {/* 2. Filters List */}
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
+        <div className={`sticky top-0 z-20 flex justify-between items-center py-2 px-1 -mx-1 mb-2 ${isDark ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
           <div>
             <h3 className={`font-medium ${headingClass}`}>Daftar Filter (Parameter)</h3>
             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Urutkan filter dengan men-drag ikon di sebelah kiri.</p>
@@ -381,11 +345,11 @@ export function FiltersEditor({ config, onChange, isDark }: { config: Partial<IR
                                   <SelectValue placeholder="Pilih Source" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <Show when={preFetches.length === 0}>
-                                    <SelectItem value="none" disabled>Belum ada data source</SelectItem>
+                                  <Show when={availableDataSources.length === 0}>
+                                    <SelectItem value="none" disabled>Belum ada Pre-Fetch Query</SelectItem>
                                   </Show>
-                                  <Each of={preFetches}>
-                                    {(ds) => <SelectItem key={ds.id} value={ds.id}>{ds.name}</SelectItem>}
+                                  <Each of={availableDataSources}>
+                                    {(q: any) => <SelectItem key={q.id} value={q.id}>{q.name}</SelectItem>}
                                   </Each>
                                 </SelectContent>
                               </Select>
@@ -420,11 +384,17 @@ export function FiltersEditor({ config, onChange, isDark }: { config: Partial<IR
                         </div>
                       </div>
                       
-                      <div>
+                      <div className="flex flex-col gap-3">
                         <label className={`flex items-center cursor-pointer text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                           <Checkbox checked={!!f.wajib_isi} onChange={(e: any) => updateFilter(i, 'wajib_isi', e.target.checked)} className="mr-2" />
                           <span>Wajib Isi (Mandatory)</span>
                         </label>
+                        <Show when={['dropdown', 'browse', 'select', 'select-db'].includes(f.tipe_input || 'text')}>
+                          <label className={`flex items-center cursor-pointer text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <Checkbox checked={!!f.konfigurasi?.is_multiple} onChange={(e: any) => updateFilterConfig(i, { is_multiple: e.target.checked })} className="mr-2" />
+                            <span>Pilih Multiple (Banyak)</span>
+                          </label>
+                        </Show>
                       </div>
                     </div>
                   </div>

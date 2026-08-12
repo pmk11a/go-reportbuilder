@@ -1,130 +1,266 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ReportEditor } from './ReportEditor';
 import { ReportPreview } from './ReportPreview';
 import type { ILayoutConfig, IReportConfig } from '@/domains/reports/types';
-import { Save, ArrowLeft, Monitor, Smartphone } from 'lucide-react';
+import { Save, ArrowLeft, Monitor, Smartphone, Loader2 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { Button, Tabs } from '@/shared/ui';
 import { useReports } from '@/domains/reports/hooks/useReport';
+import { useGetTabGeneral, useGetTabFilters, useGetTabKomponen } from '@/domains/reports/hooks/useReportBuilder';
+import { reportService } from '@/domains/reports/services/reportService';
+import { useToast } from '@/shared/hooks/use-toast';
 
 export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const isDark = useThemeStore((s) => s.isDark);
+  const queryClient = useQueryClient();
   
-  // Find report ID by kodeMenu
   const { data: reports } = useReports();
+  const reportId = (kodeMenu && kodeMenu !== 'new') ? (reports?.find(r => r.KODEMENU === kodeMenu)?.id_laporan || null) : null;
+
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('report-editor-tab');
+      return saved || 'general';
+    }
+    return 'general';
+  });
+
+  // generalData selalu difetch agar tersedia di semua tab
+  const { data: generalData, isLoading: l1 } = useGetTabGeneral(reportId, true);
+  const { data: filtersData, isLoading: l2 } = useGetTabFilters(reportId, activeTab === 'filters');
+  const { data: komponenData, isLoading: l3 } = useGetTabKomponen(reportId, ['header', 'body', 'footer'].includes(activeTab));
+
+  const isLoading = (kodeMenu && kodeMenu !== 'new' && reportId) ? 
+    (activeTab === 'general' ? l1 : activeTab === 'filters' ? l2 : l3) 
+    : false;
 
   const [zoom, setZoom] = useState(0.8);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
 
   // Full report configuration state
-  const [reportConfig, setReportConfig] = useState<Partial<IReportConfig>>({
-    nama_laporan: 'Kas Harian',
-    KODEMENU: '020101',
-    status_aktif: true,
-    deskripsi: 'Laporan kas harian dengan mutasi TUNAI dan CH/GB',
-    filters: [
-      { id_parameter: 1, id_laporan: 140, nama_filter: 'tgl_awal', label: 'Tanggal Awal', tipe_input: 'date', wajib_isi: true, posisi: 1, konfigurasi: null, nilai_default: null },
-      { id_parameter: 2, id_laporan: 140, nama_filter: 'tgl_akhir', label: 'Tanggal Akhir', tipe_input: 'date', wajib_isi: true, posisi: 2, konfigurasi: null, nilai_default: null }
-    ],
-    datasets: [
-      { id_query: 1, id_laporan: 140, nama_dataset: 'T1', query_sumber_data: 'EXEC Sp_LapSaldoAwal @TglAwal', urutan: 1, visible: true, deskripsi: 'Saldo Awal' },
-      { id_query: 2, id_laporan: 140, nama_dataset: 'T2', query_sumber_data: 'EXEC Sp_LapKasHarian @TglAwal', urutan: 2, visible: true, deskripsi: 'Mutasi' }
-    ]
-  });
+  const [reportConfig, setReportConfig] = useState<Partial<IReportConfig>>({});
 
   // Layout config state
-  const [layoutConfig, setLayoutConfig] = useState<ILayoutConfig[]>([
-    {
-      type: 'header',
-      rows: [
-        {
-          columns: [
-            { text: 'DANA PENSIUN PEMBERI KERJA', align: 'left', width: '50%', sourceType: 'static' },
-            { text: 'Tanggal: {current_date}', align: 'right', width: '50%', sourceType: 'system' }
-          ]
-        },
-        {
-          columns: [
-            { text: 'LAPORAN KAS', align: 'center', colSpan: 2, sourceType: 'static' }
-          ]
-        },
-        {
-          columns: [
-            { text: '{nama_laporan}', align: 'center', colSpan: 2, sourceType: 'database' }
-          ]
-        }
-      ]
-    },
-    {
-      type: 'body',
-      rows: [
-        {
-          columns: [
-            {
-              width: '100%',
-              table: {
-                dataset: 'T2',
-                headerRows: [
-                  [
-                    { text: 'Tgl.', rowSpan: 2, width: '8%', align: 'center' },
-                    { text: 'No. Bukti', rowSpan: 2, width: '12%', align: 'center' },
-                    { text: 'Uraian', rowSpan: 2, width: '25%', align: 'center' },
-                    { text: 'Perk.', rowSpan: 2, width: '10%', align: 'center' },
-                    { text: 'TUNAI', colSpan: 2, align: 'center' },
-                    { text: 'CH / GB', colSpan: 2, align: 'center' }
-                  ],
-                  [
-                    { text: 'Penerimaan', align: 'center', width: '11.25%' },
-                    { text: 'Pengeluaran', align: 'center', width: '11.25%' },
-                    { text: 'Penerimaan', align: 'center', width: '11.25%' },
-                    { text: 'Pengeluaran', align: 'center', width: '11.25%' }
-                  ]
-                ],
-                dataColumns: [
-                  { field: 'tanggal', align: 'center' },
-                  { field: 'nobukti', align: 'center' },
-                  { field: 'Keterangan', align: 'left' },
-                  { field: 'lawan', align: 'left' },
-                  { field: 'Debet', align: 'right' },
-                  { field: 'kredit', align: 'right' },
-                  { field: 'Debet2', align: 'right' },
-                  { field: 'kredit2', align: 'right' }
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      type: 'footer',
-      rows: [
-        {
-          justifyContent: 'space-between',
-          columns: [
-            { title: 'Kontrol,', name: '.......................', role: 'Bag. Kontrol', align: 'center' },
-            { title: 'Kasir,', name: '.......................', role: 'Kasir', align: 'center' },
-            { title: 'Mengetahui,', name: '.......................', role: 'Pimpinan', align: 'center' }
-          ]
-        }
-      ]
-    }
-  ]);
+  const [layoutConfig, setLayoutConfig] = useState<ILayoutConfig[]>([]);
 
-  const handleSave = () => {
-    const finalPayload = {
-      ...reportConfig,
-      komponen: [
-        {
-          nama_komponen: 'DynamicLayout',
-          konfigurasi_layout: JSON.stringify(layoutConfig)
+  // Effect: sync reportConfig saat generalData/filtersData siap
+  useEffect(() => {
+    if (kodeMenu === 'new') {
+      setReportConfig({
+        nama_laporan: '',
+        KODEMENU: '',
+        status_aktif: true,
+        deskripsi: '',
+        filters: [],
+        datasets: []
+      });
+    } else if (generalData) {
+      setReportConfig({
+        ...generalData,
+        filters: filtersData || [],
+        datasets: generalData.datasets || [],
+      });
+    }
+  }, [kodeMenu, generalData, filtersData]);
+
+  // Effect: sync layoutConfig saat komponenData siap
+  useEffect(() => {
+    if (kodeMenu === 'new') {
+      setLayoutConfig([
+        { type: 'header', rows: [] },
+        { type: 'body', rows: [] },
+        { type: 'footer', rows: [] }
+      ]);
+      return;
+    }
+
+    if (!komponenData) return;
+
+    const komponentList = komponenData as any[];
+
+    const parseSection = (namaKomponen: string, type: string) => {
+      const found = komponentList.find((k: any) => k.nama_komponen === namaKomponen);
+      if (found?.konfigurasi_layout) {
+        try {
+          const parsed = typeof found.konfigurasi_layout === 'string'
+            ? JSON.parse(found.konfigurasi_layout)
+            : found.konfigurasi_layout;
+          // bisa berupa object langsung {type, rows}
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.rows) {
+            return parsed;
+          }
+        } catch (e) {
+          console.error('Failed to parse komponen layout:', e);
         }
-      ]
+      }
+      return { type, rows: [] };
     };
-    console.log('Final Save Payload:', JSON.stringify(finalPayload, null, 2));
-    alert('Konfigurasi Laporan disimpan (Lihat console log)');
+
+    setLayoutConfig([
+      parseSection('HeaderLayout', 'header'),
+      parseSection('BodyLayout', 'body'),
+      parseSection('FooterLayout', 'footer'),
+    ]);
+  }, [kodeMenu, komponenData]);
+
+  if (isLoading) {
+    return (
+      <div className={`flex flex-col items-center justify-center w-full h-screen ${isDark ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary-500" />
+        Memuat Konfigurasi Laporan...
+      </div>
+    );
+  }
+
+  const handleSave = async () => {
+    try {
+      if (kodeMenu === 'new' || !reportId) {
+        if (!reportConfig.KODEMENU || !reportConfig.nama_laporan) {
+          toast({ title: 'Kode Menu dan Nama Laporan wajib diisi!', variant: 'destructive' });
+          return;
+        }
+        
+        // Simpan sebagai laporan baru (hanya tab general yang valid di awal)
+        const finalPayload = {
+          ...reportConfig,
+          komponen: [{ nama_komponen: 'DynamicLayout', konfigurasi_layout: JSON.stringify(layoutConfig) }]
+        };
+        const created = await reportService.createReport(finalPayload as any);
+        if (created) {
+          toast({ title: 'Laporan baru berhasil dibuat!', variant: 'success' });
+          navigate({ to: '/admin/reports/builder' });
+        }
+        return;
+      }
+
+      // --- EXISTING REPORT SAVE LOGIC (Contextual based on activeTab) ---
+      
+      if (activeTab === 'general') {
+        // Hanya simpan General (Detail + Datasets)
+        await reportService.updateReport(reportId, reportConfig);
+        
+        // Handle Datasets
+        if (generalData?.datasets) {
+          const currentDsIds = (reportConfig.datasets || []).map(q => q.id_query);
+          for (const oldDs of generalData.datasets) {
+            if (!currentDsIds.includes(oldDs.id_query)) {
+              await reportService.deleteDataset(reportId, oldDs.id_query);
+            }
+          }
+        }
+        if (reportConfig.datasets) {
+          for (let i = 0; i < reportConfig.datasets.length; i++) {
+            const ds = reportConfig.datasets[i];
+            const isNew = ds.id_query.toString().length > 10;
+            const dsPayload = {
+              id_laporan: reportId,
+              nama_dataset: ds.nama_dataset,
+              query_sumber_data: ds.query_sumber_data,
+              urutan: i + 1,
+              visible: true,
+              config_json: ds.config_json
+            };
+            if (isNew) {
+              await reportService.createDataset(reportId, dsPayload);
+            } else {
+              await reportService.updateDataset(reportId, ds.id_query, dsPayload);
+            }
+          }
+        }
+        toast({ title: 'Tab General berhasil disimpan!', variant: 'success' });
+        queryClient.invalidateQueries({ queryKey: ['report-builder', 'general', reportId] });
+
+      } else if (activeTab === 'filters') {
+        // Hanya simpan Filters
+        if (filtersData) {
+          const currentFilterIds = (reportConfig.filters || []).map(f => f.id_parameter).filter(Boolean);
+          for (const oldF of filtersData) {
+            if (!currentFilterIds.includes(oldF.id_parameter)) {
+              await reportService.deleteFilter(reportId, oldF.id_parameter);
+            }
+          }
+        }
+        if (reportConfig.filters) {
+          for (const f of reportConfig.filters) {
+            if (f.id_parameter) {
+              await reportService.updateFilter(reportId, f.id_parameter, f);
+            } else {
+              await reportService.createFilter(reportId, f);
+            }
+          }
+        }
+        toast({ title: 'Tab Filters berhasil disimpan!', variant: 'success' });
+        queryClient.invalidateQueries({ queryKey: ['report-builder', 'filters', reportId] });
+
+      } else if (['header', 'body', 'footer'].includes(activeTab)) {
+        // Simpan Dataset lokal scope tab ini (create/update/delete)
+        const tabScope = activeTab as 'header' | 'body' | 'footer';
+        const tabDatasets = (reportConfig.datasets || []).filter(d => d.config_json?.scope === tabScope);
+        const serverDatasets = (generalData?.datasets || []).filter((d: any) => d.config_json?.scope === tabScope);
+
+        // Delete datasets yang sudah dihapus
+        for (const old of serverDatasets) {
+          if (!tabDatasets.find(d => d.id_query === old.id_query)) {
+            await reportService.deleteDataset(reportId, old.id_query);
+          }
+        }
+        // Create/update datasets
+        for (let i = 0; i < tabDatasets.length; i++) {
+          const ds = tabDatasets[i];
+          const isNew = ds.id_query.toString().length > 10;
+          const dsPayload = {
+            id_laporan: reportId,
+            nama_dataset: ds.nama_dataset,
+            deskripsi: ds.deskripsi,
+            query_sumber_data: ds.query_sumber_data,
+            urutan: i + 1,
+            visible: true,
+            config_json: ds.config_json
+          };
+          if (isNew) {
+            await reportService.createDataset(reportId, dsPayload);
+          } else {
+            await reportService.updateDataset(reportId, ds.id_query, dsPayload);
+          }
+        }
+
+        // Upsert komponen layout by nama_komponen (header/body/footer)
+        const layoutSection = layoutConfig.find(l => l.type === activeTab);
+        const komponenNames: Record<string, string> = {
+          header: 'HeaderLayout',
+          body: 'BodyLayout',
+          footer: 'FooterLayout',
+        };
+        await reportService.upsertKomponen(reportId, {
+          nama_komponen: komponenNames[activeTab],
+          konfigurasi_layout: JSON.stringify(layoutSection || { type: activeTab, rows: [] }),
+        });
+
+        toast({ title: `Tab ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Layout berhasil disimpan!`, variant: 'success' });
+        queryClient.invalidateQueries({ queryKey: ['report-builder', 'komponen', reportId] });
+        queryClient.invalidateQueries({ queryKey: ['report-builder', 'general', reportId] });
+      }
+
+    } catch (err: any) {
+      toast({ title: 'Gagal menyimpan konfigurasi: ' + err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteReport = async () => {
+    if (!reportId) return;
+    if (window.confirm('Yakin ingin menghapus laporan ini? Seluruh data tab akan hilang.')) {
+      const success = await reportService.deleteReport(reportId);
+      if (success) {
+        toast({ title: 'Laporan berhasil dihapus!', variant: 'success' });
+        navigate({ to: '/admin/reports/builder' });
+      } else {
+        toast({ title: 'Gagal menghapus laporan.', variant: 'destructive' });
+      }
+    }
   };
 
   return (
@@ -146,22 +282,30 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
           </div>
         </div>
         <Button onClick={handleSave} className="w-full sm:w-auto">
-          <Save className="w-4 h-4 mr-2" /> Simpan Laporan
+          <Save className="w-4 h-4 mr-2" /> 
+          Simpan {
+            activeTab === 'general' ? 'General' :
+            activeTab === 'filters' ? 'Filters' : 
+            'Layout'
+          }
         </Button>
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 overflow-y-auto lg:overflow-hidden bg-slate-50 dark:bg-[#0f172a]">
+      <div className="flex-1 overflow-y-auto xl:overflow-hidden bg-slate-50 dark:bg-[#0f172a]">
         
         {/* Desktop Split Screen */}
-        <div className="hidden lg:flex flex-row h-full p-6 gap-6">
+        <div className="hidden xl:flex flex-row h-full p-6 gap-6">
           {/* Left Side: Editor */}
-          <div className="w-1/2 max-w-175 h-full flex flex-col shrink-0">
+          <div className="w-1/2 max-w-175 h-full flex flex-col shrink-0 overflow-y-auto overflow-x-hidden">
             <ReportEditor 
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
               reportConfig={reportConfig} 
               setReportConfig={setReportConfig}
               layoutConfig={layoutConfig} 
-              setLayoutConfig={setLayoutConfig} 
+              setLayoutConfig={setLayoutConfig}
+              onDeleteReport={handleDeleteReport}
             />
           </div>
           
@@ -183,14 +327,14 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
               </Button>
             </div>
 
-            <div className="absolute inset-0 overflow-x-hidden overflow-y-auto flex justify-center items-start pt-16 sm:pt-20 pb-8">
+            <div className="absolute inset-0 overflow-x-hidden overflow-y-auto flex flex-col justify-start items-center">
               <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} />
             </div>
           </div>
         </div>
 
         {/* Mobile Tabs */}
-        <div className="lg:hidden">
+        <div className="xl:hidden">
           <Tabs 
             storageKey="report-builder-mobile-tab"
             tabs={[
@@ -198,12 +342,15 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
                 label: 'Editor Konfigurasi',
                 value: 'editor',
                 content: (
-                  <div className="lg:p-2 bg-slate-50 dark:bg-[#0f172a]">
+                  <div className="xl:p-2 bg-slate-50 dark:bg-[#0f172a]">
                     <ReportEditor 
                       reportConfig={reportConfig} 
                       setReportConfig={setReportConfig}
                       layoutConfig={layoutConfig} 
-                      setLayoutConfig={setLayoutConfig} 
+                      setLayoutConfig={setLayoutConfig}
+                      onDeleteReport={handleDeleteReport}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
                     />
                   </div>
                 )

@@ -40,6 +40,10 @@ type IReportsService interface {
 	UpdateGroup(ctx context.Context, id int, req *SUpdateGroupRequest) (*SGroupResponse, error)
 	DeleteGroup(ctx context.Context, id int) error
 
+	// Komponen
+	GetKomponen(ctx context.Context, idLaporan int) ([]SKomponenResponse, error)
+	UpsertKomponen(ctx context.Context, idLaporan int, req *SKomponenRequest) (*SKomponenResponse, error)
+
 	// User Access
 	GetUserAccess(ctx context.Context, kodeMenu string) ([]SUserAccess, error)
 	GrantAccess(ctx context.Context, kodeMenu string, req *SGrantAccessRequest) ([]SUserAccess, error)
@@ -112,14 +116,10 @@ func (s *reportsService) GetReport(ctx context.Context, id int) (*SReportDetailR
 	}
 
 	// Load related data
-	filters, _ := s.repo.GetFilters(ctx, id)
 	datasets, _ := s.repo.GetDatasets(ctx, id)
-	columns, _ := s.repo.GetAllColumns(ctx, id)
-	groups, _ := s.repo.GetGroups(ctx, id)
-	komponen, _ := s.repo.GetKomponen(ctx, id)
 	access, _ := s.repo.GetUserAccess(ctx, report.KODEMENU)
 
-	return mapReportToDetailResponse(report, filters, datasets, columns, groups, komponen, access), nil
+	return mapReportToDetailResponse(report, datasets, access), nil
 }
 
 func (s *reportsService) CreateReport(ctx context.Context, req *SCreateReportRequest) (*SReportResponse, error) {
@@ -163,6 +163,26 @@ func (s *reportsService) CreateReport(ctx context.Context, req *SCreateReportReq
 		FooterBands: footerJSON,
 	}
 
+	if len(req.Komponen) > 0 {
+		for i, k := range req.Komponen {
+			urutan := i + 1
+			if k.Urutan != nil {
+				urutan = *k.Urutan
+			}
+			isActive := true
+			if k.IsActive != nil {
+				isActive = *k.IsActive
+			}
+			_, _ = s.repo.CreateKomponen(ctx, &SDBKomponenLaporan{
+				IDLaporan:         id,
+				NamaKomponen:      k.NamaKomponen,
+				KonfigurasiLayout: k.KonfigurasiLayout,
+				Urutan:            urutan,
+				IsActive:          isActive,
+			})
+		}
+	}
+
 	return resp, nil
 }
 
@@ -187,6 +207,27 @@ func (s *reportsService) UpdateReport(ctx context.Context, id int, req *SUpdateR
 
 	if err := s.repo.UpdateReport(ctx, id, report); err != nil {
 		return nil, err
+	}
+
+	if len(req.Komponen) > 0 {
+		_ = s.repo.DeleteKomponenByReportID(ctx, id)
+		for i, k := range req.Komponen {
+			urutan := i + 1
+			if k.Urutan != nil {
+				urutan = *k.Urutan
+			}
+			isActive := true
+			if k.IsActive != nil {
+				isActive = *k.IsActive
+			}
+			_, _ = s.repo.CreateKomponen(ctx, &SDBKomponenLaporan{
+				IDLaporan:         id,
+				NamaKomponen:      k.NamaKomponen,
+				KonfigurasiLayout: k.KonfigurasiLayout,
+				Urutan:            urutan,
+				IsActive:          isActive,
+			})
+		}
 	}
 
 	resp := mapReportToResponse(report)
@@ -604,6 +645,52 @@ func (s *reportsService) DeleteGroup(ctx context.Context, id int) error {
 }
 
 // ============================================================================
+// Komponen
+// ============================================================================
+
+func (s *reportsService) GetKomponen(ctx context.Context, idLaporan int) ([]SKomponenResponse, error) {
+	komponen, err := s.repo.GetKomponen(ctx, idLaporan)
+	if err != nil {
+		return nil, err
+	}
+	var responses []SKomponenResponse
+	for _, k := range komponen {
+		responses = append(responses, mapKomponenToResponse(&k))
+	}
+	return responses, nil
+}
+
+func (s *reportsService) UpsertKomponen(ctx context.Context, idLaporan int, req *SKomponenRequest) (*SKomponenResponse, error) {
+	urutan := 1
+	if req.Urutan != nil {
+		urutan = *req.Urutan
+	}
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
+	// KonfigurasiLayout adalah string JSON yang sudah di-stringify oleh frontend
+	konfigJSON := req.KonfigurasiLayout
+
+	entity := &SDBKomponenLaporan{
+		IDLaporan:         idLaporan,
+		NamaKomponen:      req.NamaKomponen,
+		KonfigurasiLayout: konfigJSON,
+		Urutan:            urutan,
+		IsActive:          isActive,
+	}
+
+	err := s.repo.UpsertKomponenByName(ctx, idLaporan, req.NamaKomponen, entity)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := mapKomponenToResponse(entity)
+	return &resp, nil
+}
+
+// ============================================================================
 // User Access
 // ============================================================================
 
@@ -721,11 +808,7 @@ func mapReportToResponse(r *SDBMasterLaporan) SReportResponse {
 
 func mapReportToDetailResponse(
 	r *SDBMasterLaporan,
-	filters []SDBParameterLaporan,
 	datasets []SDBQueryLaporan,
-	columns map[string][]SDBKolomLaporan,
-	groups []SDBGroupLaporan,
-	komponen []SDBKomponenLaporan,
 	access []SUserAccess,
 ) *SReportDetailResponse {
 	var footerBands json.RawMessage
@@ -733,33 +816,9 @@ func mapReportToDetailResponse(
 		footerBands = json.RawMessage(*r.FooterBands)
 	}
 
-	var filterResponses []SFilterResponse
-	for _, f := range filters {
-		filterResponses = append(filterResponses, mapFilterToResponse(&f))
-	}
-
 	var datasetResponses []SDatasetResponse
 	for _, d := range datasets {
 		datasetResponses = append(datasetResponses, mapDatasetToResponse(&d))
-	}
-
-	columnResponses := make(map[string][]SColumnResponse)
-	for dataset, cols := range columns {
-		var responses []SColumnResponse
-		for _, c := range cols {
-			responses = append(responses, mapColumnToResponse(&c))
-		}
-		columnResponses[dataset] = responses
-	}
-
-	var groupResponses []SGroupResponse
-	for _, g := range groups {
-		groupResponses = append(groupResponses, mapGroupToResponse(&g))
-	}
-
-	var komponenResponses []SKomponenResponse
-	for _, k := range komponen {
-		komponenResponses = append(komponenResponses, mapKomponenToResponse(&k))
 	}
 
 	return &SReportDetailResponse{
@@ -769,17 +828,13 @@ func mapReportToDetailResponse(
 		Deskripsi:   r.Deskripsi,
 		StatusAktif: r.StatusAktif,
 		FooterBands: footerBands,
-		Filters:     filterResponses,
 		Datasets:    datasetResponses,
-		Columns:     columnResponses,
-		Groups:      groupResponses,
-		Komponen:    komponenResponses,
 		Access:      access,
 	}
 }
 
 func mapKomponenToResponse(k *SDBKomponenLaporan) SKomponenResponse {
-	var konfigurasiLayout map[string]interface{}
+	var konfigurasiLayout interface{}
 	if k.KonfigurasiLayout != "" {
 		json.Unmarshal([]byte(k.KonfigurasiLayout), &konfigurasiLayout)
 	}

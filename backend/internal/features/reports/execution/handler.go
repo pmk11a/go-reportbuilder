@@ -82,26 +82,23 @@ func (h *SReportExecutionHandler) GetReportConfig(c *gin.Context) {
 		return
 	}
 
-	// Get report by kode menu
-	report, err := h.getReportByKodeMenu(c.Request.Context(), kodeMenu)
+	// Build full config response
+	config, err := h.getReportByKodeMenu(c.Request.Context(), kodeMenu)
 	if err != nil {
 		response.NotFound(c, "Report not found: "+err.Error())
 		return
 	}
 
-	if report == nil {
+	if config == nil {
 		response.NotFound(c, "Report not found")
 		return
 	}
-
-	// Build full config response
-	config := h.buildReportConfig(report)
 
 	response.Success(c, "Report configuration retrieved successfully", config)
 }
 
 // getReportByKodeMenu gets report by kode menu with fallback normalization
-func (h *SReportExecutionHandler) getReportByKodeMenu(ctx context.Context, kodeMenu string) (*reports.SReportDetailResponse, error) {
+func (h *SReportExecutionHandler) getReportByKodeMenu(ctx context.Context, kodeMenu string) (*reports.SReportConfigResponse, error) {
 	// Try original kode first
 	report, err := h.fetchReportConfig(ctx, kodeMenu)
 	if err == nil && report != nil {
@@ -121,7 +118,7 @@ func (h *SReportExecutionHandler) getReportByKodeMenu(ctx context.Context, kodeM
 }
 
 // fetchReportConfig fetches full report configuration
-func (h *SReportExecutionHandler) fetchReportConfig(ctx context.Context, kodeMenu string) (*reports.SReportDetailResponse, error) {
+func (h *SReportExecutionHandler) fetchReportConfig(ctx context.Context, kodeMenu string) (*reports.SReportConfigResponse, error) {
 	// Get report detail from service
 	reportsList, err := h.reportService.ListReports(ctx, &reports.SListReportsRequest{Page: 1, Limit: 1000})
 	if err != nil {
@@ -136,22 +133,24 @@ func (h *SReportExecutionHandler) fetchReportConfig(ctx context.Context, kodeMen
 			if err != nil {
 				return nil, err
 			}
-			return foundReport, nil
+			return h.buildReportConfig(ctx, foundReport)
 		}
 	}
 
 	return nil, nil
 }
 
-// buildReportConfig builds the config response from report detail
-func (h *SReportExecutionHandler) buildReportConfig(report *reports.SReportDetailResponse) *reports.SReportConfigResponse {
+// buildReportConfig builds the config response from report detail by fetching the rest
+func (h *SReportExecutionHandler) buildReportConfig(ctx context.Context, report *reports.SReportDetailResponse) (*reports.SReportConfigResponse, error) {
 	var footerBands map[string]interface{}
 	if report.FooterBands != nil {
 		json.Unmarshal([]byte(report.FooterBands), &footerBands)
 	}
 
+	// Fetch Filters
+	filtersData, _ := h.reportService.GetFilters(ctx, report.IDLaporan)
 	var filters []reports.SFilterConfigResponse
-	for _, f := range report.Filters {
+	for _, f := range filtersData {
 		filter := reports.SFilterConfigResponse{
 			IDParameter:  f.IDParameter,
 			NamaFilter:   f.NamaFilter,
@@ -161,7 +160,6 @@ func (h *SReportExecutionHandler) buildReportConfig(report *reports.SReportDetai
 			NilaiDefault: f.NilaiDefault,
 		}
 
-		// Extract browse config from konfigurasi
 		if f.Konfigurasi != nil {
 			if kodeBrowse, ok := f.Konfigurasi["kode_browse"].(string); ok {
 				filter.KodeBrowse = &kodeBrowse
@@ -187,8 +185,10 @@ func (h *SReportExecutionHandler) buildReportConfig(report *reports.SReportDetai
 		})
 	}
 
+	// Fetch Columns
+	columnsData, _ := h.reportService.GetAllColumns(ctx, report.IDLaporan)
 	columns := make(map[string][]reports.SColumnConfigResponse)
-	for dataset, cols := range report.Columns {
+	for dataset, cols := range columnsData {
 		var colConfigs []reports.SColumnConfigResponse
 		for _, c := range cols {
 			colConfigs = append(colConfigs, reports.SColumnConfigResponse{
@@ -203,8 +203,10 @@ func (h *SReportExecutionHandler) buildReportConfig(report *reports.SReportDetai
 		columns[dataset] = colConfigs
 	}
 
+	// Fetch Groups
+	groupsData, _ := h.reportService.GetGroups(ctx, report.IDLaporan)
 	var grouping []map[string]interface{}
-	for _, g := range report.Groups {
+	for _, g := range groupsData {
 		grouping = append(grouping, map[string]interface{}{
 			"id_group":         g.IDGroup,
 			"group_level":      g.GroupLevel,
@@ -219,8 +221,10 @@ func (h *SReportExecutionHandler) buildReportConfig(report *reports.SReportDetai
 		})
 	}
 
+	// Fetch Komponen
+	komponenData, _ := h.reportService.GetKomponen(ctx, report.IDLaporan)
 	var komponen []reports.SKomponenConfigResponse
-	for _, k := range report.Komponen {
+	for _, k := range komponenData {
 		komponen = append(komponen, reports.SKomponenConfigResponse{
 			IDKomponen:        k.IDKomponen,
 			NamaKomponen:      k.NamaKomponen,
@@ -241,7 +245,7 @@ func (h *SReportExecutionHandler) buildReportConfig(report *reports.SReportDetai
 		Columns:    columns,
 		Grouping:   grouping,
 		Komponen:   komponen,
-	}
+	}, nil
 }
 
 // ExecuteReport godoc

@@ -1,7 +1,9 @@
-import { Input, Textarea, Checkbox } from '@/shared/ui';
+import { Input, Textarea, Checkbox, Button } from '@/shared/ui';
 import type { IReportConfig } from '@/domains/reports/types';
+import { Trash2 } from 'lucide-react';
+import { DataSourceManager } from './DataSourceManager';
 
-export function GeneralEditor({ config, onChange, isDark }: { config: Partial<IReportConfig>, onChange: any, isDark: boolean }) {
+export function GeneralEditor({ config, onChange, isDark, onDelete }: { config: Partial<IReportConfig>, onChange: any, isDark: boolean, onDelete?: () => void }) {
   const labelClass = `text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`;
   return (
     <div className="space-y-4">
@@ -44,6 +46,26 @@ export function GeneralEditor({ config, onChange, isDark }: { config: Partial<IR
           Laporan Aktif (Ditampilkan di Menu)
         </label>
       </div>
+
+      <div className={`h-px w-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
+
+      <DataSourceManager 
+        config={config}
+        onChange={onChange}
+        isDark={isDark}
+        scope="global"
+        title="Global Data Sources"
+        description="Ambil data dari database yang bisa digunakan di semua tab (Filter, Header, Body, Footer)."
+      />
+
+      {onDelete && config.id_laporan && (
+        <div className="pt-4 mt-6 border-t border-slate-200 dark:border-slate-800">
+          <Button variant="destructive" onClick={onDelete} className="w-full sm:w-auto">
+            <Trash2 className="w-4 h-4 mr-2" /> Hapus Laporan Ini
+          </Button>
+          <p className="text-xs text-slate-500 mt-2">Menghapus laporan akan menghapus seluruh data tab, filter, dataset, dan layout secara permanen.</p>
+        </div>
+      )}
     </div>
   );
 }

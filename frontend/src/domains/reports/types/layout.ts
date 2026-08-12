@@ -1,8 +1,9 @@
 export interface ILayoutColumn {
   text?: string
-  sourceType?: 'static' | 'system' | 'database'
+  sourceType?: 'static' | 'system' | 'database' | 'filter'
   dataset?: string // Untuk sourceType = 'database'
   field?: string   // Untuk sourceType = 'database'
+  filter?: string  // Untuk sourceType = 'filter'
   title?: string 
   title2?: string
   name?: string  
@@ -36,11 +37,13 @@ export interface ILayoutDataColumn {
   formula?: string
   align?: 'left' | 'center' | 'right'
   format?: string
+  width?: string
 }
 
 export interface ILayoutTable {
   dataset: string
   style?: string
+  tableLayout?: 'auto' | 'fixed'
   headerRows: ILayoutColumn[][]
   dataColumns: ILayoutDataColumn[]
   grouping?: {
@@ -54,6 +57,8 @@ export interface ILayoutTable {
 export interface ILayoutBodyRow {
   columns: {
     width?: string; 
+    colSpan?: number;
+    marginTop?: string;
     align?: 'left' | 'center' | 'right';
     table: ILayoutTable;
   }[];

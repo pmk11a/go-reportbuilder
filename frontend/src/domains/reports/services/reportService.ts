@@ -52,13 +52,14 @@ export const reportService = {
     deskripsi?: string
     status_aktif?: boolean
     footer_bands?: any
+    komponen?: any[]
   }): Promise<IReport | null> {
     const result = await adminReportsFn.createReportFn({ data })
     if (Array.isArray(result)) return null
     return ((result as any)?.data ?? result) || null
   },
 
-  async updateReport(id: number, payload: Partial<IReport>): Promise<boolean> {
+  async updateReport(id: number, payload: Partial<IReport> & { komponen?: any[] }): Promise<boolean> {
     const result = await adminReportsFn.updateReportFn({ data: { id, payload } })
     return result.success
   },
@@ -169,6 +170,12 @@ export const reportService = {
 
   async deleteGroup(id: number, groupId: number): Promise<boolean> {
     const result = await adminReportsFn.deleteGroupFn({ data: { id, groupId } })
+    return result.success
+  },
+
+  // Komponen
+  async upsertKomponen(id: number, payload: { nama_komponen: string; konfigurasi_layout: any; urutan?: number }): Promise<boolean> {
+    const result = await adminReportsFn.upsertKomponenFn({ data: { id, payload } })
     return result.success
   },
 

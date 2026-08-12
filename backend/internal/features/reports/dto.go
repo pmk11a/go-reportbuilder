@@ -13,6 +13,14 @@ type SListReportsRequest struct {
 	Search string `form:"search"`
 }
 
+// SKomponenRequest is the JSON payload for a component (e.g. layout)
+type SKomponenRequest struct {
+	NamaKomponen      string `json:"nama_komponen"`
+	KonfigurasiLayout string `json:"konfigurasi_layout"`
+	Urutan            *int   `json:"urutan"`
+	IsActive          *bool  `json:"is_active"`
+}
+
 // SCreateReportRequest is the JSON payload for creating a new report
 type SCreateReportRequest struct {
 	KODEMENU    string                 `json:"KODEMENU" binding:"required"`
@@ -20,14 +28,16 @@ type SCreateReportRequest struct {
 	Deskripsi   *string                `json:"deskripsi"`
 	FooterBands *string                `json:"footer_bands"`
 	StatusAktif *bool                  `json:"status_aktif"`
+	Komponen    []SKomponenRequest     `json:"komponen"`
 }
 
 // SUpdateReportRequest is the JSON payload for updating a report
 type SUpdateReportRequest struct {
 	NamaLaporan *string `json:"nama_laporan"`
 	Deskripsi   *string `json:"deskripsi"`
-	FooterBands *string `json:"footer_bands"`
-	StatusAktif *bool   `json:"status_aktif"`
+	FooterBands *string                `json:"footer_bands"`
+	StatusAktif *bool                  `json:"status_aktif"`
+	Komponen    []SKomponenRequest     `json:"komponen"`
 }
 
 // SCreateFilterRequest is the JSON payload for creating a filter
@@ -181,11 +191,7 @@ type SReportDetailResponse struct {
 	FooterBands json.RawMessage              `json:"footer_bands"`
 	Keterangan *string                       `json:"Keterangan,omitempty"`
 	L0         *int                          `json:"L0,omitempty"`
-	Filters    []SFilterResponse             `json:"filters"`
-	Datasets   []SDatasetResponse           `json:"datasets"`
-	Columns    map[string][]SColumnResponse `json:"columns"`
-	Groups     []SGroupResponse              `json:"groups"`
-	Komponen   []SKomponenResponse           `json:"komponen"`
+	Datasets    []SDatasetResponse           `json:"datasets"`
 	Access     []SUserAccess                 `json:"access"`
 	CreatedAt  *string                       `json:"created_at"`
 	UpdatedAt  *string                       `json:"updated_at"`
@@ -249,9 +255,9 @@ type SGroupResponse struct {
 type SKomponenResponse struct {
 	IDKomponen        int                    `json:"id_komponen"`
 	IDLaporan         int                    `json:"id_laporan"`
-	NamaKomponen      string                 `json:"nama_komponen"`
-	KonfigurasiLayout map[string]interface{} `json:"konfigurasi_layout"`
-	Urutan            int                    `json:"urutan"`
+	NamaKomponen      string      `json:"nama_komponen"`
+	KonfigurasiLayout interface{} `json:"konfigurasi_layout"`
+	Urutan            int         `json:"urutan"`
 	IsActive          bool                   `json:"is_active"`
 }
 
@@ -337,9 +343,9 @@ type SColumnConfigResponse struct {
 // SKomponenConfigResponse is the JSON shape for component config (for execution)
 type SKomponenConfigResponse struct {
 	IDKomponen        int                    `json:"id_komponen"`
-	NamaKomponen      string                 `json:"nama_komponen"`
-	KonfigurasiLayout map[string]interface{} `json:"konfigurasi_layout"`
-	Urutan            int                    `json:"urutan"`
+	NamaKomponen      string      `json:"nama_komponen"`
+	KonfigurasiLayout interface{} `json:"konfigurasi_layout"`
+	Urutan            int         `json:"urutan"`
 }
 
 // SAvailableKodeMenuResponse represents an available kode menu item

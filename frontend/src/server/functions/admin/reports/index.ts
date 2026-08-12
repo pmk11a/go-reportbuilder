@@ -103,6 +103,34 @@ export const getFiltersFn = createServerFn({ method: 'GET' })
     return result
   })
 
+// ============================================================================
+// KOMPONEN (LAYOUT)
+// ============================================================================
+
+export const getKomponenFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator((data: { id: number }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const result = await makeBackendRequest(`/api/admin/reports/${data.id}/komponen`, { method: 'GET' }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result
+  })
+
+export const upsertKomponenFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator((data: { id: number; payload: Record<string, any> }) => data)
+  .handler(async ({ data, context }) => {
+    const { accessToken } = context as { accessToken: string }
+    const result = await makeBackendRequest(`/api/admin/reports/${data.id}/komponen`, {
+      method: 'PUT',
+      body: JSON.stringify(data.payload),
+      headers: { 'Content-Type': 'application/json' }
+    }, accessToken)
+    if (!result.success) throw new Error(result.message)
+    return result
+  })
+
 export const createFilterFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator((data: { id: number; payload: Record<string, any> }) => data)
@@ -200,7 +228,7 @@ export const previewDatasetFn = createServerFn({ method: 'POST' })
     const { accessToken } = context as { accessToken: string }
     const result = await makeBackendRequest(`/api/admin/reports/${data.id}/datasets/preview`, {
       method: 'POST',
-      body: JSON.stringify({ query_sumber_data: data.sql, filters: data.filters || {} }),
+      body: JSON.stringify({ sql: data.sql, filters: data.filters || {} }),
       headers: { 'Content-Type': 'application/json' }
     }, accessToken)
     if (!result.success) throw new Error(result.message)

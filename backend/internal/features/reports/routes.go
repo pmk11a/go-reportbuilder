@@ -58,6 +58,10 @@ func RegisterRoutes(rg *gin.RouterGroup, h *SReportsHandler) {
 		reports.POST("/:id/filters", h.CreateFilter)
 		reports.PUT("/:id/filters/reorder", h.ReorderFilters)
 
+		// Komponen
+		reports.GET("/:id/komponen", h.GetKomponen)
+		reports.PUT("/:id/komponen", h.UpsertKomponen)
+
 		// Datasets
 		reports.GET("/:id/datasets", h.GetDatasets)
 		reports.POST("/:id/datasets", h.CreateDataset)
