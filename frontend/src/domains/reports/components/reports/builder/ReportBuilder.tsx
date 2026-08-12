@@ -6,11 +6,15 @@ import { Save, ArrowLeft, Monitor, Smartphone } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { Button, Tabs } from '@/shared/ui';
+import { useReports } from '@/domains/reports/hooks/useReport';
 
-export function ReportBuilder() {
+export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
   const navigate = useNavigate();
   const isDark = useThemeStore((s) => s.isDark);
   
+  // Find report ID by kodeMenu
+  const { data: reports } = useReports();
+
   const [zoom, setZoom] = useState(0.8);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
 

@@ -26,7 +26,6 @@ import { Route as publicDocsFormRouteImport } from './routes/(public)/docs/form'
 import { Route as publicDocsFeedbackRouteImport } from './routes/(public)/docs/feedback'
 import { Route as publicDocsDataRouteImport } from './routes/(public)/docs/data'
 import { Route as KaryawanLayoutDashboardIndexRouteImport } from './routes/karyawan/_layout/dashboard/index'
-import { Route as AdminLayoutReportsIndexRouteImport } from './routes/admin/_layout/reports/index'
 import { Route as AdminLayoutDocumentsIndexRouteImport } from './routes/admin/_layout/documents/index'
 import { Route as AdminLayoutDashboardIndexRouteImport } from './routes/admin/_layout/dashboard/index'
 import { Route as publicauthRegisterIndexRouteImport } from './routes/(public)/(auth)/register/index'
@@ -38,6 +37,7 @@ import { Route as AdminLayoutBerkasMenuRouteImport } from './routes/admin/_layou
 import { Route as KaryawanLayoutBerkasLaporanDinamisIndexRouteImport } from './routes/karyawan/_layout/berkas/laporan-dinamis/index'
 import { Route as AdminLayoutReportsPermissionReportIndexRouteImport } from './routes/admin/_layout/reports/permission-report/index'
 import { Route as AdminLayoutReportsLaporanIndexRouteImport } from './routes/admin/_layout/reports/laporan/index'
+import { Route as AdminLayoutReportsBuilderIndexRouteImport } from './routes/admin/_layout/reports/builder/index'
 import { Route as AdminLayoutMasterDataUsersIndexRouteImport } from './routes/admin/_layout/master-data/users/index'
 import { Route as AdminLayoutMasterDataLaporanDinamisIndexRouteImport } from './routes/admin/_layout/master-data/laporan-dinamis/index'
 import { Route as AdminLayoutMasterDataDynamicBrowseIndexRouteImport } from './routes/admin/_layout/master-data/dynamic-browse/index'
@@ -49,6 +49,8 @@ import { Route as AdminLayoutReportsLaporanKodeMenuRouteImport } from './routes/
 import { Route as AdminLayoutAccountingKasbankNobuktiRouteImport } from './routes/admin/_layout/accounting/kasbank/$nobukti'
 import { Route as AdminLayoutMasterDataUsersNewIndexRouteImport } from './routes/admin/_layout/master-data/users/new/index'
 import { Route as AdminLayoutMasterDataUsersIdIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/index'
+import { Route as AdminLayoutReportsBuilderKodemenuGenerateRouteImport } from './routes/admin/_layout/reports/builder/$kodemenu/generate'
+import { Route as AdminLayoutReportsBuilderKodemenuEditRouteImport } from './routes/admin/_layout/reports/builder/$kodemenu/edit'
 import { Route as AdminLayoutMasterDataUsersIdEditIndexRouteImport } from './routes/admin/_layout/master-data/users/$id/edit/index'
 
 const AboutRoute = AboutRouteImport.update({
@@ -137,11 +139,6 @@ const KaryawanLayoutDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => KaryawanLayoutRoute,
   } as any)
-const AdminLayoutReportsIndexRoute = AdminLayoutReportsIndexRouteImport.update({
-  id: '/reports/',
-  path: '/reports/',
-  getParentRoute: () => AdminLayoutRoute,
-} as any)
 const AdminLayoutDocumentsIndexRoute =
   AdminLayoutDocumentsIndexRouteImport.update({
     id: '/documents/',
@@ -204,6 +201,12 @@ const AdminLayoutReportsLaporanIndexRoute =
     id: '/',
     path: '/',
     getParentRoute: () => AdminLayoutReportsLaporanRoute,
+  } as any)
+const AdminLayoutReportsBuilderIndexRoute =
+  AdminLayoutReportsBuilderIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminLayoutReportsBuilderRoute,
   } as any)
 const AdminLayoutMasterDataUsersIndexRoute =
   AdminLayoutMasterDataUsersIndexRouteImport.update({
@@ -271,6 +274,18 @@ const AdminLayoutMasterDataUsersIdIndexRoute =
     path: '/master-data/users/$id/',
     getParentRoute: () => AdminLayoutRoute,
   } as any)
+const AdminLayoutReportsBuilderKodemenuGenerateRoute =
+  AdminLayoutReportsBuilderKodemenuGenerateRouteImport.update({
+    id: '/$kodemenu/generate',
+    path: '/$kodemenu/generate',
+    getParentRoute: () => AdminLayoutReportsBuilderRoute,
+  } as any)
+const AdminLayoutReportsBuilderKodemenuEditRoute =
+  AdminLayoutReportsBuilderKodemenuEditRouteImport.update({
+    id: '/$kodemenu/edit',
+    path: '/$kodemenu/edit',
+    getParentRoute: () => AdminLayoutReportsBuilderRoute,
+  } as any)
 const AdminLayoutMasterDataUsersIdEditIndexRoute =
   AdminLayoutMasterDataUsersIdEditIndexRouteImport.update({
     id: '/master-data/users/$id/edit/',
@@ -297,13 +312,12 @@ export interface FileRoutesByFullPath {
   '/docs/': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
-  '/admin/reports/builder': typeof AdminLayoutReportsBuilderRoute
+  '/admin/reports/builder': typeof AdminLayoutReportsBuilderRouteWithChildren
   '/admin/reports/laporan': typeof AdminLayoutReportsLaporanRouteWithChildren
   '/login/': typeof publicauthLoginIndexRoute
   '/register/': typeof publicauthRegisterIndexRoute
   '/admin/dashboard/': typeof AdminLayoutDashboardIndexRoute
   '/admin/documents/': typeof AdminLayoutDocumentsIndexRoute
-  '/admin/reports/': typeof AdminLayoutReportsIndexRoute
   '/karyawan/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
   '/admin/reports/laporan/$kodeMenu': typeof AdminLayoutReportsLaporanKodeMenuRoute
@@ -314,9 +328,12 @@ export interface FileRoutesByFullPath {
   '/admin/master-data/dynamic-browse/': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   '/admin/master-data/laporan-dinamis/': typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   '/admin/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/reports/builder/': typeof AdminLayoutReportsBuilderIndexRoute
   '/admin/reports/laporan/': typeof AdminLayoutReportsLaporanIndexRoute
   '/admin/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
   '/karyawan/berkas/laporan-dinamis/': typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
+  '/admin/reports/builder/$kodemenu/edit': typeof AdminLayoutReportsBuilderKodemenuEditRoute
+  '/admin/reports/builder/$kodemenu/generate': typeof AdminLayoutReportsBuilderKodemenuGenerateRoute
   '/admin/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
   '/admin/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
   '/admin/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
@@ -339,12 +356,10 @@ export interface FileRoutesByTo {
   '/docs': typeof publicDocsIndexRoute
   '/admin/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
-  '/admin/reports/builder': typeof AdminLayoutReportsBuilderRoute
   '/login': typeof publicauthLoginIndexRoute
   '/register': typeof publicauthRegisterIndexRoute
   '/admin/dashboard': typeof AdminLayoutDashboardIndexRoute
   '/admin/documents': typeof AdminLayoutDocumentsIndexRoute
-  '/admin/reports': typeof AdminLayoutReportsIndexRoute
   '/karyawan/dashboard': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
   '/admin/reports/laporan/$kodeMenu': typeof AdminLayoutReportsLaporanKodeMenuRoute
@@ -355,9 +370,12 @@ export interface FileRoutesByTo {
   '/admin/master-data/dynamic-browse': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   '/admin/master-data/laporan-dinamis': typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   '/admin/master-data/users': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/reports/builder': typeof AdminLayoutReportsBuilderIndexRoute
   '/admin/reports/laporan': typeof AdminLayoutReportsLaporanIndexRoute
   '/admin/reports/permission-report': typeof AdminLayoutReportsPermissionReportIndexRoute
   '/karyawan/berkas/laporan-dinamis': typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
+  '/admin/reports/builder/$kodemenu/edit': typeof AdminLayoutReportsBuilderKodemenuEditRoute
+  '/admin/reports/builder/$kodemenu/generate': typeof AdminLayoutReportsBuilderKodemenuGenerateRoute
   '/admin/master-data/users/$id': typeof AdminLayoutMasterDataUsersIdIndexRoute
   '/admin/master-data/users/new': typeof AdminLayoutMasterDataUsersNewIndexRoute
   '/admin/master-data/users/$id/edit': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
@@ -382,13 +400,12 @@ export interface FileRoutesById {
   '/(public)/docs/': typeof publicDocsIndexRoute
   '/admin/_layout/berkas/menu': typeof AdminLayoutBerkasMenuRoute
   '/admin/_layout/berkas/perusahaan': typeof AdminLayoutBerkasPerusahaanRoute
-  '/admin/_layout/reports/builder': typeof AdminLayoutReportsBuilderRoute
+  '/admin/_layout/reports/builder': typeof AdminLayoutReportsBuilderRouteWithChildren
   '/admin/_layout/reports/laporan': typeof AdminLayoutReportsLaporanRouteWithChildren
   '/(public)/(auth)/login/': typeof publicauthLoginIndexRoute
   '/(public)/(auth)/register/': typeof publicauthRegisterIndexRoute
   '/admin/_layout/dashboard/': typeof AdminLayoutDashboardIndexRoute
   '/admin/_layout/documents/': typeof AdminLayoutDocumentsIndexRoute
-  '/admin/_layout/reports/': typeof AdminLayoutReportsIndexRoute
   '/karyawan/_layout/dashboard/': typeof KaryawanLayoutDashboardIndexRoute
   '/admin/_layout/accounting/kasbank/$nobukti': typeof AdminLayoutAccountingKasbankNobuktiRoute
   '/admin/_layout/reports/laporan/$kodeMenu': typeof AdminLayoutReportsLaporanKodeMenuRoute
@@ -399,9 +416,12 @@ export interface FileRoutesById {
   '/admin/_layout/master-data/dynamic-browse/': typeof AdminLayoutMasterDataDynamicBrowseIndexRoute
   '/admin/_layout/master-data/laporan-dinamis/': typeof AdminLayoutMasterDataLaporanDinamisIndexRoute
   '/admin/_layout/master-data/users/': typeof AdminLayoutMasterDataUsersIndexRoute
+  '/admin/_layout/reports/builder/': typeof AdminLayoutReportsBuilderIndexRoute
   '/admin/_layout/reports/laporan/': typeof AdminLayoutReportsLaporanIndexRoute
   '/admin/_layout/reports/permission-report/': typeof AdminLayoutReportsPermissionReportIndexRoute
   '/karyawan/_layout/berkas/laporan-dinamis/': typeof KaryawanLayoutBerkasLaporanDinamisIndexRoute
+  '/admin/_layout/reports/builder/$kodemenu/edit': typeof AdminLayoutReportsBuilderKodemenuEditRoute
+  '/admin/_layout/reports/builder/$kodemenu/generate': typeof AdminLayoutReportsBuilderKodemenuGenerateRoute
   '/admin/_layout/master-data/users/$id/': typeof AdminLayoutMasterDataUsersIdIndexRoute
   '/admin/_layout/master-data/users/new/': typeof AdminLayoutMasterDataUsersNewIndexRoute
   '/admin/_layout/master-data/users/$id/edit/': typeof AdminLayoutMasterDataUsersIdEditIndexRoute
@@ -433,7 +453,6 @@ export interface FileRouteTypes {
     | '/register/'
     | '/admin/dashboard/'
     | '/admin/documents/'
-    | '/admin/reports/'
     | '/karyawan/dashboard/'
     | '/admin/accounting/kasbank/$nobukti'
     | '/admin/reports/laporan/$kodeMenu'
@@ -444,9 +463,12 @@ export interface FileRouteTypes {
     | '/admin/master-data/dynamic-browse/'
     | '/admin/master-data/laporan-dinamis/'
     | '/admin/master-data/users/'
+    | '/admin/reports/builder/'
     | '/admin/reports/laporan/'
     | '/admin/reports/permission-report/'
     | '/karyawan/berkas/laporan-dinamis/'
+    | '/admin/reports/builder/$kodemenu/edit'
+    | '/admin/reports/builder/$kodemenu/generate'
     | '/admin/master-data/users/$id/'
     | '/admin/master-data/users/new/'
     | '/admin/master-data/users/$id/edit/'
@@ -469,12 +491,10 @@ export interface FileRouteTypes {
     | '/docs'
     | '/admin/berkas/menu'
     | '/admin/berkas/perusahaan'
-    | '/admin/reports/builder'
     | '/login'
     | '/register'
     | '/admin/dashboard'
     | '/admin/documents'
-    | '/admin/reports'
     | '/karyawan/dashboard'
     | '/admin/accounting/kasbank/$nobukti'
     | '/admin/reports/laporan/$kodeMenu'
@@ -485,9 +505,12 @@ export interface FileRouteTypes {
     | '/admin/master-data/dynamic-browse'
     | '/admin/master-data/laporan-dinamis'
     | '/admin/master-data/users'
+    | '/admin/reports/builder'
     | '/admin/reports/laporan'
     | '/admin/reports/permission-report'
     | '/karyawan/berkas/laporan-dinamis'
+    | '/admin/reports/builder/$kodemenu/edit'
+    | '/admin/reports/builder/$kodemenu/generate'
     | '/admin/master-data/users/$id'
     | '/admin/master-data/users/new'
     | '/admin/master-data/users/$id/edit'
@@ -517,7 +540,6 @@ export interface FileRouteTypes {
     | '/(public)/(auth)/register/'
     | '/admin/_layout/dashboard/'
     | '/admin/_layout/documents/'
-    | '/admin/_layout/reports/'
     | '/karyawan/_layout/dashboard/'
     | '/admin/_layout/accounting/kasbank/$nobukti'
     | '/admin/_layout/reports/laporan/$kodeMenu'
@@ -528,9 +550,12 @@ export interface FileRouteTypes {
     | '/admin/_layout/master-data/dynamic-browse/'
     | '/admin/_layout/master-data/laporan-dinamis/'
     | '/admin/_layout/master-data/users/'
+    | '/admin/_layout/reports/builder/'
     | '/admin/_layout/reports/laporan/'
     | '/admin/_layout/reports/permission-report/'
     | '/karyawan/_layout/berkas/laporan-dinamis/'
+    | '/admin/_layout/reports/builder/$kodemenu/edit'
+    | '/admin/_layout/reports/builder/$kodemenu/generate'
     | '/admin/_layout/master-data/users/$id/'
     | '/admin/_layout/master-data/users/new/'
     | '/admin/_layout/master-data/users/$id/edit/'
@@ -670,13 +695,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KaryawanLayoutDashboardIndexRouteImport
       parentRoute: typeof KaryawanLayoutRoute
     }
-    '/admin/_layout/reports/': {
-      id: '/admin/_layout/reports/'
-      path: '/reports'
-      fullPath: '/admin/reports/'
-      preLoaderRoute: typeof AdminLayoutReportsIndexRouteImport
-      parentRoute: typeof AdminLayoutRoute
-    }
     '/admin/_layout/documents/': {
       id: '/admin/_layout/documents/'
       path: '/documents'
@@ -753,6 +771,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/reports/laporan/'
       preLoaderRoute: typeof AdminLayoutReportsLaporanIndexRouteImport
       parentRoute: typeof AdminLayoutReportsLaporanRoute
+    }
+    '/admin/_layout/reports/builder/': {
+      id: '/admin/_layout/reports/builder/'
+      path: '/'
+      fullPath: '/admin/reports/builder/'
+      preLoaderRoute: typeof AdminLayoutReportsBuilderIndexRouteImport
+      parentRoute: typeof AdminLayoutReportsBuilderRoute
     }
     '/admin/_layout/master-data/users/': {
       id: '/admin/_layout/master-data/users/'
@@ -831,6 +856,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLayoutMasterDataUsersIdIndexRouteImport
       parentRoute: typeof AdminLayoutRoute
     }
+    '/admin/_layout/reports/builder/$kodemenu/generate': {
+      id: '/admin/_layout/reports/builder/$kodemenu/generate'
+      path: '/$kodemenu/generate'
+      fullPath: '/admin/reports/builder/$kodemenu/generate'
+      preLoaderRoute: typeof AdminLayoutReportsBuilderKodemenuGenerateRouteImport
+      parentRoute: typeof AdminLayoutReportsBuilderRoute
+    }
+    '/admin/_layout/reports/builder/$kodemenu/edit': {
+      id: '/admin/_layout/reports/builder/$kodemenu/edit'
+      path: '/$kodemenu/edit'
+      fullPath: '/admin/reports/builder/$kodemenu/edit'
+      preLoaderRoute: typeof AdminLayoutReportsBuilderKodemenuEditRouteImport
+      parentRoute: typeof AdminLayoutReportsBuilderRoute
+    }
     '/admin/_layout/master-data/users/$id/edit/': {
       id: '/admin/_layout/master-data/users/$id/edit/'
       path: '/master-data/users/$id/edit'
@@ -867,6 +906,26 @@ const publicDocsRouteWithChildren = publicDocsRoute._addFileChildren(
   publicDocsRouteChildren,
 )
 
+interface AdminLayoutReportsBuilderRouteChildren {
+  AdminLayoutReportsBuilderIndexRoute: typeof AdminLayoutReportsBuilderIndexRoute
+  AdminLayoutReportsBuilderKodemenuEditRoute: typeof AdminLayoutReportsBuilderKodemenuEditRoute
+  AdminLayoutReportsBuilderKodemenuGenerateRoute: typeof AdminLayoutReportsBuilderKodemenuGenerateRoute
+}
+
+const AdminLayoutReportsBuilderRouteChildren: AdminLayoutReportsBuilderRouteChildren =
+  {
+    AdminLayoutReportsBuilderIndexRoute: AdminLayoutReportsBuilderIndexRoute,
+    AdminLayoutReportsBuilderKodemenuEditRoute:
+      AdminLayoutReportsBuilderKodemenuEditRoute,
+    AdminLayoutReportsBuilderKodemenuGenerateRoute:
+      AdminLayoutReportsBuilderKodemenuGenerateRoute,
+  }
+
+const AdminLayoutReportsBuilderRouteWithChildren =
+  AdminLayoutReportsBuilderRoute._addFileChildren(
+    AdminLayoutReportsBuilderRouteChildren,
+  )
+
 interface AdminLayoutReportsLaporanRouteChildren {
   AdminLayoutReportsLaporanKodeMenuRoute: typeof AdminLayoutReportsLaporanKodeMenuRoute
   AdminLayoutReportsLaporanIndexRoute: typeof AdminLayoutReportsLaporanIndexRoute
@@ -887,11 +946,10 @@ const AdminLayoutReportsLaporanRouteWithChildren =
 interface AdminLayoutRouteChildren {
   AdminLayoutBerkasMenuRoute: typeof AdminLayoutBerkasMenuRoute
   AdminLayoutBerkasPerusahaanRoute: typeof AdminLayoutBerkasPerusahaanRoute
-  AdminLayoutReportsBuilderRoute: typeof AdminLayoutReportsBuilderRoute
+  AdminLayoutReportsBuilderRoute: typeof AdminLayoutReportsBuilderRouteWithChildren
   AdminLayoutReportsLaporanRoute: typeof AdminLayoutReportsLaporanRouteWithChildren
   AdminLayoutDashboardIndexRoute: typeof AdminLayoutDashboardIndexRoute
   AdminLayoutDocumentsIndexRoute: typeof AdminLayoutDocumentsIndexRoute
-  AdminLayoutReportsIndexRoute: typeof AdminLayoutReportsIndexRoute
   AdminLayoutAccountingKasbankNobuktiRoute: typeof AdminLayoutAccountingKasbankNobuktiRoute
   AdminLayoutAccountingKasbankIndexRoute: typeof AdminLayoutAccountingKasbankIndexRoute
   AdminLayoutMasterDataActivityLogsIndexRoute: typeof AdminLayoutMasterDataActivityLogsIndexRoute
@@ -908,11 +966,10 @@ interface AdminLayoutRouteChildren {
 const AdminLayoutRouteChildren: AdminLayoutRouteChildren = {
   AdminLayoutBerkasMenuRoute: AdminLayoutBerkasMenuRoute,
   AdminLayoutBerkasPerusahaanRoute: AdminLayoutBerkasPerusahaanRoute,
-  AdminLayoutReportsBuilderRoute: AdminLayoutReportsBuilderRoute,
+  AdminLayoutReportsBuilderRoute: AdminLayoutReportsBuilderRouteWithChildren,
   AdminLayoutReportsLaporanRoute: AdminLayoutReportsLaporanRouteWithChildren,
   AdminLayoutDashboardIndexRoute: AdminLayoutDashboardIndexRoute,
   AdminLayoutDocumentsIndexRoute: AdminLayoutDocumentsIndexRoute,
-  AdminLayoutReportsIndexRoute: AdminLayoutReportsIndexRoute,
   AdminLayoutAccountingKasbankNobuktiRoute:
     AdminLayoutAccountingKasbankNobuktiRoute,
   AdminLayoutAccountingKasbankIndexRoute:
