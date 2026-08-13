@@ -23,21 +23,21 @@ type SKomponenRequest struct {
 
 // SCreateReportRequest is the JSON payload for creating a new report
 type SCreateReportRequest struct {
-	KODEMENU    string                 `json:"KODEMENU" binding:"required"`
-	NamaLaporan string                 `json:"nama_laporan" binding:"required"`
-	Deskripsi   *string                `json:"deskripsi"`
-	FooterBands *string                `json:"footer_bands"`
-	StatusAktif *bool                  `json:"status_aktif"`
-	Komponen    []SKomponenRequest     `json:"komponen"`
+	KODEMENU    string          `json:"KODEMENU" binding:"required"`
+	NamaLaporan string          `json:"nama_laporan" binding:"required"`
+	Deskripsi   *string         `json:"deskripsi"`
+	FooterBands json.RawMessage `json:"footer_bands"`
+	StatusAktif *bool           `json:"status_aktif"`
+	Komponen    []SKomponenRequest `json:"komponen"`
 }
 
 // SUpdateReportRequest is the JSON payload for updating a report
 type SUpdateReportRequest struct {
-	NamaLaporan *string `json:"nama_laporan"`
-	Deskripsi   *string `json:"deskripsi"`
-	FooterBands *string                `json:"footer_bands"`
-	StatusAktif *bool                  `json:"status_aktif"`
-	Komponen    []SKomponenRequest     `json:"komponen"`
+	NamaLaporan *string         `json:"nama_laporan"`
+	Deskripsi   *string         `json:"deskripsi"`
+	FooterBands json.RawMessage `json:"footer_bands"`
+	StatusAktif *bool            `json:"status_aktif"`
+	Komponen    []SKomponenRequest `json:"komponen"`
 }
 
 // SCreateFilterRequest is the JSON payload for creating a filter
