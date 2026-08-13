@@ -11,6 +11,7 @@ import { useReports } from '@/domains/reports/hooks/useReport';
 import { useGetTabGeneral, useGetTabFilters, useGetTabKomponen } from '@/domains/reports/hooks/useReportBuilder';
 import { reportService } from '@/domains/reports/services/reportService';
 import { useToast } from '@/shared/hooks/use-toast';
+import { useReportStore } from '@/domains/reports/stores/reportStore';
 
 export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
   const navigate = useNavigate();
@@ -40,6 +41,9 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
 
   const [zoom, setZoom] = useState(0.8);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+
+  // Get execution result from store (populated by useExecuteReport)
+  const executionResult = useReportStore((s) => s.executionResult);
 
   // Full report configuration state
   const [reportConfig, setReportConfig] = useState<Partial<IReportConfig>>({});
@@ -328,7 +332,7 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
             </div>
 
             <div className="absolute inset-0 overflow-x-hidden overflow-y-auto flex flex-col justify-start items-center">
-              <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} />
+              <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} datasets={executionResult} />
             </div>
           </div>
         </div>
@@ -377,7 +381,7 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
                     </div>
 
                     <div className="absolute inset-0 overflow-x-hidden overflow-y-auto flex justify-center items-start pt-16 sm:pt-20 pb-8">
-                      <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} />
+                      <ReportPreview config={layoutConfig} zoom={zoom} orientation={orientation} datasets={executionResult} />
                     </div>
                   </div>
                 )
