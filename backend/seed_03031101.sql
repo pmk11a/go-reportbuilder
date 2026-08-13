@@ -1,8 +1,10 @@
 -- ============================================================
 -- Seed Laporan KODEMENU: 03031101 - Laporan KP Per No. Bukti
+-- SP: Sp_reportOutSoDet (dari Delphi FrmReportPreview.pas)
+-- Params: :0=Type('T'), :1=Grouping('N'/'B'/'C'), :2=FilterList
 -- ============================================================
 
--- 1. Hapus data lama untuk idemponent (gunakan lowercase sesuai GORM TableName)
+-- 1. Hapus data lama untuk idemponent
 DELETE FROM dbkomponenlaporan WHERE id_laporan IN (SELECT id_laporan FROM dbmasterlaporan WHERE KODEMENU = '03031101');
 DELETE FROM dbquerylaporan    WHERE id_laporan IN (SELECT id_laporan FROM dbmasterlaporan WHERE KODEMENU = '03031101');
 DELETE FROM dbparameterlaporan WHERE id_laporan IN (SELECT id_laporan FROM dbmasterlaporan WHERE KODEMENU = '03031101');
@@ -16,18 +18,39 @@ VALUES ('03031101', 'Laporan KP Per No. Bukti', 1, '[]');
 
 PRINT 'Inserted dbmasterlaporan for 03031101';
 
--- 3. Query Dataset
--- SP: Sp_reportOutSoDet
--- Params: :0=Type('T'), :1=Grouping('N'/'B'/'C'), :2=FilterList
--- Dates hardcoded di SQL Delphi, perlu filter tanggal di backend
--- NOTE: scope harus ada untuk ditampilkan di DataSourceManager
+-- 3. Parameter Filters (dari Delphi: TglAwal, TglAkhir)
+INSERT INTO dbparameterlaporan (id_laporan, nama_filter, label, tipe_input, wajib_isi, nilai_default, posisi, konfigurasi)
+SELECT id_laporan, 'tgl_awal', 'Tanggal Awal', 'date', 1, NULL, 1, NULL
+FROM dbmasterlaporan WHERE KODEMENU = '03031101';
+
+INSERT INTO dbparameterlaporan (id_laporan, nama_filter, label, tipe_input, wajib_isi, nilai_default, posisi, konfigurasi)
+SELECT id_laporan, 'tgl_akhir', 'Tanggal Akhir', 'date', 1, NULL, 2, NULL
+FROM dbmasterlaporan WHERE KODEMENU = '03031101';
+
+PRINT 'Inserted dbparameterlaporan for 03031101';
+
+-- 4. Query Dataset (scope: body untuk data utama)
 INSERT INTO dbquerylaporan (id_laporan, nama_dataset, urutan, query_sumber_data, config_json)
 SELECT id_laporan, 'dataset_utama', 1, 'EXEC Sp_reportOutSoDet :0,:1,:2',
-     '{"scope": "body", "static_params": {"type": "T", "grouping": "N"}, "display_role": "detail", "sp_signature": "Sp_reportOutSoDet", "param_mapping": {"type": "param_type", "grouping": "param_grouping"}}'
-FROM dbmasterlaporan
-WHERE KODEMENU = '03031101';
+       '{"scope": "body", "static_params": {"type": "T", "grouping": "N"}, "display_role": "detail", "sp_signature": "Sp_reportOutSoDet"}'
+FROM dbmasterlaporan WHERE KODEMENU = '03031101';
 
 PRINT 'Inserted dbquerylaporan for 03031101';
+
+-- 5. Komponen Layout (Header, Body, Footer)
+INSERT INTO dbkomponenlaporan (id_laporan, nama_komponen, konfigurasi_layout, urutan)
+SELECT id_laporan, 'HeaderLayout', '{"type":"header","rows":[]}', 1
+FROM dbmasterlaporan WHERE KODEMENU = '03031101';
+
+INSERT INTO dbkomponenlaporan (id_laporan, nama_komponen, konfigurasi_layout, urutan)
+SELECT id_laporan, 'BodyLayout', '{"type":"body","rows":[]}', 2
+FROM dbmasterlaporan WHERE KODEMENU = '03031101';
+
+INSERT INTO dbkomponenlaporan (id_laporan, nama_komponen, konfigurasi_layout, urutan)
+SELECT id_laporan, 'FooterLayout', '{"type":"footer","rows":[]}', 3
+FROM dbmasterlaporan WHERE KODEMENU = '03031101';
+
+PRINT 'Inserted dbkomponenlaporan for 03031101';
 
 PRINT 'Seed completed for KODEMENU 03031101';
 GO
