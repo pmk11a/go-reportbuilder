@@ -31,9 +31,10 @@ PRINT 'Inserted dbparameterlaporan for 03031101';
 
 -- 4. Query Dataset (scope: body untuk data utama)
 -- SP: Sp_ReportOutSODet (@SReport, @Ordr, @tgl1, @tgl2, @isiList, @Id)
+-- NOTE: Query langsung ke view karena SP pakai dynamic SQL EXEC() yang tidak bisa ditangkap GORM
 INSERT INTO dbquerylaporan (id_laporan, nama_dataset, urutan, query_sumber_data, config_json)
-SELECT id_laporan, 'dataset_utama', 1, 'EXEC Sp_ReportOutSODet @SReport,@Ordr,@tgl1,@tgl2,@isiList,@Id',
-       '{"scope": "body", "static_params": {"SReport": "T", "Ordr": "N"}, "display_role": "detail", "sp_signature": "Sp_ReportOutSODet"}'
+SELECT id_laporan, 'dataset_utama', 1, 'SELECT ''Gabungan'' AS Perusahaan, * FROM vwreportoutSO WHERE (Tanggal Between @tgl_awal AND @tgl_akhir) AND @Ordr = ''N'' ORDER BY NoBukti, Tanggal',
+       '{"scope": "body", "static_params": {"Ordr": "N"}, "display_role": "detail", "sp_signature": "vwreportoutSO"}'
 FROM dbmasterlaporan WHERE KODEMENU = '03031101';
 
 PRINT 'Inserted dbquerylaporan for 03031101';
