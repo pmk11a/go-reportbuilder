@@ -201,21 +201,52 @@ func (r *ReportExecutionRepository) ExecuteQueryWithParams(ctx context.Context, 
 
 // ExecuteSPQuery executes a stored procedure with inline SQL (no additional params)
 // Used when parameters are already embedded in the SQL string
+// Uses Rows() to properly capture results from SPs with dynamic EXEC()
 func (r *ReportExecutionRepository) ExecuteSPQuery(ctx context.Context, sql string) ([]map[string]interface{}, error) {
 	results := make([]map[string]interface{}, 0)
-	err := r.db.WithContext(ctx).Raw(sql).Scan(&results).Error
 
-	if err == nil {
-		for i := range results {
-			for key, value := range results[i] {
-				if bVal, ok := value.([]byte); ok {
-					results[i][key] = string(bVal)
-				}
-			}
-		}
+	rows, err := r.db.WithContext(ctx).Raw(sql).Rows()
+	if err != nil {
+		return results, err
+	}
+	defer rows.Close()
+
+	// Get column names
+	columns, err := rows.Columns()
+	if err != nil {
+		return results, err
 	}
 
-	return results, err
+	// Scan each row
+	for rows.Next() {
+		row := make(map[string]interface{})
+		values := make([]interface{}, len(columns))
+		valuePtrs := make([]interface{}, len(columns))
+
+		for i := range columns {
+			valuePtrs[i] = &values[i]
+		}
+
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return results, err
+		}
+
+		for i, col := range columns {
+			val := values[i]
+			if b, ok := val.([]byte); ok {
+				row[col] = string(b)
+			} else {
+				row[col] = val
+			}
+		}
+		results = append(results, row)
+	}
+
+	if err := rows.Err(); err != nil {
+		return results, err
+	}
+
+	return results, nil
 }
 
 // GetKomponen implements IReportExecutionRepository
