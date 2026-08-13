@@ -1,9 +1,0 @@
-name,data_field,left_mm,top_mm,width_mm,height_mm,font,size_pt,bold,align
-Memo4,tanggal,0.0000,0.0000,64.2520,18.8976,Tahoma,11,False,haLeft
-Memo5,nobukti,64.2520,0.0000,117.1654,18.8976,Tahoma,11,False,haLeft
-Memo6,Keterangan,181.4173,0.0000,173.8584,18.8976,Tahoma,11,False,haLeft
-Memo7,lawan,355.2758,0.0000,52.9134,18.8976,Tahoma,11,False,haLeft
-Memo9,kredit,582.0476,0.0000,86.9291,18.8976,Tahoma,11,False,haRight
-Memo10,debet,408.1892,0.0000,86.9291,18.8976,Tahoma,11,False,haRight
-Memo8,kredit2,668.9768,0.0000,86.9291,18.8976,Tahoma,11,False,haRight
-Memo11,Debet2,495.1184,0.0000,86.9291,18.8976,Tahoma,11,False,haRight

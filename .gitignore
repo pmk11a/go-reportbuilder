@@ -37,3 +37,7 @@ tmp/
 pwt/
 agent-converter/
 tasks/
+logs/
+.claude/
+.pi/
+.templates/
