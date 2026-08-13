@@ -649,9 +649,17 @@ func (s *SReportExecutionService) replaceFilterValue(sql, placeholder string, va
 }
 
 // replaceRemainingPlaceholders replaces all remaining @placeholders with NULL for SP calls
+// Also handles :0, :1, :2 style positional parameters (replace with NULL)
 func (s *SReportExecutionService) replaceRemainingPlaceholders(sql string) string {
+	// Replace @param style placeholders
 	re := regexp.MustCompile(`(?i)@[A-Za-z_]\w*`)
-	return re.ReplaceAllString(sql, "NULL")
+	sql = re.ReplaceAllString(sql, "NULL")
+
+	// Replace :0, :1, :2 etc style positional parameters
+	re2 := regexp.MustCompile(`:\d+`)
+	sql = re2.ReplaceAllString(sql, "NULL")
+
+	return sql
 }
 
 // escapeSQLString escapes single quotes for SQL
