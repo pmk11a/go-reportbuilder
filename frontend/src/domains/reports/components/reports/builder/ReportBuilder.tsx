@@ -7,11 +7,13 @@ import { Save, ArrowLeft, Monitor, Smartphone, Loader2 } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useThemeStore } from '@/shared/stores/themeStore';
 import { Button, Tabs } from '@/shared/ui';
-import { useReports } from '@/domains/reports/hooks/useReport';
+import { useReports, useExecuteReport } from '@/domains/reports/hooks/useReport';
 import { useGetTabGeneral, useGetTabFilters, useGetTabKomponen } from '@/domains/reports/hooks/useReportBuilder';
 import { reportService } from '@/domains/reports/services/reportService';
 import { useToast } from '@/shared/hooks/use-toast';
 import { useReportStore } from '@/domains/reports/stores/reportStore';
+import { BuilderFilterPanel } from './BuilderFilterPanel';
+import { Show } from '@/shared/ui';
 
 export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
   const navigate = useNavigate();
@@ -44,6 +46,10 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
 
   // Get execution result from store (populated by useExecuteReport)
   const executionResult = useReportStore((s) => s.executionResult);
+
+  // Execute report hook
+  const executeReport = useExecuteReport(kodeMenu);
+  const filterValues = useReportStore((s) => s.filterValues);
 
   // Full report configuration state
   const [reportConfig, setReportConfig] = useState<Partial<IReportConfig>>({});
@@ -347,15 +353,23 @@ export function ReportBuilder({ kodeMenu }: { kodeMenu?: string }) {
                 value: 'editor',
                 content: (
                   <div className="xl:p-2 bg-slate-50 dark:bg-[#0f172a]">
-                    <ReportEditor 
-                      reportConfig={reportConfig} 
+                    <ReportEditor
+                      reportConfig={reportConfig}
                       setReportConfig={setReportConfig}
-                      layoutConfig={layoutConfig} 
+                      layoutConfig={layoutConfig}
                       setLayoutConfig={setLayoutConfig}
                       onDeleteReport={handleDeleteReport}
                       activeTab={activeTab}
                       setActiveTab={setActiveTab}
                     />
+                    {/* Filter Panel for Preview */}
+                    <div className="mt-4 px-4 pb-4">
+                      <BuilderFilterPanel
+                        kodeMenu={kodeMenu || ''}
+                        filters={filtersData || []}
+                        executeReport={executeReport}
+                      />
+                    </div>
                   </div>
                 )
               },
