@@ -431,12 +431,21 @@ func (s *SReportExecutionService) buildSPQuery(ctx context.Context, dataset *rep
 		filterMap[strings.ToLower(k)] = v
 	}
 
-	// Extract date filters
+	// Extract date filters - check both underscore and no-underscore variants
 	var tglAwal, tglAkhir string
-	if v, ok := filterMap["tglawal"]; ok && v != nil {
+	// Try: tgl_awal, tgl_akhhir (with underscore), tglaal, tgakhir (no underscore)
+	if v, ok := filterMap["tgl_awal"]; ok && v != nil {
+		tglAwal = fmt.Sprintf("%v", v)
+	} else if v, ok := filterMap["tglawal"]; ok && v != nil {
+		tglAwal = fmt.Sprintf("%v", v)
+	} else if v, ok := filterMap["tgl_akhhir"]; ok && v != nil {
 		tglAwal = fmt.Sprintf("%v", v)
 	}
-	if v, ok := filterMap["tglakhir"]; ok && v != nil {
+	if v, ok := filterMap["tgl_akhir"]; ok && v != nil {
+		tglAkhir = fmt.Sprintf("%v", v)
+	} else if v, ok := filterMap["tglakhir"]; ok && v != nil {
+		tglAkhir = fmt.Sprintf("%v", v)
+	} else if v, ok := filterMap["tgl_akhhir"]; ok && v != nil {
 		tglAkhir = fmt.Sprintf("%v", v)
 	}
 
