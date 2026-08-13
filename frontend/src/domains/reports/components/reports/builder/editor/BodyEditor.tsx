@@ -1,79 +1,39 @@
 import { Plus, Trash2, Edit2 } from 'lucide-react';
-import { Button, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Input, Textarea, Each, Show } from '@/shared/ui';
+import { Button, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Each, Show, Input } from '@/shared/ui';
 import type { ILayoutBody, IReportConfig } from '@/domains/reports/types';
+import { DataSourceManager } from './DataSourceManager';
 
 export function BodyEditor({ config, onChange, reportConfig, setReportConfig, onOpenHeaderModal, isDark }: { config: ILayoutBody, onChange: any, reportConfig: Partial<IReportConfig>, setReportConfig: any, onOpenHeaderModal: (rIdx: number, cIdx: number, table: any) => void, isDark: boolean }) {
   const rows = config.rows || [];
   const datasets = reportConfig.datasets || [];
-  const bodyDatasets = datasets.filter((d:any) => d.tipe_dataset === 'body');
+  const availableDataSources = datasets
+    .filter(d => d.config_json?.scope === 'global' || d.config_json?.scope === 'body')
+    .map(d => ({ id: d.nama_dataset, name: `${d.nama_dataset} (${d.config_json?.scope === 'global' ? 'Global' : 'Body'})` }));
   const cardClass = isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200';
   const headingClass = isDark ? 'text-slate-200' : 'text-slate-800';
 
   const addRow = () => onChange({ ...config, type: 'body', rows: [...rows, { columns: [{ width: '100%', table: { dataset: '', headerRows: [], dataColumns: [] } }] }] });
 
-  const updateDatasets = (newBodyDs: any[]) => {
-    const otherDs = datasets.filter((d:any) => d.tipe_dataset !== 'body');
-    setReportConfig({ ...reportConfig, datasets: [...otherDs, ...newBodyDs] });
-  };
-
   return (
     <div className="space-y-8">
-      {/* 1. Body Data Sources */}
-      <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <div>
-            <h3 className={`font-medium ${headingClass}`}>Data Sources (Body / Tables)</h3>
-            <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Query untuk mengambil data utama yang akan dirender dalam bentuk tabel.</p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => {
-            updateDatasets([...bodyDatasets, { id_query: Date.now(), nama_dataset: 'T' + (bodyDatasets.length + 1), query_sumber_data: 'EXEC Sp_...', tipe_dataset: 'body' }]);
-          }}>
-            <Plus className="w-4 h-4 mr-1" /> Add Source
-          </Button>
-        </div>
-        
-        <Show when={bodyDatasets.length > 0}>
-          <div className="space-y-3">
-            <Each of={bodyDatasets}>
-              {(ds, i) => (
-                <div key={i} className={`p-4 border rounded-xl relative ${cardClass}`}>
-                  <Button variant="ghost" size="icon" onClick={() => {
-                      updateDatasets(bodyDatasets.filter((_, idx) => idx !== i));
-                    }} className="absolute top-2 right-2 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3 pr-0 sm:pr-8">
-                    <div className="space-y-1">
-                      <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>ID Dataset (Unik)</label>
-                      <Input value={ds.id_query || ''} readOnly className={`h-9 rounded-xl text-xs ${isDark ? 'bg-slate-900 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200'}`} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Alias (Dataset Name)</label>
-                      <Input value={ds.nama_dataset} onChange={e => {
-                        const nf = [...bodyDatasets]; nf[i].nama_dataset = e.target.value; updateDatasets(nf);
-                      }} placeholder="Misal: T1" className={`h-9 rounded-xl text-xs ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`} />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Query (SQL / SP)</label>
-                    <Textarea value={ds.query_sumber_data} onChange={e => {
-                      const nf = [...bodyDatasets]; nf[i].query_sumber_data = e.target.value; updateDatasets(nf);
-                    }} rows={3} placeholder="EXEC Sp_LapKasHarian" className={`rounded-xl font-mono text-xs ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`} />
-                  </div>
-                </div>
-              )}
-            </Each>
-          </div>
-        </Show>
-      </div>
+      <DataSourceManager
+        config={reportConfig}
+        onChange={setReportConfig}
+        isDark={isDark}
+        scope="body"
+        title="Body Data Sources (Local)"
+        description="Query untuk mengambil data utama yang akan dirender dalam bentuk tabel."
+      />
 
       <div className={`h-px w-full ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`}></div>
 
       {/* 2. Body Layout */}
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`font-medium ${headingClass}`}>Body Layout (Tables)</h3>
-        <Button variant="ghost" size="sm" onClick={addRow}>
+      <div className={`sticky top-0 z-20 flex justify-between items-center py-2 px-1 -mx-1 mb-2 ${isDark ? 'bg-[#0f172a]' : 'bg-slate-50'}`}>
+        <div>
+          <h3 className={`font-medium ${headingClass}`}>Body Layout (Tables)</h3>
+          <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Tentukan tabel data di bagian Body Laporan.</p>
+        </div>
+        <Button variant="default" size="sm" onClick={addRow}>
           <Plus className="w-4 h-4 mr-1" /> Add Body Row
         </Button>
       </div>
@@ -102,27 +62,49 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                       </Button>
                       <h4 className={`text-xs font-bold uppercase mb-4 tracking-wider ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Tabel {cIdx + 1}</h4>
                       
-                      <div className={`grid grid-cols-1 md:grid-cols-2 ${col.width !== '100%' ? 'lg:grid-cols-3' : ''} gap-6 mb-5`}>
+                      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-5`}>
 
                         <div className="space-y-1.5">
                           <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Lebar (Width)</label>
-                          <Select 
-                            value={col.width || '100%'}
-                            onValueChange={(val) => {
+                          <Input 
+                            placeholder="Contoh: 100%, 500px" 
+                            className={`h-10 text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}
+                            value={col.width || ''}
+                            onChange={e => {
                               const newRows = [...rows];
-                              newRows[rIdx].columns[cIdx].width = val;
+                              newRows[rIdx].columns[cIdx].width = e.target.value;
                               onChange({ ...config, rows: newRows });
                             }}
-                          >
-                            <SelectTrigger className={`h-10 w-full rounded-xl text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}>
-                              <SelectValue placeholder="Width" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="100%">100% (Penuh)</SelectItem>
-                              <SelectItem value="50%">50% (Setengah)</SelectItem>
-                              <SelectItem value="33%">33% (Sepertiga)</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Grid Colspan</label>
+                          <Input 
+                            type="number"
+                            placeholder="Contoh: 1, 2, 12" 
+                            className={`h-10 text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}
+                            value={col.colSpan || ''}
+                            onChange={e => {
+                              const newRows = [...rows];
+                              newRows[rIdx].columns[cIdx].colSpan = parseInt(e.target.value) || undefined;
+                              onChange({ ...config, rows: newRows });
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Jarak Atas (Margin Top)</label>
+                          <Input 
+                            placeholder="Contoh: 1rem, 20px" 
+                            className={`h-10 text-sm ${isDark ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-900'}`}
+                            value={col.marginTop || ''}
+                            onChange={e => {
+                              const newRows = [...rows];
+                              newRows[rIdx].columns[cIdx].marginTop = e.target.value;
+                              onChange({ ...config, rows: newRows });
+                            }}
+                          />
                         </div>
 
                         <div className="space-y-1.5">
@@ -139,18 +121,18 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                               <SelectValue placeholder="Pilih Dataset untuk Tabel ini" />
                             </SelectTrigger>
                             <SelectContent>
-                              <Show when={bodyDatasets.length === 0}>
-                                <SelectItem value="none" disabled>Belum ada Data Source</SelectItem>
-                              </Show>
-                              <Each of={bodyDatasets}>
-                                {(ds) => <SelectItem key={ds.nama_dataset} value={ds.nama_dataset}>{ds.nama_dataset}</SelectItem>}
-                              </Each>
+                                  <Show when={availableDataSources.length === 0}>
+                                    <SelectItem value="none" disabled>Belum ada Data Source</SelectItem>
+                                  </Show>
+                                  <Each of={availableDataSources}>
+                                    {(ds: any) => <SelectItem key={ds.id} value={ds.id}>{ds.name}</SelectItem>}
+                                  </Each>
                             </SelectContent>
                           </Select>
                         </div>
                         
-                        <Show when={col.width !== '100%'}>
-                          <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
+                        
+                        <div className="space-y-1.5 md:col-span-2 lg:col-span-1">
                             <label className={`text-xs font-semibold block ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Posisi Horizontal</label>
                             <Select 
                               value={col.align || 'left'}
@@ -170,7 +152,6 @@ export function BodyEditor({ config, onChange, reportConfig, setReportConfig, on
                               </SelectContent>
                             </Select>
                           </div>
-                        </Show>
                       </div>
 
                       <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-xl border ${isDark ? 'bg-slate-950/50 border-slate-800/60' : 'bg-slate-50 border-slate-100'} gap-4 sm:gap-0`}>

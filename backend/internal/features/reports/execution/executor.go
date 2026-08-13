@@ -156,13 +156,26 @@ func (s *SReportExecutionService) GenerateReport(ctx context.Context, params Exe
 				}
 				// Assign each result set to its corresponding dataset
 				for i, sd := range shared {
+					var data []map[string]interface{}
 					if i < len(resultSets) {
-						data := resultSets[i]
-						data = s.computeRunningBalance(data, sd.NamaDataset)
-						results[sd.NamaDataset] = data
+						data = resultSets[i]
+					} else if len(resultSets) == 1 {
+						// Fallback: If SP returned only 1 result set but used in multiple datasets,
+						// duplicate the data so they don't get empty results.
+						data = make([]map[string]interface{}, len(resultSets[0]))
+						for rIdx, row := range resultSets[0] {
+							newRow := make(map[string]interface{})
+							for k, v := range row {
+								newRow[k] = v
+							}
+							data[rIdx] = newRow
+						}
 					} else {
-						results[sd.NamaDataset] = []map[string]interface{}{}
+						data = []map[string]interface{}{}
 					}
+					
+					data = s.computeRunningBalance(data, sd.NamaDataset)
+					results[sd.NamaDataset] = data
 					usedDatasets[sd.NamaDataset] = true
 				}
 				continue

@@ -21,6 +21,15 @@ const DATE_LOCALE = 'id-ID'
 export function formatCell(value: any, formatType: IReportColumn['format_type']): string {
   if (value === null || value === undefined) return ''
 
+  if (formatType === 'date') {
+    const d = new Date(value)
+    if (isNaN(d.getTime())) return String(value)
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    return `${dd}/${mm}/${yyyy}`
+  }
+
   const num = parseFloat(String(value))
   if (isNaN(num)) return String(value)
 
@@ -29,18 +38,14 @@ export function formatCell(value: any, formatType: IReportColumn['format_type'])
       return new Intl.NumberFormat(CURRENCY_LOCALE, {
         style: 'currency',
         currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
       }).format(num)
     case 'number':
       return new Intl.NumberFormat(CURRENCY_LOCALE, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
       }).format(num)
-    case 'date':
-      const d = new Date(value)
-      if (isNaN(d.getTime())) return String(value)
-      return d.toLocaleDateString(DATE_LOCALE)
     default:
       return String(value)
   }

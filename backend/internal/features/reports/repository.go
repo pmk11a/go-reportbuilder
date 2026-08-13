@@ -52,6 +52,8 @@ type IReportsRepository interface {
 	CreateKomponen(ctx context.Context, data *SDBKomponenLaporan) (int, error)
 	UpdateKomponen(ctx context.Context, id int, data *SDBKomponenLaporan) error
 	DeleteKomponen(ctx context.Context, id int) error
+	DeleteKomponenByReportID(ctx context.Context, idLaporan int) error
+	UpsertKomponenByName(ctx context.Context, idLaporan int, namaKomponen string, data *SDBKomponenLaporan) error
 
 	// User Access
 	GetUserAccess(ctx context.Context, kodeMenu string) ([]SUserAccess, error)
@@ -157,15 +159,8 @@ func (r *reportsRepository) GetReportByKodeMenu(ctx context.Context, kodeMenu st
 }
 
 func (r *reportsRepository) CreateReport(ctx context.Context, data *SDBMasterLaporan) (int, error) {
-	var id int
-	err := r.db.WithContext(ctx).Raw(`
-		INSERT INTO dbmasterlaporan ([KODEMENU], [nama_laporan], [deskripsi], [status_aktif], [footer_bands], [created_at], [updated_at])
-		VALUES (?, ?, ?, ?, ?, GETDATE(), GETDATE());
-		SELECT SCOPE_IDENTITY() as id;`,
-		data.KODEMENU, data.NamaLaporan, data.Deskripsi, data.StatusAktif, data.FooterBands,
-	).Scan(&id).Error
-
-	return id, err
+	err := r.db.WithContext(ctx).Create(data).Error
+	return data.IDLaporan, err
 }
 
 func (r *reportsRepository) UpdateReport(ctx context.Context, id int, data *SDBMasterLaporan) error {
@@ -219,27 +214,27 @@ func (r *reportsRepository) CreateFilter(ctx context.Context, data *SDBParameter
 
 	posisi := data.Posisi
 	if posisi == 0 {
-		posisi = maxPosisi + 1
+		data.Posisi = maxPosisi + 1
 	}
 
-	var id int
-	err := r.db.WithContext(ctx).Raw(`
-		INSERT INTO dbparameterlaporan ([id_laporan], [nama_filter], [label], [tipe_input], [wajib_isi], [nilai_default], [posisi], [konfigurasi])
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-		SELECT SCOPE_IDENTITY() as id;`,
-		data.IDLaporan, data.NamaFilter, data.Label, data.TipeInput, data.WajibIsi, data.NilaiDefault, posisi, data.Konfigurasi,
-	).Scan(&id).Error
-
-	return id, err
+	err := r.db.WithContext(ctx).Create(data).Error
+	return data.IDParameter, err
 }
 
 func (r *reportsRepository) UpdateFilter(ctx context.Context, id int, data *SDBParameterLaporan) error {
-	return r.db.WithContext(ctx).Exec(`
+	res := r.db.WithContext(ctx).Exec(`
 		UPDATE dbparameterlaporan
 		SET [nama_filter] = ?, [label] = ?, [tipe_input] = ?, [wajib_isi] = ?, [nilai_default] = ?, [posisi] = ?, [konfigurasi] = ?
 		WHERE [id_parameter] = ?`,
 		data.NamaFilter, data.Label, data.TipeInput, data.WajibIsi, data.NilaiDefault, data.Posisi, data.Konfigurasi, id,
-	).Error
+	)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *reportsRepository) DeleteFilter(ctx context.Context, id int) error {
@@ -280,18 +275,11 @@ func (r *reportsRepository) CreateDataset(ctx context.Context, data *SDBQueryLap
 
 	urutan := data.Urutan
 	if urutan == 0 {
-		urutan = maxUrutan + 1
+		data.Urutan = maxUrutan + 1
 	}
 
-	var id int
-	err := r.db.WithContext(ctx).Raw(`
-		INSERT INTO dbquerylaporan ([id_laporan], [nama_dataset], [query_sumber_data], [deskripsi], [urutan], [visible], [config_json])
-		VALUES (?, ?, ?, ?, ?, ?, ?);
-		SELECT SCOPE_IDENTITY() as id;`,
-		data.IDLaporan, data.NamaDataset, data.QuerySumberData, data.Deskripsi, urutan, data.Visible, data.ConfigJSON,
-	).Scan(&id).Error
-
-	return id, err
+	err := r.db.WithContext(ctx).Create(data).Error
+	return data.IDQuery, err
 }
 
 func (r *reportsRepository) UpdateDataset(ctx context.Context, id int, data *SDBQueryLaporan) error {
@@ -332,15 +320,8 @@ func (r *reportsRepository) GetAllColumns(ctx context.Context, idLaporan int) (m
 }
 
 func (r *reportsRepository) CreateColumn(ctx context.Context, data *SDBKolomLaporan) (int, error) {
-	var id int
-	err := r.db.WithContext(ctx).Raw(`
-		INSERT INTO dbkolomlaporan ([id_laporan], [nama_dataset], [nama_kolom], [label_tampil], [urutan_tampil], [format_type], [alignment], [is_summable], [is_visible])
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-		SELECT SCOPE_IDENTITY() as id;`,
-		data.IDLaporan, data.NamaDataset, data.NamaKolom, data.LabelTampil, data.UrutanTampil, data.FormatType, data.Alignment, data.IsSummable, data.IsVisible,
-	).Scan(&id).Error
-
-	return id, err
+	err := r.db.WithContext(ctx).Create(data).Error
+	return data.IDKolom, err
 }
 
 func (r *reportsRepository) UpdateColumn(ctx context.Context, id int, data *SDBKolomLaporan) error {
@@ -370,15 +351,8 @@ func (r *reportsRepository) GetGroups(ctx context.Context, idLaporan int) ([]SDB
 }
 
 func (r *reportsRepository) CreateGroup(ctx context.Context, data *SDBGroupLaporan) (int, error) {
-	var id int
-	err := r.db.WithContext(ctx).Raw(`
-		INSERT INTO dbgrouplaporan ([id_laporan], [group_level], [group_field], [field_value], [label], [sort_order], [show_subtotal], [style_config], [special_handling], [config_json])
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-		SELECT SCOPE_IDENTITY() as id;`,
-		data.IDLaporan, data.GroupLevel, data.GroupField, data.FieldValue, data.Label, data.SortOrder, data.ShowSubtotal, data.StyleConfig, data.SpecialHandling, data.ConfigJSON,
-	).Scan(&id).Error
-
-	return id, err
+	err := r.db.WithContext(ctx).Create(data).Error
+	return data.IDGroup, err
 }
 
 func (r *reportsRepository) UpdateGroup(ctx context.Context, id int, data *SDBGroupLaporan) error {
@@ -408,15 +382,8 @@ func (r *reportsRepository) GetKomponen(ctx context.Context, idLaporan int) ([]S
 }
 
 func (r *reportsRepository) CreateKomponen(ctx context.Context, data *SDBKomponenLaporan) (int, error) {
-	var id int
-	err := r.db.WithContext(ctx).Raw(`
-		INSERT INTO dbkomponenlaporan ([id_laporan], [nama_komponen], [konfigurasi_layout], [urutan], [is_active])
-		VALUES (?, ?, ?, ?, ?);
-		SELECT SCOPE_IDENTITY() as id;`,
-		data.IDLaporan, data.NamaKomponen, data.KonfigurasiLayout, data.Urutan, data.IsActive,
-	).Scan(&id).Error
-
-	return id, err
+	err := r.db.WithContext(ctx).Create(data).Error
+	return data.IDKomponen, err
 }
 
 func (r *reportsRepository) UpdateKomponen(ctx context.Context, id int, data *SDBKomponenLaporan) error {
@@ -430,6 +397,28 @@ func (r *reportsRepository) UpdateKomponen(ctx context.Context, id int, data *SD
 
 func (r *reportsRepository) DeleteKomponen(ctx context.Context, id int) error {
 	return r.db.WithContext(ctx).Delete(&SDBKomponenLaporan{}, "[id_komponen] = ?", id).Error
+}
+
+func (r *reportsRepository) DeleteKomponenByReportID(ctx context.Context, idLaporan int) error {
+	return r.db.WithContext(ctx).Exec("DELETE FROM dbkomponenlaporan WHERE [id_laporan] = ?", idLaporan).Error
+}
+
+func (r *reportsRepository) UpsertKomponenByName(ctx context.Context, idLaporan int, namaKomponen string, data *SDBKomponenLaporan) error {
+	var existing SDBKomponenLaporan
+	err := r.db.WithContext(ctx).
+		Where("[id_laporan] = ? AND [nama_komponen] = ?", idLaporan, namaKomponen).
+		First(&existing).Error
+	if err != nil {
+		// Not found, create new
+		return r.db.WithContext(ctx).Create(data).Error
+	}
+	// Found, update existing
+	return r.db.WithContext(ctx).Exec(`
+		UPDATE dbkomponenlaporan
+		SET [konfigurasi_layout] = ?, [urutan] = ?, [is_active] = ?
+		WHERE [id_komponen] = ?`,
+		data.KonfigurasiLayout, data.Urutan, data.IsActive, existing.IDKomponen,
+	).Error
 }
 
 // ============================================================================
@@ -498,19 +487,32 @@ func (r *reportsRepository) PreviewQuery(ctx context.Context, sql string, filter
 	// Substitute placeholders with dummy values
 	substitutedSQL := substituteParams(sql, filters, "")
 
+	// Replace any remaining @variable with NULL (except @@ system vars)
+	re := regexp.MustCompile(`(?i)@+[a-z0-9_]+`)
+	substitutedSQL = re.ReplaceAllStringFunc(substitutedSQL, func(match string) string {
+		if strings.HasPrefix(match, "@@") {
+			return match
+		}
+		return "NULL"
+	})
+
 	// Use FMTONLY to get schema without executing (for preview)
 	previewSQL := fmt.Sprintf("SET FMTONLY ON; %s; SET FMTONLY OFF;", substitutedSQL)
 
-	var results []map[string]interface{}
-	err := r.db.WithContext(ctx).Raw(previewSQL).Scan(&results).Error
-
-	// Extract column names
-	var columns []string
-	if len(results) > 0 {
-		for key := range results[0] {
-			columns = append(columns, key)
-		}
+	sqlRows, err := r.db.WithContext(ctx).Raw(previewSQL).Rows()
+	if err != nil {
+		return nil, nil, err
 	}
+	defer sqlRows.Close()
+
+	columns, err := sqlRows.Columns()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var results []map[string]interface{}
+	// We don't need to scan since FMTONLY ON returns 0 rows
+
 
 	return results, columns, err
 }
@@ -680,7 +682,7 @@ func (r *reportsRepository) GetMenuTreeForUser(ctx context.Context, userId strin
 	var args []interface{}
 
 	if search != "" {
-		searchCondition = " AND (menu.Keterangan LIKE ? OR m.KODEMENU LIKE ?) "
+		searchCondition = " AND (menu.Keterangan LIKE ? OR menu.KODEMENU LIKE ?) "
 		likeQuery := "%" + search + "%"
 		args = append(args, likeQuery, likeQuery)
 	}
@@ -691,7 +693,6 @@ func (r *reportsRepository) GetMenuTreeForUser(ctx context.Context, userId strin
 			SELECT
 				menu.KODEMENU as KODEMENU,
 				menu.Keterangan as NmReport,
-				COALESCE(NULLIF(m.nama_laporan, ''), menu.Keterangan) as NamaLaporan,
 				menu.L0 as L0,
 				'1' as ACCESS
 			FROM DBMENUREPORT menu
@@ -708,7 +709,6 @@ func (r *reportsRepository) GetMenuTreeForUser(ctx context.Context, userId strin
 		SELECT
 			menu.KODEMENU as KODEMENU,
 			menu.Keterangan as NmReport,
-			COALESCE(NULLIF(m.nama_laporan, ''), menu.Keterangan) as NamaLaporan,
 			menu.L0 as L0,
 			'1' as ACCESS
 		FROM DBMENUREPORT menu

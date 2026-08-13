@@ -43,6 +43,7 @@ export interface IFilterKonfigurasi {
   options?: string[];
   label_map?: Record<string, string>;
   multi?: boolean;
+  is_multiple?: boolean;
 }
 
 export interface IParentFilter {

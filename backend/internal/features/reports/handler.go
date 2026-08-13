@@ -774,6 +774,71 @@ func (h *SReportsHandler) DeleteGroup(c *gin.Context) {
 }
 
 // ============================================================================
+// Komponen
+// ============================================================================
+
+// GetKomponen godoc
+// @Summary Get Komponen
+// @Description Fetch all layout components for a report
+// @Tags Reports Admin
+// @Produce json
+// @Param id path int true "Report ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /admin/reports/{id}/komponen [get]
+func (h *SReportsHandler) GetKomponen(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid report ID")
+		return
+	}
+
+	komponen, err := h.service.GetKomponen(c.Request.Context(), id)
+	if err != nil {
+		response.InternalError(c, "Failed to retrieve komponen")
+		return
+	}
+
+	response.Success(c, "Komponen retrieved successfully", komponen)
+}
+
+// UpsertKomponen godoc
+// @Summary Upsert Komponen
+// @Description Create or update a layout component by name for a report
+// @Tags Reports Admin
+// @Accept json
+// @Produce json
+// @Param id path int true "Report ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Security BearerAuth
+// @Router /admin/reports/{id}/komponen [put]
+func (h *SReportsHandler) UpsertKomponen(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		response.BadRequest(c, "Invalid report ID")
+		return
+	}
+
+	var req SKomponenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request body: "+err.Error())
+		return
+	}
+
+	result, err := h.service.UpsertKomponen(c.Request.Context(), id, &req)
+	if err != nil {
+		response.InternalError(c, "Failed to upsert komponen: "+err.Error())
+		return
+	}
+
+	response.Success(c, "Komponen saved successfully", result)
+}
+
+// ============================================================================
 // User Access
 // ============================================================================
 

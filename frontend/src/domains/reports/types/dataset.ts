@@ -10,6 +10,7 @@ export interface IReportDataset {
 }
 
 export interface IDatasetConfig {
+  scope?: 'global' | 'filter' | 'header' | 'body' | 'footer'
   display_role?: 'summary' | 'detail'
   summary_layout?: 'grid_2col' | 'grid_1col'
   detail_dataset?: string
@@ -18,7 +19,7 @@ export interface IDatasetConfig {
   summary_fields?: string[]
   right_fields?: string[]
   computed?: Record<string, IComputedColumn>
-  detail_layout: string
+  detail_layout?: string
 }
 
 export interface IComputedColumn {
