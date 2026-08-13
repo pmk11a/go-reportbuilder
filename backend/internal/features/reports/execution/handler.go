@@ -100,43 +100,21 @@ func (h *SReportExecutionHandler) GetReportConfig(c *gin.Context) {
 	response.Success(c, "Report configuration retrieved successfully", config)
 }
 
-// getReportByKodeMenu gets report by kode menu with fallback normalization
+// getReportByKodeMenu gets report by kode menu with fallback normalization.
+// Uses the execution service directly, which queries dbmasterlaporan with status_aktif=1.
 func (h *SReportExecutionHandler) getReportByKodeMenu(ctx context.Context, kodeMenu string) (*reports.SReportDetailResponse, error) {
 	// Try original kode first
-	report, err := h.fetchReportConfig(ctx, kodeMenu)
+	report, err := h.service.GetReportConfig(ctx, kodeMenu)
 	if err == nil && report != nil {
 		return report, nil
 	}
 
-	// Try normalized version
+	// Try normalized version (strip leading zeros)
 	normalized := strings.TrimLeft(kodeMenu, "0")
 	if normalized != kodeMenu {
-		report, err = h.fetchReportConfig(ctx, normalized)
+		report, err = h.service.GetReportConfig(ctx, normalized)
 		if err == nil && report != nil {
 			return report, nil
-		}
-	}
-
-	return nil, nil
-}
-
-// fetchReportConfig fetches full report configuration
-func (h *SReportExecutionHandler) fetchReportConfig(ctx context.Context, kodeMenu string) (*reports.SReportDetailResponse, error) {
-	// Get report detail from service
-	reportsList, err := h.reportService.ListReports(ctx, &reports.SListReportsRequest{Page: 1, Limit: 1000})
-	if err != nil {
-		return nil, err
-	}
-
-	// Find report by kode menu
-	for _, r := range reportsList.Reports {
-		if r.KODEMENU == kodeMenu {
-			// Get full detail
-			foundReport, err := h.reportService.GetReport(ctx, r.IDLaporan)
-			if err != nil {
-				return nil, err
-			}
-			return foundReport, nil
 		}
 	}
 

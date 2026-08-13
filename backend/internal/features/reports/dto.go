@@ -257,11 +257,12 @@ type SKomponenResponse struct {
 
 // SMenuReportItem represents a menu item for the reports sidebar
 type SMenuReportItem struct {
-	KODEMENU   string               `json:"KODEMENU"`
-	Keterangan string               `json:"NmReport"`
-	L0         int                  `json:"L0"`
-	ACCESS     string               `json:"ACCESS"`
-	Children   []SMenuReportItem    `gorm:"-" json:"children,omitempty"`
+	KODEMENU    string               `json:"KODEMENU"`
+	Keterangan  string               `json:"NmReport"`
+	NamaLaporan string               `json:"nama_laporan,omitempty"`
+	L0          int                  `json:"L0"`
+	ACCESS      string               `json:"ACCESS"`
+	Children    []SMenuReportItem    `gorm:"-" json:"children,omitempty"`
 }
 
 // SPreviewQueryResponse is the JSON shape for query preview results

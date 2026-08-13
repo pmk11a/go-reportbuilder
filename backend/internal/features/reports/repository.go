@@ -688,12 +688,14 @@ func (r *reportsRepository) GetMenuTreeForUser(ctx context.Context, userId strin
 	// Admin bypass: SA, admin, masza — show ALL active reports from DBMENUREPORT
 	if userId == "SA" || userId == "admin" || userId == "masza" {
 		query := `
-			SELECT 
+			SELECT
 				menu.KODEMENU as KODEMENU,
 				menu.Keterangan as NmReport,
+				COALESCE(NULLIF(m.nama_laporan, ''), menu.Keterangan) as NamaLaporan,
 				menu.L0 as L0,
 				'1' as ACCESS
 			FROM DBMENUREPORT menu
+			LEFT JOIN dbmasterlaporan m ON m.KODEMENU = menu.KODEMENU
 			WHERE menu.L0 >= 0 ` + searchCondition + `
 			ORDER BY menu.KODEMENU
 		`
@@ -703,13 +705,15 @@ func (r *reportsRepository) GetMenuTreeForUser(ctx context.Context, userId strin
 
 	// Normal users: join with DBFLMENUREPORT for access control
 	query := `
-		SELECT 
+		SELECT
 			menu.KODEMENU as KODEMENU,
 			menu.Keterangan as NmReport,
+			COALESCE(NULLIF(m.nama_laporan, ''), menu.Keterangan) as NamaLaporan,
 			menu.L0 as L0,
 			'1' as ACCESS
 		FROM DBMENUREPORT menu
 		INNER JOIN DBFLMENUREPORT f ON menu.KODEMENU = f.KODEMENU
+		LEFT JOIN dbmasterlaporan m ON m.KODEMENU = menu.KODEMENU
 		WHERE f.USERID = ? AND menu.L0 >= 0 ` + searchCondition + `
 		ORDER BY menu.KODEMENU
 	`
