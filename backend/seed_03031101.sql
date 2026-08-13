@@ -20,9 +20,10 @@ PRINT 'Inserted dbmasterlaporan for 03031101';
 -- SP: Sp_reportOutSoDet
 -- Params: :0=Type('T'), :1=Grouping('N'/'B'/'C'), :2=FilterList
 -- Dates hardcoded di SQL Delphi, perlu filter tanggal di backend
+-- NOTE: scope harus ada untuk ditampilkan di DataSourceManager
 INSERT INTO dbquerylaporan (id_laporan, nama_dataset, urutan, query_sumber_data, config_json)
 SELECT id_laporan, 'dataset_utama', 1, 'EXEC Sp_reportOutSoDet :0,:1,:2',
-     '{"static_params": {"type": "T", "grouping": "N"}, "display_role": "detail", "sp_signature": "Sp_reportOutSoDet", "param_mapping": {"type": "param_type", "grouping": "param_grouping"}}'
+     '{"scope": "body", "static_params": {"type": "T", "grouping": "N"}, "display_role": "detail", "sp_signature": "Sp_reportOutSoDet", "param_mapping": {"type": "param_type", "grouping": "param_grouping"}}'
 FROM dbmasterlaporan
 WHERE KODEMENU = '03031101';
 
