@@ -264,6 +264,7 @@ func (s *SReportExecutionService) ExecuteDatasetQuery(ctx context.Context, datas
 		}
 	}
 
+	// NOTE: buildSPQuery returned original SQL (SP not handled by switch case)
 	// Replace remaining @placeholders with NULL for any SP calls that weren't handled
 	if matched, _ := regexp.MatchString(`^\s*EXEC\s+`, sql); matched {
 		sql = s.replaceRemainingPlaceholders(sql)
@@ -459,6 +460,64 @@ func (s *SReportExecutionService) buildSPQuery(ctx context.Context, dataset *rep
 	var dateFmt = "01-02-2006"
 
 	switch {
+	case strings.Contains(spUpper, "REPORTOUT") && strings.Contains(spUpper, "SODET"):
+		// Sp_ReportOutSODet - Out SO Detail report (Penjualan/Delivery Order)
+		// Parameters: @SReport, @Ordr, @tgl1, @tgl2, @isiList, @Id
+		kodeMenu := s.getKodeMenuFromIDLaporan(ctx, dataset.IDLaporan)
+		groupType := "N" // N=NoBukti, B=Barang, C=CustSupp
+		switch {
+		case strings.HasSuffix(kodeMenu, "0102"):
+			groupType = "B"
+		case strings.HasSuffix(kodeMenu, "0103"):
+			groupType = "C"
+		}
+
+		sReport := "T"
+		if v, ok := filterMap["sreport"]; ok && v != nil {
+			sReport = fmt.Sprintf("%v", v)
+		}
+
+		listItems := "''" // empty string as SQL literal
+		if v, ok := filterMap["isilist"]; ok && v != nil {
+			switch val := v.(type) {
+			case []interface{}:
+				var items []string
+				for _, item := range val {
+					items = append(items, fmt.Sprintf("'%v'", item))
+				}
+				listItems = strings.Join(items, ",")
+			case string:
+				if val != "" {
+					listItems = fmt.Sprintf("'%s'", strings.ReplaceAll(val, "'", "''"))
+				}
+			}
+		}
+
+		// Format dates - SP expects MM/DD/YYYY format
+		var dateStr1, dateStr2 string
+		if t, ok := parseDate(tglAwal); ok {
+			dateStr1 = fmt.Sprintf("'%s'", t.Format("01/02/2006"))
+		} else {
+			dateStr1 = "'01/01/2025'"
+		}
+		if t, ok := parseDate(tglAkhir); ok {
+			dateStr2 = fmt.Sprintf("'%s'", t.Format("01/02/2006"))
+		} else {
+			dateStr2 = "'12/31/2025'"
+		}
+
+		// Build SQL: EXEC Sp_ReportOutSODet @SReport='T',@Ordr='N',@tgl1='01/01/2025',@tgl2='12/31/2025',@isiList='',@Id=''
+		builtSQL := fmt.Sprintf("EXEC %s @SReport='%s',@Ordr='%s',@tgl1=%s,@tgl2=%s,@isiList=%s,@Id=''",
+			spSignature,
+			sReport,
+			groupType,
+			dateStr1,
+			dateStr2,
+			listItems,
+		)
+		log.Printf("DEBUG SP QUERY %s: %s", dataset.NamaDataset, builtSQL)
+		return builtSQL, nil
+
 	case strings.Contains(spUpper, "REPORTSO") && strings.Contains(spUpper, "DET"):
 		// Sp_ReportSODet - SO detail report
 		// Parameters: :0=SReport, :1=GroupType, 'TglAwal','TglAkhir',:2=ListItems, :3=ValasIndex

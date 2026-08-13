@@ -30,9 +30,10 @@ FROM dbmasterlaporan WHERE KODEMENU = '03031101';
 PRINT 'Inserted dbparameterlaporan for 03031101';
 
 -- 4. Query Dataset (scope: body untuk data utama)
+-- SP: Sp_ReportOutSODet (@SReport, @Ordr, @tgl1, @tgl2, @isiList, @Id)
 INSERT INTO dbquerylaporan (id_laporan, nama_dataset, urutan, query_sumber_data, config_json)
-SELECT id_laporan, 'dataset_utama', 1, 'EXEC Sp_reportOutSoDet :0,:1,:2',
-       '{"scope": "body", "static_params": {"type": "T", "grouping": "N"}, "display_role": "detail", "sp_signature": "Sp_reportOutSoDet"}'
+SELECT id_laporan, 'dataset_utama', 1, 'EXEC Sp_ReportOutSODet @SReport,@Ordr,@tgl1,@tgl2,@isiList,@Id',
+       '{"scope": "body", "static_params": {"SReport": "T", "Ordr": "N"}, "display_role": "detail", "sp_signature": "Sp_ReportOutSODet"}'
 FROM dbmasterlaporan WHERE KODEMENU = '03031101';
 
 PRINT 'Inserted dbquerylaporan for 03031101';
