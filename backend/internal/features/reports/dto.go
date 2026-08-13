@@ -191,7 +191,11 @@ type SReportDetailResponse struct {
 	FooterBands json.RawMessage              `json:"footer_bands"`
 	Keterangan *string                       `json:"Keterangan,omitempty"`
 	L0         *int                          `json:"L0,omitempty"`
+	Filters     []SFilterResponse            `json:"filters"`
 	Datasets    []SDatasetResponse           `json:"datasets"`
+	Columns     map[string][]SColumnResponse  `json:"columns"`
+	Groups      []SGroupResponse             `json:"groups"`
+	Komponen    []SKomponenResponse          `json:"komponen"`
 	Access     []SUserAccess                 `json:"access"`
 	CreatedAt  *string                       `json:"created_at"`
 	UpdatedAt  *string                       `json:"updated_at"`

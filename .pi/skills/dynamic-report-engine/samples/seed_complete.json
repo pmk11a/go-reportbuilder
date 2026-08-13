@@ -1,0 +1,499 @@
+{
+  "generated_at": "2026-08-06T11:10:14.211402",
+  "total_menus": 70,
+  "existing_count": 29,
+  "missing_count": 41,
+  "sp_resolved": 6,
+  "menus": [
+    {
+      "kode_menu": "020101",
+      "nama_menu": "Kas Harian",
+      "sp_name": "Sp_LapKasHarian",
+      "param_count": 4,
+      "column_template": "Yes"
+    },
+    {
+      "kode_menu": "020102",
+      "nama_menu": "Bank Harian",
+      "sp_name": "Sp_LapBankHarian",
+      "param_count": 4,
+      "column_template": "Yes"
+    },
+    {
+      "kode_menu": "020103",
+      "nama_menu": "Posisi Bank, Kas & Piutang",
+      "sp_name": "Sp_LapPosisiBankKasPiutang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020106",
+      "nama_menu": "Daftar Deposito",
+      "sp_name": "Sp_LapDaftarDeposito",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020107",
+      "nama_menu": "Daftar Giro diterima",
+      "sp_name": "Sp_LapDaftarGiroDiterima",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020108",
+      "nama_menu": "Daftar Giro dibuka",
+      "sp_name": "Sp_LapDaftarGiroDibuka",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020109",
+      "nama_menu": "Bon Sementara",
+      "sp_name": "Sp_LapBonSementara",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020201",
+      "nama_menu": "Jurnal",
+      "sp_name": "Sp_LapJurnal",
+      "param_count": 4,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020204",
+      "nama_menu": "Biaya",
+      "sp_name": "Sp_LapBiaya",
+      "param_count": 5,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020205",
+      "nama_menu": "Aktiva",
+      "sp_name": "Sp_LapAktiva",
+      "param_count": 3,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020206",
+      "nama_menu": "Biaya Penyusutan",
+      "sp_name": "Sp_LapBiayaPenyusutan",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020302",
+      "nama_menu": "Sisa",
+      "sp_name": "Sp_LapSisaPiutang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020303",
+      "nama_menu": "Pelunasan",
+      "sp_name": "Sp_LapPelunasanPiutang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020304",
+      "nama_menu": "Saldo",
+      "sp_name": "Sp_LapSaldoPiutang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020305",
+      "nama_menu": "Umur",
+      "sp_name": "Sp_LapUmurPiutang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020402",
+      "nama_menu": "Sisa",
+      "sp_name": "Sp_LapSisaPiutangDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020403",
+      "nama_menu": "Pelunasan",
+      "sp_name": "Sp_LapPelunasanPiutangDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020404",
+      "nama_menu": "Saldo",
+      "sp_name": "Sp_LapSaldoPiutangDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020405",
+      "nama_menu": "Umur",
+      "sp_name": "Sp_LapUmurPiutangDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020406",
+      "nama_menu": "Kartu Piutang Detail",
+      "sp_name": "Sp_LapKartuPiutangDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020407",
+      "nama_menu": "Monitoring Pembayaran Piutang",
+      "sp_name": "Sp_LapMonitoringPembayaranPiutang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020501",
+      "nama_menu": "Neraca Lajur",
+      "sp_name": "Sp_LapNeracaLajur",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020502",
+      "nama_menu": "HPP",
+      "sp_name": "Sp_LapHPP",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020503",
+      "nama_menu": "Laba Rugi",
+      "sp_name": "Sp_LapLabaRugi",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020504",
+      "nama_menu": "Neraca",
+      "sp_name": "Sp_LapNeraca",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020505",
+      "nama_menu": "Laporan Neraca Penunjang",
+      "sp_name": "Sp_LapNeracaPenunjang",
+      "param_count": 3,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020506",
+      "nama_menu": "Mutasi",
+      "sp_name": "Sp_LapMutasi",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "020507",
+      "nama_menu": "Laporan Mutasi Keuangan",
+      "sp_name": "Sp_LapMutasiKeuangan",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025711",
+      "nama_menu": "Penerimaan ACC Per. Nobukti",
+      "sp_name": "Sp_LapPenerimaanACCPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025712",
+      "nama_menu": "Penerimaan ACC Per Barang",
+      "sp_name": "Sp_LapPenerimaanACCPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025713",
+      "nama_menu": "Penerimaan ACC Per Supplier",
+      "sp_name": "Sp_LapPenerimaanACCPerSupplier",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025731",
+      "nama_menu": "Retur Pembelian ACC Per. Nobukti",
+      "sp_name": "Sp_LapReturPembelianACCPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025732",
+      "nama_menu": "Retur Pembelian ACC Per Barang",
+      "sp_name": "Sp_LapReturPembelianACCPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025733",
+      "nama_menu": "Retur Pembelian ACC Per Supplier",
+      "sp_name": "Sp_LapReturPembelianACCPerSupplier",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025741",
+      "nama_menu": "Retur Pembelian GDG Per No. Bukti",
+      "sp_name": "Sp_LapReturPembelianGDGPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025743",
+      "nama_menu": "Retur Pembelian GDGPer Supplier",
+      "sp_name": "Sp_LapReturPembelianGDGPerSupplier",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025801",
+      "nama_menu": "Transfer In Detail",
+      "sp_name": "Sp_LapTransferInDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025802",
+      "nama_menu": "Transfer Out Detail",
+      "sp_name": "Sp_LapTransferOutDetail",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "025902",
+      "nama_menu": "Pembelian ACC Rekening",
+      "sp_name": "Sp_LapPembelianACCRekening",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030201",
+      "nama_menu": "Laporan Penawaran Per No.Bukti",
+      "sp_name": "Sp_LapPenawaranPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030202",
+      "nama_menu": "Laporan Penawaran Per Barang",
+      "sp_name": "Sp_LapPenawaranPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030203",
+      "nama_menu": "Laporan Penawaran Per Customer",
+      "sp_name": "Sp_LapPenawaranPerCustomer",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030204",
+      "nama_menu": "Laporan Penawaran Per Marketing",
+      "sp_name": "Sp_LapPenawaranPerMarketing",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030314",
+      "nama_menu": "Laporan CashBack",
+      "sp_name": "Sp_LapCashBack",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030325",
+      "nama_menu": "Retur Surat Jalan",
+      "sp_name": "Sp_LapReturSuratJalan",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030326",
+      "nama_menu": " Retur Surat Jalan ACC",
+      "sp_name": "Sp_LapReturSuratJalanACC",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030351",
+      "nama_menu": "Laporan Target Sales",
+      "sp_name": "Sp_LapTargetSales",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030361",
+      "nama_menu": "Komisi Pelunasan",
+      "sp_name": "Sp_LapKomisiPelunasan",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "030362",
+      "nama_menu": "Komisi Sales",
+      "sp_name": "Sp_LapKomisiSales",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040361",
+      "nama_menu": "Trasfer Barang Per Nobukti",
+      "sp_name": "Sp_LapTransferBarangPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040362",
+      "nama_menu": "Trasfer Barang Per Barang",
+      "sp_name": "Sp_LapTransferBarangPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040501",
+      "nama_menu": "Laporan Ubah Kemasan Bahan Per Nobukti",
+      "sp_name": "Sp_LapUbahKemasanBahanPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040502",
+      "nama_menu": "Laporan Ubah Kemasan Bahan Per Barang",
+      "sp_name": "Sp_LapUbahKemasanBahanPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040701",
+      "nama_menu": "Laporan Opname Bahan Per Nobukti",
+      "sp_name": "Sp_LapOpnameBahanPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040702",
+      "nama_menu": "Laporan Opname Bahan Per Barang",
+      "sp_name": "Sp_LapOpnameBahanPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040801",
+      "nama_menu": "Laporan Opname Barang Per Nobukti",
+      "sp_name": "Sp_LapOpnameBarangPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040802",
+      "nama_menu": "Laporan Opname Barang Per Barang",
+      "sp_name": "Sp_LapOpnameBarangPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040851",
+      "nama_menu": "Hasil Produksi Per NObukti",
+      "sp_name": "Sp_LapHasilProduksiPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040852",
+      "nama_menu": "Hasil Produksi Per Barang",
+      "sp_name": "Sp_LapHasilProduksiPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040861",
+      "nama_menu": "Hasil Produksi ACC Per Nobukti",
+      "sp_name": "Sp_LapHasilProduksiACCPerNobukti",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "040862",
+      "nama_menu": "Hasil Produksi ACC Per Barang",
+      "sp_name": "Sp_LapHasilProduksiACCPerBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050101",
+      "nama_menu": "Stock Quantity",
+      "sp_name": "Sp_LapStockQuantity",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050102",
+      "nama_menu": "Stock Rupiah",
+      "sp_name": "Sp_LapStockRupiah",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050103",
+      "nama_menu": "Stock Qty + Rupiah",
+      "sp_name": "Sp_LapStockQtyRupiah",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050104",
+      "nama_menu": "Stock Akhir Barang Produksi",
+      "sp_name": "Sp_LapStockAkhirBarangProduksi",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050105",
+      "nama_menu": "Stock Fisik Gudang",
+      "sp_name": "Sp_LapStockFisikGudang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050106",
+      "nama_menu": "Stock Harian",
+      "sp_name": "Sp_LapStockHarian",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050107",
+      "nama_menu": "Laporan Katalog Barang (Satuan PCS)",
+      "sp_name": "Sp_LapKatalogBarang",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050201",
+      "nama_menu": "Kartu Stock Qnt",
+      "sp_name": "Sp_LapKartuStockQnt",
+      "param_count": 0,
+      "column_template": "No"
+    },
+    {
+      "kode_menu": "050202",
+      "nama_menu": "Kartu Stock Qnt dan Rupiah",
+      "sp_name": "Sp_LapKartuStockQntRupiah",
+      "param_count": 0,
+      "column_template": "No"
+    }
+  ]
+}

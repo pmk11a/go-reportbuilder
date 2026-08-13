@@ -1,0 +1,9 @@
+<!-- MasterData fragment for one row -->
+<div class="fr3-cell" style="position:absolute;left:0.0000mm;top:0.0000mm;width:64.2520mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:left;">01/01/2025</div>
+<div class="fr3-cell" style="position:absolute;left:64.2520mm;top:0.0000mm;width:117.1654mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:left;">KS/2025/0001</div>
+<div class="fr3-cell" style="position:absolute;left:181.4173mm;top:0.0000mm;width:173.8584mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:left;">Setoran Tunai</div>
+<div class="fr3-cell" style="position:absolute;left:355.2758mm;top:0.0000mm;width:52.9134mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:left;">Kasir</div>
+<div class="fr3-cell" style="position:absolute;left:582.0476mm;top:0.0000mm;width:86.9291mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:right;">0</div>
+<div class="fr3-cell" style="position:absolute;left:408.1892mm;top:0.0000mm;width:86.9291mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:right;">500,000</div>
+<div class="fr3-cell" style="position:absolute;left:668.9768mm;top:0.0000mm;width:86.9291mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:right;">0</div>
+<div class="fr3-cell" style="position:absolute;left:495.1184mm;top:0.0000mm;width:86.9291mm;height:18.8976mm;font-family:Tahoma;font-size:11pt;font-weight:normal;text-align:right;">0</div>

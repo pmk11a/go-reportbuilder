@@ -1,0 +1,6 @@
+{"channel":"daily","fields.level":"info","file":"logs\\app-2026-08-09.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-08-09 08:35:57"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-08-09 08:35:57"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-08-09 08:35:57"}
+{"channel":"daily","fields.level":"info","file":"logs\\app-2026-08-09.log","level":"info","mode":"file+console","msg":"✅ Logger initialized","time":"2026-08-09 08:41:07"}
+{"level":"info","msg":"✅ Activity log config loaded successfully","time":"2026-08-09 08:41:08"}
+{"level":"info","msg":"✅ Activity logging plugin registered (CREATE, UPDATE, DELETE hooks)","time":"2026-08-09 08:41:08"}

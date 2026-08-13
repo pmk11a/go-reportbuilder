@@ -1,0 +1,132 @@
+{
+  "report_name": "Laporan Neraca - Labels Only",
+  "kode_menu": "RPT-NERACA",
+  "description": "Laporan dengan grouping hanya menampilkan label tanpa kolom data (ReportNeraca style)",
+  
+  "dbmasterlaporan": {
+    "KODEMENU": "RPT-NERACA",
+    "nama_laporan": "Laporan Neraca",
+    "deskripsi": "Neraca dengan grouping akun berdasarkan kategori",
+    "status_aktif": 1,
+    "footer_bands": {
+      "bands": {
+        "signature": {
+          "enabled": true,
+          "rows": [
+            {
+              "label": "Dibuat oleh:",
+              "field": null,
+              "position": "left"
+            },
+            {
+              "label": "Diperiksa oleh:",
+              "field": null,
+              "position": "center"
+            },
+            {
+              "label": "Disetujui oleh:",
+              "field": null,
+              "position": "right"
+            }
+          ]
+        },
+        "summary": {
+          "footer_table": false,
+          "chgb_panel": {
+            "enabled": false
+          }
+        }
+      }
+    }
+  },
+  
+  "dbparameterlaporan": [
+    {
+      "nama_filter": "Periode",
+      "label": "Periode Laporan",
+      "tipe_input": "date_range",
+      "wajib_isi": 1,
+      "nilai_default": null,
+      "posisi": 1,
+      "konfigurasi": null
+    },
+    {
+      "nama_filter": "KodeCabang",
+      "label": "Cabang",
+      "tipe_input": "browse",
+      "wajib_isi": 0,
+      "nilai_default": null,
+      "kode_browse": "BROWSE_CABANG",
+      "posisi": 2,
+      "konfigurasi": null
+    }
+  ],
+  
+  "dbquerylaporan": [
+    {
+      "nama_dataset": "neraca_data",
+      "urutan": 1,
+      "query_sumber_data": "SELECT k.Kdaccount, a.NamaAkun, k.Kdgroup, g.NamaGroup FROM Akun k JOIN MasterAkun a ON k.Kdaccount=a.Kdaccount JOIN GroupAkun g ON k.Kdgroup=g.Kdgroup WHERE k.Status='A' ORDER BY k.Kdgroup, k.Kdaccount",
+      "config_json": {
+        "display_role": "detail",
+        "is_labels_only": true,
+        "static_params": {}
+      }
+    }
+  ],
+  
+  "dbkolomlaporan": [],
+  
+  "dbgroup a laporan": [
+    {
+      "id_laporan": "RPT-NERACA",
+      "group_level": 1,
+      "group_field": "Kdgroup",
+      "field_value": "group",
+      "label": "Kelompok Akun",
+      "sort_order": 1,
+      "show_subtotal": 0,
+      "special_handling": "labels-only",
+      "style_config": {
+        "font_weight": "bold",
+        "background": "secondary-50"
+      },
+      "config_json": {
+        "field_name": "Kdgroup",
+        "label_mapping": {
+          "1": "Aset",
+          "2": "Liabilitas",
+          "3": "Ekuitas",
+          "4": "Pendapatan",
+          "5": "Beban"
+        },
+        "render_mode": "labels_only"
+      }
+    },
+    {
+      "id_laporan": "RPT-NERACA",
+      "group_level": 2,
+      "group_field": "Kdaccount",
+      "field_value": "account",
+      "label": "Nama Akun",
+      "sort_order": 2,
+      "show_subtotal": 0,
+      "special_handling": "labels-only",
+      "style_config": {
+        "font_weight": "normal",
+        "padding_left": 20
+      },
+      "config_json": {
+        "field_name": "Kdaccount",
+        "render_mode": "labels_only"
+      }
+    }
+  ],
+  
+  "frontend_config": {
+    "rendering_mode": "labels-only",
+    "show_group_headers": true,
+    "show_subtotals": false,
+    "columns_visible": false
+  }
+}

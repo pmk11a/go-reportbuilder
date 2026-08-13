@@ -1,0 +1,178 @@
+{
+  "report_name": "Hierarchical Account Report",
+  "kode_menu": "RPT-HIER",
+  "description": "Laporan akun dengan hierarki bertingkat (coa level 1-5)",
+  
+  "dbmasterlaporan": {
+    "KODEMENU": "RPT-HIER",
+    "nama_laporan": "Hierarchical Chart of Accounts",
+    "deskripsi": "CoA dengan hierarki 5 level",
+    "status_aktif": 1,
+    "footer_bands": {
+      "bands": {
+        "summary": {
+          "footer_table": false,
+          "chgb_panel": {
+            "enabled": false
+          }
+        }
+      }
+    }
+  },
+  
+  "dbparameterlaporan": [
+    {
+      "nama_filter": "StatusAkun",
+      "label": "Status Akun",
+      "tipe_input": "dropdown",
+      "wajib_isi": 0,
+      "nilai_default": "A",
+      "posisi": 1,
+      "konfigurasi": {
+        "options": ["A", "I"]
+      }
+    },
+    {
+      "nama_filter": "LevelMin",
+      "label": "Level Minimum",
+      "tipe_input": "number",
+      "wajib_isi": 0,
+      "nilai_default": 1,
+      "posisi": 2,
+      "konfigurasi": null
+    }
+  ],
+  
+  "dbquerylaporan": [
+    {
+      "nama_dataset": "coa_data",
+      "urutan": 1,
+      "query_sumber_data": "SELECT Kdaccount, NamaAkun, Kdgroup, Level, SaldoNormal, COALESCE(Saldo,0) AS Saldo FROM akun a LEFT JOIN saldo s ON a.Kdaccount=s.Kdaccount AND s.Tahun=@Tahun WHERE a.Level >= @LevelMin ORDER BY a.Kdaccount",
+      "config_json": {
+        "display_role": "detail",
+        "static_params": {
+          "@Tahun": "2024"
+        },
+        "hierarchical": {
+          "enabled": true,
+          "level_field": "Level",
+          "parent_field": "Kdgroup",
+          "max_depth": 5
+        }
+      }
+    }
+  ],
+  
+  "dbkolomlaporan": [
+    {"nama_dataset": "coa_data", "nama_kolom": "Kdaccount", "label_tampil": "Kode Akun", "format_type": "text", "alignment": "left", "is_summable": false, "is_visible": true, "urutan_tampil": 1},
+    {"nama_dataset": "coa_data", "nama_kolom": "NamaAkun", "label_tampil": "Nama Akun", "format_type": "text", "alignment": "left", "is_summable": false, "is_visible": true, "urutan_tampil": 2},
+    {"nama_dataset": "coa_data", "nama_kolom": "Level", "label_tampil": "Level", "format_type": "number", "alignment": "center", "is_summable": false, "is_visible": true, "urutan_tampil": 3},
+    {"nama_dataset": "coa_data", "nama_kolom": "Saldo", "label_tampil": "Saldo", "format_type": "currency", "alignment": "right", "is_summable": true, "is_visible": true, "urutan_tampil": 4}
+  ],
+  
+  "dbgrouplaporan": [
+    {
+      "id_laporan": "RPT-HIER",
+      "group_level": 1,
+      "group_field": "Kdaccount",
+      "field_value": "level1",
+      "label": "Level 1",
+      "sort_order": 1,
+      "show_subtotal": 0,
+      "special_handling": "hierarchical",
+      "style_config": {
+        "font_weight": "bold",
+        "background": "secondary-50"
+      },
+      "config_json": {
+        "field_name": "Kdaccount",
+        "level": 1,
+        "show_subtotal": false
+      }
+    },
+    {
+      "id_laporan": "RPT-HIER",
+      "group_level": 2,
+      "group_field": "Kdaccount",
+      "field_value": "level2",
+      "label": "Level 2",
+      "sort_order": 2,
+      "show_subtotal": 1,
+      "special_handling": "hierarchical",
+      "style_config": {
+        "font_weight": "medium",
+        "background": "blue-50"
+      },
+      "config_json": {
+        "field_name": "Kdaccount",
+        "level": 2,
+        "show_subtotal": true
+      }
+    },
+    {
+      "id_laporan": "RPT-HIER",
+      "group_level": 3,
+      "group_field": "Kdaccount",
+      "field_value": "level3",
+      "label": "Level 3",
+      "sort_order": 3,
+      "show_subtotal": 1,
+      "special_handling": "hierarchical",
+      "style_config": {
+        "font_weight": "medium",
+        "background": "green-50"
+      },
+      "config_json": {
+        "field_name": "Kdaccount",
+        "level": 3,
+        "show_subtotal": true
+      }
+    },
+    {
+      "id_laporan": "RPT-HIER",
+      "group_level": 4,
+      "group_field": "Kdaccount",
+      "field_value": "level4",
+      "label": "Level 4",
+      "sort_order": 4,
+      "show_subtotal": 0,
+      "special_handling": "hierarchical",
+      "style_config": {
+        "font_weight": "normal",
+        "padding_left": 32
+      },
+      "config_json": {
+        "field_name": "Kdaccount",
+        "level": 4,
+        "show_subtotal": false
+      }
+    },
+    {
+      "id_laporan": "RPT-HIER",
+      "group_level": 5,
+      "group_field": "Kdaccount",
+      "field_value": "level5",
+      "label": "Level 5",
+      "sort_order": 5,
+      "show_subtotal": 0,
+      "special_handling": "hierarchical",
+      "style_config": {
+        "font_weight": "normal",
+        "padding_left": 48
+      },
+      "config_json": {
+        "field_name": "Kdaccount",
+        "level": 5,
+        "show_subtotal": false
+      }
+    }
+  ],
+  
+  "frontend_config": {
+    "rendering_mode": "hierarchical",
+    "show_group_headers": true,
+    "show_subtotals": true,
+    "max_level": 5,
+    "indent_level": true
+  }
+}
